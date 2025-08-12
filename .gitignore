@@ -1,1 +1,18 @@
 "virtual_env/" 
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+venv/
+virtual_env/
+path/to/virtual_env/
+*.sqlite3
+
+# Node
+node_modules/
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
