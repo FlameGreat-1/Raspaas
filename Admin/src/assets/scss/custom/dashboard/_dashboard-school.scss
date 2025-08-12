@@ -1,0 +1,81 @@
+.expenses-table {
+  height: 247px;
+}
+
+.performer-table {
+  height: 245px;
+}
+
+.school-card {
+  position: relative;
+  background-color: #0E5D98;
+  height: 244px;
+}
+
+.school-icon {
+  width: 66px;
+  height: 66px;
+  padding: 14px 15px;
+  gap: 10px;
+  border-radius: 4px;
+
+  i {
+    font-size: 36px;
+    color: white;
+  }
+}
+
+.datepicker-container {
+  .air-datepicker {
+    min-width: 100%;
+    max-width: 100%;
+    border: none !important;
+    background-color: var(--#{$prefix}card-bg);
+
+    .air-datepicker-nav {
+      display: none;
+    }
+
+    .air-datepicker--content {
+      padding: 0;
+
+      .air-datepicker-body--day-names {
+        background-color: var(--#{$prefix}light-bg-subtle);
+        padding: 5px 0;
+
+        .air-datepicker-body--day-name {
+          font-size: 14px;
+          color: $text-muted;
+          font-weight: bold;
+        }
+      }
+
+      .air-datepicker-body--cells {
+        .air-datepicker-cell {
+          border-radius: 50px;
+          max-height: 50px;
+          max-width: 50px;
+          color: var(--#{$prefix}body-color);
+          &.-selected- {
+            color: var(--#{$prefix}white);
+          }
+        }
+
+        .-current- {
+          background-color: var(--#{$prefix}primary);
+          color: var(--#{$prefix}white);
+        }
+
+        .-selected- {
+          background-color: var(--#{$prefix}primary);
+        }
+      }
+    }
+  }
+}
+
+:root {
+  .air-datepicker {
+    --adp-day-cell-height: 55px !important;
+  }
+}

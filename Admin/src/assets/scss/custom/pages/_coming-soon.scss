@@ -1,0 +1,64 @@
+//
+// Coming Soon
+//
+
+.startup-img {
+  position: absolute;
+  bottom: 25%;
+  right: 15%;
+  opacity: 0.9;
+  width: 170px;
+}
+.launch-img {
+  position: absolute;
+  top: 20%;
+  left: 10%;
+  width: 180px;
+}
+.border-8 {
+  border-width: 9px !important;
+  position: absolute;
+  bottom: 200px;
+  left: 200px;
+  opacity: 0.5;
+}
+.floating-shape {
+    position: absolute;
+    opacity: 0.1;
+    z-index: 1;
+  }
+  
+  .shape-triangle {
+    width: 0;
+    height: 0;
+    border-left: 35px solid transparent;
+    border-right: 35px solid transparent;
+    border-bottom: 60px solid rgba(var(--#{$prefix}primary-rgb), 0.8);
+  
+    &.triangle-1 {
+      bottom: 20%;
+      left: 10%;
+    }
+  
+    &.triangle-2 {
+      top: 30%;
+      right: 10%;
+    }
+  }
+  
+  .shape-square {
+    width: 50px;
+    height: 50px;
+    background-color: rgba(var(--#{$prefix}primary-rgb), 0.8);
+  
+    &.square-1 {
+      top: 10%;
+      left: 40%;
+    }
+  
+    &.square-2 {
+      bottom: 10%;
+      right: 40%;
+    }
+  }
+

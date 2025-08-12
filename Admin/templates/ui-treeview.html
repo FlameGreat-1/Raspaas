@@ -1,0 +1,60 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="UI Tree View" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
+{% endblock %}
+{% block content %}
+{% with title_sub="Base UI" title="Tree View"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+<!--begin::App-->
+            <div class="row">
+                <div class="col-12 col-xl-6">
+                    <div class="card card-h-100">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Basic Example</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="tree-container-2" class="tree"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-6">
+                    <div class="card card-h-100">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Default Close</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="tree-container-3" class="tree"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-6">
+                    <div class="card card-h-100">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Custom Icons and Colors</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="tree-container-1" class="tree"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!--End row-->
+        </div><!--End container-fluid-->
+    </main><!--End app-wrapper-->
+ {% endblock content %}
+    {% block js %}
+
+<script src="/static/assets/js/ui/jstree.init.js"></script>
+<script src="/static/assets/js/app.js"></script>
+ {% endblock js %}

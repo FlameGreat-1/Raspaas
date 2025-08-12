@@ -1,0 +1,8 @@
+.timeline-line {
+    position: absolute;
+    left: 17px;
+    top: 50px;
+    bottom: 0;
+    width: 2px;
+    background-color: rgba(var(--#{$prefix}body-color-rgb), 0.1);
+}

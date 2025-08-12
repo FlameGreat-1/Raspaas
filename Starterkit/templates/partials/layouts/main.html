@@ -1,0 +1,31 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-100">
+
+<head>
+    {% block meta %} {% endblock meta %}
+    {% block css %} {% endblock css %}
+    {% include "partials/head-css.html" %}
+
+</head>
+
+<body>
+    <div id="layout-wrapper">
+        {% include "partials/header.html" %}
+        {% include "partials/sidebar.html" %}
+        {% include "partials/horizontal.html" %}
+        <main class="app-wrapper">
+            <div class="container-fluid">
+
+                {% block content %} {% endblock content %}
+            </div><!--End container-fluid-->
+        </main>
+        {% include "partials/switcher.html" %}
+        {% include "partials/scroll-to-top.html" %}
+        {% include "partials/footer.html" %}
+    </div>
+    {% include "partials/vendor-scripts.html" %}
+    {% block js %} {% endblock js %}
+</body>
+
+</html>

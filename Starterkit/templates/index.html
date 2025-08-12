@@ -1,0 +1,30 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Index" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% block css %}
+ <link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+{% endblock %}
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Dashboard" title="E-Commerce"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+
+    {% endblock content %}
+
+    {% block js %}
+    <script src="/static/assets/libs/gridjs/gridjs.umd.js" type="text/javascript"></script>
+
+    <script src="/static/assets/libs/apexcharts/apexcharts.min.js"></script>
+    <!-- File js -->
+    <script src="/static/assets/js/dashboard/e-commerce.init.js"></script>
+    <!-- App js -->
+    <script type="module" src="/static/assets/js/app.js"></script>
+   {% endblock js %}

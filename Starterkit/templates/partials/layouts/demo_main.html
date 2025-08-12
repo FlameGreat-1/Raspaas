@@ -1,0 +1,25 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    {% block meta %} {% endblock meta %}
+    {% include "partials/datatable-css.html" %}
+    {% block css %} {% endblock css %}
+
+</head>
+
+<body>
+    {% include "partials/layout.html" %}
+
+    {% block content %} {% endblock content %}
+
+</div>
+
+</div>
+{% include "partials/bottom-wrapper.html" %}
+{% include "partials/datatable-script.html" %}
+
+{% block js %} {% endblock js %}
+</body>
+</html>

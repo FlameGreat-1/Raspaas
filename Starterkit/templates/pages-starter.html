@@ -1,0 +1,23 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Blank" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block content %}
+{% with title_sub="Pages" title="Blank"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+<!-- begin::App -->
+        </div><!--End container-fluid-->
+    </main><!--End app-wrapper-->
+
+    {% endblock content %}
+    {% block js %}
+
+    <!-- App js -->
+    <script src="/static/assets/js/app.js"></script>
+    {% endblock js %}

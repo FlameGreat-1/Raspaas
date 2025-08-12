@@ -1,0 +1,14 @@
+.app-wrapper {
+  margin-inline-start: var(--#{$prefix}app-sidebar-width);
+  margin-block-start: var(--#{$prefix}app-header-height);
+  transition: $transition-base;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  min-height: calc(100vh - calc(var(--#{$prefix}app-header-height) + var(--#{$prefix}app-footer-height)));
+  padding: 0 10px;
+  @include media-breakpoint-down(lg){
+    margin-inline-start: auto;
+  }
+}

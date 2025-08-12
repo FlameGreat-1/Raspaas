@@ -1,0 +1,88 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Leaflet Maps" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/leaflet/leaflet.css">
+{% endblock %}
+{% endblock %}
+{% block content %}
+{% with title_sub="Base UI" title="Leaflet Maps"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<!--begin::App-->
+            <div class="row">
+                <div class="col-12 col-xl-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Leaflet Map</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="w-100 min-h-320px" id="leaflet_map"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Map With Markers,circles and Polygons</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="w-100 min-h-320px" id="leaflet_map_markers"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Map With Popup</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="w-100 min-h-320px" id="leaflet_map_popup"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Map With Custom Icons</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="w-100 min-h-320px" id="leaflet_map_custom_icon"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-xl-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Map With Custom pane</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="w-100 min-h-320px" id="leaflet_map_custom_pane"></div>
+                        </div>
+                    </div>
+                </div>
+            </div><!--End row-->
+        </div><!--End container-fluid-->
+    </main><!--End app-wrapper-->
+
+    {% endblock content %}
+    {% block js %}
+
+    <!--  Leaflet Maps plugins -->
+    <script src="/static/assets/libs/leaflet/leaflet.js"></script>
+
+    <script src="/static/assets/js/map/leaflet-map.init.js"></script>
+
+    <script src="/static/assets/js/app.js"></script>
+
+    {% endblock js %}

@@ -1,0 +1,114 @@
+:is([data-sidebar="icon"], [data-sidebar="icon-hover"]) {
+  .#{$customPrefix}-app-sidebar-logo {
+    .logo-main {
+      h3 {
+        display: none;
+      }
+    }
+  }
+}
+:is([data-sidebar-color="dark"]) {
+  .#{$customPrefix}-app-sidebar-logo {
+    .logo-main {
+      .logo-light {
+        display: inline-block !important;
+      }
+      .logo-dark {
+        display: none !important;
+      }
+    }
+  }
+  &[data-sidebar="icon-hover"][data-layout="semibox"] {
+    .logo-main {
+      .logo-light {
+        display: none !important;
+      }
+      .logo-dark {
+        display: inline-block !important;
+      }
+    }
+    .#{$customPrefix}-app-sidebar {
+      &:hover {
+        .logo-main {
+          .logo-light {
+            display: inline-block !important;
+          }
+          .logo-dark {
+            display: none !important;
+          }
+        }
+      }
+    }
+  }
+  &[data-sidebar="icon"][data-layout="semibox"],
+  &[data-sidebar="default"][data-layout="semibox"][data-sidebar-color="dark"] {
+    .logo-main {
+      .logo-light {
+        display: none !important;
+      }
+      .logo-dark {
+        display: inline-block !important;
+      }
+      h3 {
+        color: var(--#{$prefix}emphasis-color) !important;
+      }
+    }
+  }
+}
+:is([data-bs-theme="light"], [data-bs-theme="dark"]) {
+  .#{$customPrefix}-app-sidebar-logo {
+    .logo-main {
+      .logo-light {
+        display: none;
+      }
+    }
+  }
+}
+:is([data-layout="horizontal"]) {
+  @include media-breakpoint-up(lg) {
+    .logo-main {
+      display: flex !important;
+    }
+  }
+}
+:is([data-topbar-theme="dark"]) {
+  .app-header {
+    .logo-main {
+      h3 {
+        color: $light-text-emphasis-dark !important;
+      }
+    }
+    .header-btn {
+      border-color: $border-color-dark;
+      color: $body-color-dark;
+      &.show {
+        border-color: $border-color-dark !important;
+        color: $body-color-dark !important;
+      }
+      .icon-dot {
+        border-color: $light-border-subtle-dark;
+      }
+    }
+    .form-control,
+    .dark-mode-btn {
+      border-color: $border-color-dark;
+    }
+    .search-btn,
+    .header-profile-btn {
+      span {
+        color: $body-color-dark !important;
+      }
+      i {
+        color: $body-secondary-color-dark !important;
+      }
+    }
+  }
+}
+:is([data-bs-theme="dark"][data-layout="horizontal"]) {
+  .app-header {
+    .search-btn span {
+      background-color: $light-bg-subtle !important;
+      color: $body-color-dark !important;
+    }
+  }
+}

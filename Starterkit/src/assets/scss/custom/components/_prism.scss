@@ -1,0 +1,7 @@
+// 
+// prism.scss
+//
+
+pre[class*=language-] > code {
+    max-height: 300px;
+}

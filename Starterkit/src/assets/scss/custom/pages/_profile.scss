@@ -1,0 +1,35 @@
+//
+// Profile
+//
+
+[data-layout="vertical"], [data-layout="semibox"]{
+  .pages-profile{
+    .main-breadcrumb{
+      display: none !important;
+    }
+  }
+}
+.main-profile-bg{
+  margin-left: -22px;
+  margin-right: -22px;
+  .profile-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 260px;
+    
+      &::before {
+        content: "";
+        position: absolute;
+        inset: 0; 
+        opacity: 0.9;
+        background: linear-gradient(to bottom, rgba(var(--#{$prefix}black-rgb), 0.3), transparent);
+      }
+    }
+  }
+  .edit-btn{
+    padding: 130px 0 24px 0;
+}
+  
+  

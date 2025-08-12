@@ -1,0 +1,150 @@
+//progress tracker
+.progress-tracker {
+    &:before {
+        content: '';
+        position: absolute;
+        top: 15px;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background-color: var(--#{$prefix}border-color);
+        z-index: 1;
+    }
+
+    .step {
+        position: relative;
+        z-index: 2;
+        background-color: var(--#{$prefix}card-bg);
+
+        &.active {
+            .step-number {
+                background-color: $primary;
+                border-color: $primary;
+                color: $white;
+            }
+        }
+
+        &.completed {
+            .step-number {
+                span {
+                    display: none;
+                }
+
+                background-color: $success;
+                border-color: $success;
+                color: $white;
+
+                &:after {
+                    content: '✓';
+                }
+            }
+        }
+
+        .step-number {
+            border: 2px solid var(--#{$prefix}border-color);
+            margin: 0 auto 10px;
+            transition: all 0.3s ease;
+        }
+
+    }
+}
+
+// step content
+.step-content {
+    display: none;
+
+    &.active {
+        display: block;
+    }
+
+    .address-option {
+        border: 1px solid var(--#{$prefix}border-color);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+        position: relative;
+        transition: all 0.2s ease;
+
+        &:hover {
+            border-color: rgba(var(--#{$prefix}body-color-rgb), 0.2);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        &.selected {
+            border-color: $primary;
+            background-color: rgba(99, 102, 241, 0.05);
+        }
+
+        .address-option-radio {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+        }
+    }
+
+    .add-address-btn {
+        width: 100%;
+        border: 1px dashed var(--#{$prefix}border-color);
+        background-color: rgba(var(--#{$prefix}body-color-rgb), 0.01);
+        color: $primary;
+        transition: all 0.2s ease;
+
+        &:hover {
+            background-color: rgba(var(--#{$prefix}primary-rgb), 0.05);
+            border-color: $primary;
+        }
+    }
+
+    .type-option {
+        flex: 1;
+        border: 1px solid var(--#{$prefix}border-color);
+        border-radius: 8px;
+        padding: 16px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+            border-color: rgba(var(--#{$prefix}body-color-rgb), 0.2);
+        }
+
+        &.selected {
+            border-color: $primary;
+            background-color: rgba(99, 102, 241, 0.05);
+
+            i {
+                color: $primary;
+            }
+        }
+
+        i {
+            font-size: 24px;
+            margin-bottom: 12px;
+            color: var(--text-light);
+        }
+    }
+
+    .payment-option {
+        border: 1px solid var(--#{$prefix}border-color);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &.selected {
+            border-color: $primary;
+            background-color: rgba(99, 102, 241, 0.05);
+        }
+
+        .payment-option-radio {
+            margin-right: 16px;
+        }
+
+        &:hover {
+            border-color: rgba(var(--#{$prefix}body-color-rgb), 0.2);
+        }
+    }
+}

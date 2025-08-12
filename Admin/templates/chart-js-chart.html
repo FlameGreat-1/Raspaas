@@ -1,0 +1,178 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="ChartJs" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+ <link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+  <!--datatable css-->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" />
+  <!--datatable responsive css-->
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap.min.css" />
+{% endblock %}
+{% block content %}
+{% with title_sub="Base UI" title="ChartJs"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<!--begin::App-->
+      <div class="row">
+        <div class="col-12 col-xl-6">
+          <!--start::card-->
+          <div class="card card-h-100">
+
+            <div class="card-header">
+              <h6 class="card-title mb-0 fw-semibold">Basic line Chart</h6>
+            </div>
+            <div class="card-body">
+
+              <canvas class="chartjs" id="eCommerceChart"></canvas>
+
+            </div>
+            <!-- end card-body -->
+          </div>
+          <!--end::card-->
+        </div>
+        <div class="col-12 col-xl-6">
+          <!--start::card-->
+          <div class="card card-h-100">
+
+            <div class="card-header">
+              <h6 class="card-title mb-0 fw-semibold">Bar Chart</h6>
+            </div>
+            <div class="card-body">
+
+              <canvas class="chartjs" id="barChart"></canvas>
+
+            </div>
+            <!-- end card-body -->
+          </div>
+          <!--end::card-->
+        </div>
+        <div class="col-12 col-xl-6">
+          <!--start::card-->
+          <div class="card card-h-100">
+
+            <div class="card-header">
+              <h6 class="card-title mb-0 fw-semibold">horizontal Bar Chart</h6>
+            </div>
+            <div class="card-body">
+
+              <canvas class="chartjs" id="horizontalBarChart"></canvas>
+
+            </div>
+            <!-- end card-body -->
+          </div>
+          <!--end::card-->
+        </div>
+        <div class="col-12 col-xl-6">
+          <!--start::card-->
+          <div class="card card-h-100">
+
+            <div class="card-header">
+              <h6 class="card-title mb-0 fw-semibold">Polar Area Chart</h6>
+            </div>
+            <div class="card-body">
+
+              <canvas class="chartjs" id="polarChart"></canvas>
+
+            </div>
+            <!-- end card-body -->
+          </div>
+          <!--end::card-->
+        </div>
+        <div class="col-12 col-xl-6">
+          <!--start::card-->
+          <div class="card card-h-100">
+
+            <div class="card-header">
+              <h6 class="card-title mb-0 fw-semibold">Pie Chart</h6>
+            </div>
+            <div class="card-body">
+
+              <canvas class="chartjs" id="myPieChart"></canvas>
+
+            </div>
+            <!-- end card-body -->
+          </div>
+          <!--end::card-->
+        </div>
+        <div class="col-12 col-xl-6">
+          <!--start::card-->
+          <div class="card card-h-100">
+
+            <div class="card-header">
+              <h6 class="card-title mb-0 fw-semibold">Stacked Bar & Line Chart</h6>
+            </div>
+            <div class="card-body">
+
+              <canvas class="chartjs" id="stackedLineChart"></canvas>
+
+            </div>
+            <!-- end card-body -->
+          </div>
+          <!--end::card-->
+        </div>
+        <div class="col-12 col-xl-6">
+          <!--start::card-->
+          <div class="card card-h-100">
+
+            <div class="card-header">
+              <h6 class="card-title mb-0 fw-semibold">Radar Chart</h6>
+            </div>
+            <div class="card-body">
+
+              <canvas class="chartjs" id="radarChart"></canvas>
+
+            </div>
+            <!-- end card-body -->
+          </div>
+          <!--end::card-->
+        </div>
+        <div class="col-12 col-xl-6">
+          <!--start::card-->
+          <div class="card card-h-100">
+
+            <div class="card-header">
+              <h6 class="card-title mb-0 fw-semibold">Line Area Chart</h6>
+            </div>
+            <div class="card-body">
+
+              <canvas class="chartjs" id="lineAreaChart"></canvas>
+
+            </div>
+            <!-- end card-body -->
+          </div>
+          <!--end::card-->
+        </div>
+        <div class="col-12 col-xl-6">
+          <!--start::card-->
+          <div class="card card-h-100">
+
+            <div class="card-header">
+              <h6 class="card-title mb-0 fw-semibold">Doughnut Chart</h6>
+            </div>
+            <div class="card-body">
+
+              <canvas class="chartjs" id="doughnutChart"></canvas>
+
+            </div>
+            <!-- end card-body -->
+          </div>
+          <!--end::card-->
+        </div>
+
+      </div><!--End row-->
+    </div><!--End container-fluid-->
+  </main><!--End app-wrapper-->
+ {% endblock content %}
+    {% block js %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/assets/js/chart/chartjs.init.js"></script>
+<script src="/static/assets/js/app.js"></script>
+ {% endblock js %}

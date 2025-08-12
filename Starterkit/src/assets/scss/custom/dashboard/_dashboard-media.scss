@@ -1,0 +1,64 @@
+#engagement {
+  .apexcharts-data-labels {
+    rect {
+      display: flex;
+      justify-content: center;
+      height: 12px;
+      width: 12px;
+      stroke-width: 2px;
+    }
+
+    .apexcharts-datalabel {
+      font-size: 1px;
+      fill: #19e5a0 !important;
+    }
+  }
+}
+
+#visitors {
+  .apexcharts-datalabels {
+    display: none;
+  }
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+
+  .calendar-day {
+    aspect-ratio: 1/1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    font-weight: bold;
+    color: $white;
+    transition: transform 0.2s;
+    cursor: pointer;
+
+    &:hover {
+      transform: scale(1.05);
+    }
+  }
+
+  .value-2 {
+    background-color: rgba($primary, 0.2);
+  }
+
+  .value-3 {
+    background-color: rgba($primary, 0.15);
+  }
+
+  .value-1 {
+    background-color: rgba($primary, 0.1);
+  }
+
+  .value-9 {
+    background-color: rgba($primary, 0.4);
+  }
+
+  .value-35 {
+    background-color: rgba($primary, 0.8);
+  }
+}

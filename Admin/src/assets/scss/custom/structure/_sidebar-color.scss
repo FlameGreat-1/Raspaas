@@ -1,0 +1,82 @@
+[data-sidebar-color="dark"] {
+  .pe-app-sidebar {
+    background-color: var(--#{$prefix}primary);
+    border-color: var(--#{$prefix}primary);
+
+    .#{$customPrefix}-app-sidebar-logo {
+      background-color: var(--#{$prefix}primary);
+      border-right: var(--#{$prefix}primary);
+      .logo-main {
+        h3 {
+          color: var(--#{$prefix}white) !important;
+        }
+      }
+    }
+    .icon-hover-btn {
+      color: var(--#{$prefix}white) !important;
+    }
+    .pe-app-sidebar-menu {
+      .pe-menu-title {
+        color: $white;
+      }
+      .pe-nav-link {
+        color: var(--#{$prefix}app-sidebar-menu-item-color);
+        &.active {
+          color: var(--#{$prefix}app-sidebar-menu-item-color-active) !important;
+          background-color: var(--#{$prefix}white);
+        }
+      }
+      .pe-slide-menu {
+        background: var(--#{$prefix}primary) !important;
+        .pe-nav-link {
+          &::before {
+            border-color: var(--#{$prefix}app-sidebar-menu-item-color);
+          }
+          &::after {
+            background-color: var(--#{$prefix}app-sidebar-menu-item-color);
+          }
+          &:hover,
+          &.active {
+            background-color: transparent;
+            color: var(--#{$prefix}white) !important;
+            &::before {
+              border-color: var(--#{$prefix}white) !important;
+            }
+            &::after {
+              background-color: var(--#{$prefix}white) !important;
+            }
+          }
+        }
+      }
+    }
+  }
+  &[data-layout="semibox"] {
+    .pe-app-sidebar {
+      background-color: transparent;
+      border-color: transparent;
+      .#{$customPrefix}-app-sidebar-logo {
+        background-color: var(--#{$prefix}body-bg);
+      }
+      .pe-app-sidebar-menu {
+        background-color: var(--#{$prefix}primary);
+        border-color: var(--#{$prefix}primary);
+        border-radius: var(--#{$prefix}border-radius);
+      }
+    }
+  }
+  &[data-sidebar="icon"] {
+    .pe-app-sidebar {
+      background-color: var(--#{$prefix}primary);
+       .#{$customPrefix}-slide {
+        &:hover {
+          &.#{$customPrefix}-has-sub {
+            > .#{$customPrefix}-nav-link {
+                background-color: var(--#{$prefix}white);
+                color: var(--#{$prefix}primary);
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+// 
+//  Ui Tour
+// 
+
+.shepherd-element {
+    background-color: var(--#{$prefix}body-bg);
+    .shepherd-text {
+        color: var(--#{$prefix}body-color);
+    }
+}
+
+.shepherd-arrow {
+    &::before {
+        background-color: var(--#{$prefix}body-bg);
+    }
+}
+[data-layout="horizontal"]{
+    .tour-title{
+        h2{
+            color: var(--#{$prefix}white);
+        }
+        color: var(--#{$prefix}white);     
+    }
+}

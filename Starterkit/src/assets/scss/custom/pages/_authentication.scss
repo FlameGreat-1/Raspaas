@@ -1,0 +1,95 @@
+//
+// Authentication
+//
+.subscribe-btn{
+  position: relative;
+  button{
+    position: absolute;
+    top: 50%;
+    right: 1.5%;
+    transform: translateY(-50%);
+  }
+}
+.bg-pattern {
+    background: radial-gradient(circle at 30% 40%, rgb(110 66 193 / 4%), transparent 50%), radial-gradient(circle at 70% 60%, rgba(66 135 245 / 4%), transparent 50%);
+  }
+  .auth-pattern-shape.extra {
+    position: absolute;
+    top: 50%;
+    left: 12%;
+    width: 150px;
+    height: 150px;
+    border-radius: 40px;
+    background: rgba(255, 130, 184, 0.1);
+    backdrop-filter: blur(20px);
+    transform: rotate(25deg);
+  }
+  .auth-pattern-extra {
+    position: absolute;
+    top: 50%;
+    left: 12%;
+    width: 100px;
+    height: 100px;
+    transform: translateY(-50%) rotate(10deg);
+    border: 1px solid rgba(255, 130, 184, 0.3);
+    border-radius: 10px;
+  }
+  
+  .auth-pattern-shapes::before,
+  .auth-pattern-shapes::after {
+    content: "";
+    position: absolute;
+    border-radius: 30px;
+    background: rgba(114, 98, 251, 0.1);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+  }
+  
+  .auth-pattern-shapes::before {
+    width: 140px;
+    height: 140px;
+    top: 23%;
+    left: 70%;
+    transform: rotate(25deg);
+  }
+  
+  .auth-pattern-shapes::after {
+    width: 180px;
+    height: 180px;
+    bottom: 20%;
+    right: 10%;
+    background: rgba(98, 239, 255, 0.08);
+  }
+
+  .auth-pattern-outline {
+    pointer-events: none;
+    z-index: 0;
+  }
+  .auth-pattern-outline::before {
+    content: "";
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    top: 18%;
+    left: 70%;
+    border: 2px dotted rgba(114, 98, 251, 0.4);
+    border-radius: 12px;
+    transform: rotate(25deg);
+  }
+  .auth-pattern-outline::after {
+    content: "";
+    position: absolute;
+    width: 160px;
+    height: 160px;
+    bottom: 15%;
+    right: 8%;
+    border: 1px solid rgba(98, 239, 255, 0.3);
+    border-radius: 16px;
+  }
+  [data-layout="horizontal"] {
+    .auth-content{
+      &::before{
+        display: none;
+      }
+    }
+  }

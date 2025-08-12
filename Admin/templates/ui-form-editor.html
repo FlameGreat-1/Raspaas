@@ -1,0 +1,71 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="UI Editor" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/quill/quill.core.css">
+<link rel="stylesheet" href="/static/assets/libs/quill/quill.bubble.css">
+<link rel="stylesheet" href="/static/assets/libs/quill/quill.snow.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Forms" title="Editor"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<!--begin::App-->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Default Editor</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-4">Create a basic date picker by initializing Flatpickr with
+                                <code>flatpickr("#basic-picker")</code> to allow users to select a single date from a
+                                calendar.</p>
+
+                            <div id="snowEditor">
+                                <h3>Hello World!</h3>
+                                <p>Some initial <strong>bold</strong> text</p>
+                                <p><br /></p>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Bubble Editor</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-4">Create a basic date picker by initializing Flatpickr with
+                                <code>flatpickr("#basic-picker")</code> to allow users to select a single date from a
+                                calendar.</p>
+
+                            <div id="bubbleEditor">
+                                <h3>Hello World!</h3>
+                                <p>Some initial <strong>bold</strong> text</p>
+                                <p><br /></p>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div><!--End row-->
+        </div><!--End container-fluid-->
+    </main><!--End app-wrapper-->
+
+    {% endblock content %}
+    {% block js %}
+
+    <script src="/static/assets/libs/quill/quill.js"></script>
+    <script src="/static/assets/js/form/form-editor.init.js"></script>
+
+    <script src="/static/assets/js/app.js"></script>
+    {% endblock js %}

@@ -1,0 +1,29 @@
+//
+// Blog List
+//
+.main-blog-card{
+    .bg-overlay{
+        @include position-align(absolute, null, 0, 0, 0);
+        background-color: #000000a2;
+        backdrop-filter: blur(3px);
+        color: $white;
+    }
+    
+}
+.blog-card {
+    &:hover {
+        .blog-avatar {
+            scale: 1.1;
+            transition: $transition-base;
+        }
+        h4{
+            transition: $transition-base;
+            color: var(--#{$prefix}primary);
+        }
+    }
+
+}
+.blog-details-list{
+    position: sticky;
+    top: calc(var(--#{$prefix}app-header-height) * 1.2);
+}

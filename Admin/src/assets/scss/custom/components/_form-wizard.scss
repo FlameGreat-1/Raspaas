@@ -1,0 +1,53 @@
+//
+// form-wizard.scss
+//
+
+// Form Wizard
+
+.custom-stepper {
+  position: relative;
+  .nav {
+    margin-top: -25px;
+    &.nav-pills {
+      display: flex;
+      justify-content: space-between;
+      .nav-item {
+        .nav-link {
+          @include border-radius($border-radius-pill);
+          background-color: var(--#{$prefix}light);
+          height: 40px;
+          width: 40px;
+          padding: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          &.activeComplete,
+          &.active {
+            background-color: var(--#{$prefix}primary) !important;
+            color: var(--#{$prefix}white);
+          }
+        }
+      }
+    }
+    &.flex-column {
+        margin-top: -250px;
+      .nav-item {
+        display: flex;
+        align-items: start;
+        gap: 12px;
+        margin-bottom: 35px;
+        &:last-child{
+            margin-bottom: 0;
+        }
+        h6{
+            margin-bottom: 2px;
+        }
+      }
+    }
+  }
+  .progress-vertical {
+    width: 6px;
+    height: 250px;
+    margin-left: 17px;
+  }
+}
