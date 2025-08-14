@@ -3,7 +3,7 @@
 
 {% include "partials/main.html" %}
 {% block meta %}
-{% with title="Two Step Verification" %}
+{% with title="HR System - Email Sent" %}
 {% include "partials/title-meta.html" %}
 {% endwith %}
 {% endblock %}
@@ -14,28 +14,94 @@
         <div class="col-12 col-md-8 col-lg-6 col-xl-5">
             <div class="card mx-xxl-8 shadow-none">
                 <div class="card-body p-8">
-                    <h3 class="fw-medium text-center">Check your inbox 🔐</h3>
-                    <p class="mb-8 text-muted text-center">Enter the 4-digit code we sent to your email.</p>
-                    <form>
-                        <div id="otp-container" class="d-flex align-items-center justify-content-center gap-2">
-                            <input type="text" class="form-control text-center min-h-50px max-w-64px border rounded" placeholder="0" data-otp-input maxlength="1" inputmode="numeric" pattern="[0-9]" aria-label="OTP digit 1">
-                            <input type="text" class="form-control text-center min-h-50px max-w-64px border rounded" placeholder="0" data-otp-input maxlength="1" inputmode="numeric" pattern="[0-9]" aria-label="OTP digit 2">
-                            <input type="text" class="form-control text-center min-h-50px max-w-64px border rounded" placeholder="0" data-otp-input maxlength="1" inputmode="numeric" pattern="[0-9]" aria-label="OTP digit 3">
-                            <input type="text" class="form-control text-center min-h-50px max-w-64px border rounded" placeholder="0" data-otp-input maxlength="1" inputmode="numeric" pattern="[0-9]" aria-label="OTP digit 4">
+                    <div class="text-center mb-6">
+                        <img height="50" width="48" class="mb-3" alt="HR System Logo" src="/static/assets/images/logo-md.png">
+                        <div class="mb-4">
+                            <div class="avatar-xl mx-auto mb-3">
+                                <div class="avatar-title bg-success-subtle text-success rounded-circle">
+                                    <i class="ri-mail-check-line fs-24"></i>
+                                </div>
+                            </div>
                         </div>
-                        <a href="auth-reset-password.html" class="btn btn-primary w-100 mt-6">Verify Email</a>
-                    </form>
-                    <p class="text-center mt-6 mb-0 text-muted fs-13">Didn't receive the code? <a href="auth-email-verify.html" class="link fw-semibold">Resend</a></p>
+                        <h3 class="fw-medium">Check your email 📧</h3>
+                        <p class="text-muted">
+                            {% if message %}
+                                {{ message }}
+                            {% else %}
+                                We've sent a password reset link to your email address. Click the link in the email to reset your password.
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <div class="text-center">
+                        <div class="d-grid gap-3">
+                            <a href="{% url 'accounts:login' %}" class="btn btn-primary">
+                                <i class="ri-arrow-left-line me-2"></i>Back to Sign In
+                            </a>
+                            
+                            <div class="border-top pt-4">
+                                <p class="text-muted fs-13 mb-3">Didn't receive the email?</p>
+                                <div class="d-grid gap-2">
+                                    <a href="{% url 'accounts:password_reset' %}" class="btn btn-outline-primary btn-sm">
+                                        <i class="ri-refresh-line me-2"></i>Send Again
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-6">
+                        <div class="border-top pt-4">
+                            <p class="text-muted fs-13 mb-2">Email not arriving?</p>
+                            <ul class="list-unstyled text-muted fs-12">
+                                <li>• Check your spam/junk folder</li>
+                                <li>• Ensure your email address is correct</li>
+                                <li>• Contact IT support if issues persist</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <p class="position-relative text-center fs-13 mb-0">©
-                <script>document.write(new Date().getFullYear())</script> Urbix. Crafted with by Pixeleyez
+            <p class="position-relative text-center fs-13 mb-0 text-muted">©
+                <script>document.write(new Date().getFullYear())</script> HR System. Powered by Operon
             </p>
         </div>
     </div>
 </div>
 
- {% endblock content %}
-    {% block js %}
-<script src="/static/assets/js/auth/two-step-verification.init.js"></script>
- {% endblock js %}
+{% endblock content %}
+
+{% block js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    let countdown = 30;
+    const redirectTimer = setInterval(function() {
+        countdown--;
+        if (countdown <= 0) {
+            clearInterval(redirectTimer);
+    
+             window.location.href = "{% url 'accounts:login' %}";
+        }
+    }, 1000);
+    
+
+    const checkEmailBtn = document.querySelector('.btn-outline-primary');
+    if (checkEmailBtn) {
+        checkEmailBtn.addEventListener('click', function() {
+            this.innerHTML = '<i class="ri-loader-4-line me-2 spinner-border spinner-border-sm"></i>Sending...';
+            this.disabled = true;
+        });
+    }
+});
+</script>
+{% endblock js %}

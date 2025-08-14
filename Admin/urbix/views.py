@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from django.views import View
 from django.template import TemplateDoesNotExist
+from django.http import HttpResponse
+from django.shortcuts import render
 
 def home_view(request):
     return render(request, f"index.html")
@@ -17,4 +19,3 @@ def dynamic_view(request, page):
         except TemplateDoesNotExist as e2:
             print(f"404 template not found: {e2}")
             return HttpResponse("Page not found", status=404)
-    

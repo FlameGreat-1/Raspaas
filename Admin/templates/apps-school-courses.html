@@ -3,546 +3,494 @@
 
 {% include "partials/main.html" %}
 {% block meta %}
-{% with title="School Course" %}
+{% with title="Departments" %}
 {% include "partials/title-meta.html" %}
 {% endwith %}
 {% endblock %}
 {% block css %}
-<!-- Choices css -->
 <link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
 {% endblock %}
 {% block content %}
-{% with title_sub="School" title="Course"%}
+{% with title_sub="HR Management" title="Departments"%}
 {% include "partials/pagetitle.html" %}
 {% endwith %}
 
-<!-- Begin page -->
-
-            <div class="card">
-                <div class="card-header">
-                    <h4>Courses List</h4>
-                    <div class="d-flex flex-wrap gap-3 ms-auto">
-                        <div class="form-icon">
-                            <input type="text" class="form-control form-control-icon" id="firstNameLayout4"
-                                placeholder="Search Here ..." required>
-                            <i class="ri-search-2-line text-muted"></i>
-                        </div>
-                        <div class="dropdown">
-                            <button class="btn btn-outline-light text-muted dropdown-toggle" type="button"
-                                id="sortByDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                Sort By
-                            </button>
-                            <ul class="dropdown-menu" aria-labelledby="sortByDropdown">
-                                <li><a class="dropdown-item" href="javascript:void(0)">Low to High</a></li>
-                                <li><a class="dropdown-item" href="javascript:void(0)">High to Low</a></li>
-                                <li><a class="dropdown-item" href="javascript:void(0)">Newest</a></li>
-                            </ul>
-                        </div>
-                        <div class="dropdown">
-                            <button class="btn btn-outline-light text-muted dropdown-toggle" type="button"
-                                id="filterByDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                Filter By
-                            </button>
-                            <ul class="dropdown-menu" aria-labelledby="filterByDropdown">
-                                <li><a class="dropdown-item" href="javascript:void(0)">Upcoming</a></li>
-                                <li><a class="dropdown-item" href="javascript:void(0)">Active</a></li>
-                                <li><a class="dropdown-item" href="javascript:void(0)">Completed</a></li>
-                                <li><a class="dropdown-item" href="javascript:void(0)">All Courses</a></li>
-                            </ul>
-                        </div>
-
-                        <!-- Add New Course Button -->
-                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCourseModal">
-                            <i class="bi bi-plus-lg me-1"></i>Add New
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="table-box table-responsive">
-                        <table class="table table-hover text-nowrap">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Title</th>
-                                    <th>Category</th>
-                                    <th>Lessons & Sections</th>
-                                    <th>Enrolled Students</th>
-                                    <th>Status</th>
-                                    <th>Price</th>
-                                    <th>Rating</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>1</td>
-                                    <td class="d-flex align-items-center gap-3">
-                                        <img src="/static/assets/images/avatar/avatar-1.jpg" alt="Avtar 1"
-                                            class="avatar-md rounded-pill">
-                                        <div>
-                                            <h6 class="mb-1">Web Development Bootcamp</h6>
-                                            <p class="fs-12 mb-0 text-muted">instructor: <span class="fw-semibold">John
-                                                    Doe</span></p>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge bg-secondary-subtle text-secondary">Web
-                                            Development</span></td>
-                                    <td>
-                                        <span class="mb-0">Lessons: 12 / Sections: 3</span>
-                                    </td>
-                                    <td>450</td>
-                                    <td><span class="badge bg-warning-subtle text-warning">Upcoming</span></td>
-                                    <td>$299</td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-1">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-half text-warning"></i>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-light-primary icon-btn-sm"><i
-                                                class="bi bi-pencil-square"></i></button>
-                                        <button type="button" class="btn btn-light-danger icon-btn-sm"><i
-                                                class="ri-delete-bin-line"></i></button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>2</td>
-                                    <td class="d-flex align-items-center gap-3">
-                                        <img src="/static/assets/images/avatar/avatar-2.jpg" alt="Avtar 2"
-                                            class="avatar-md rounded-pill">
-                                        <div>
-                                            <h6 class="mb-1">Data Science Masterclass</h6>
-                                            <p class="fs-12 mb-0 text-muted">Instructor: <span class="fw-semibold">Jane
-                                                    Smith</span></p>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge bg-secondary-subtle text-secondary">Data Science</span>
-                                    </td>
-                                    <td>
-                                        <span class="mb-0">Lessons: 20 / Sections: 5</span>
-                                    </td>
-                                    <td>320</td>
-                                    <td><span class="badge bg-success-subtle text-success">Active</span></td>
-                                    <td>$399</td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-1">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-light"></i>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-light-primary icon-btn-sm"><i
-                                                class="bi bi-pencil-square"></i></button>
-                                        <button type="button" class="btn btn-light-danger icon-btn-sm"><i
-                                                class="ri-delete-bin-line"></i></button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>3</td>
-                                    <td class="d-flex align-items-center gap-3">
-                                        <img src="/static/assets/images/avatar/avatar-3.jpg" alt="Avtar 3"
-                                            class="avatar-md rounded-pill">
-                                        <div>
-                                            <h6 class="mb-1">AI for Beginners</h6>
-                                            <p class="fs-12 mb-0 text-muted">Instructor: <span class="fw-semibold">John
-                                                    Doe</span></p>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge bg-secondary-subtle text-secondary">AI</span></td>
-                                    <td>
-                                        <span class="mb-0">Lessons: 15 / Sections: 4</span>
-                                    </td>
-                                    <td>245</td>
-                                    <td><span class="badge bg-warning-subtle text-warning">Upcoming</span></td>
-                                    <td>$299</td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-1">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-half text-warning"></i>
-                                            <i class="bi bi-star-fill text-light"></i>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-light-primary icon-btn-sm"><i
-                                                class="bi bi-pencil-square"></i></button>
-                                        <button type="button" class="btn btn-light-danger icon-btn-sm"><i
-                                                class="ri-delete-bin-line"></i></button>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <td>4</td>
-                                    <td class="d-flex align-items-center gap-3">
-                                        <img src="/static/assets/images/avatar/avatar-4.jpg" alt="Avtar 4"
-                                            class="avatar-md rounded-pill">
-                                        <div>
-                                            <h6 class="mb-1">Web Development Bootcamp</h6>
-                                            <p class="fs-12 mb-0 text-muted">Instructor: <span class="fw-semibold">Alice
-                                                    Johnson</span></p>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge bg-secondary-subtle text-secondary">Web
-                                            Development</span></td>
-                                    <td>
-                                        <span class="mb-0">Lessons: 25 / Sections: 6</span>
-                                    </td>
-                                    <td>410</td>
-                                    <td><span class="badge bg-success-subtle text-success">Active</span></td>
-                                    <td>$499</td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-1">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-half text-warning"></i>
-                                            <i class="bi bi-star-half text-warning"></i>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-light-primary icon-btn-sm"><i
-                                                class="bi bi-pencil-square"></i></button>
-                                        <button type="button" class="btn btn-light-danger icon-btn-sm"><i
-                                                class="ri-delete-bin-line"></i></button>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <td>5</td>
-                                    <td class="d-flex align-items-center gap-3">
-                                        <img src="/static/assets/images/avatar/avatar-5.jpg" alt="Avtar 5"
-                                            class="avatar-md rounded-pill">
-                                        <div>
-                                            <h6 class="mb-1">Python for Data Analysis</h6>
-                                            <p class="fs-12 mb-0 text-muted">Instructor: <span class="fw-semibold">Mark
-                                                    Lee</span></p>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge bg-secondary-subtle text-secondary">Python</span></td>
-                                    <td>
-                                        <span class="mb-0">Lessons: 18 / Sections: 5</span>
-                                    </td>
-                                    <td>310</td>
-                                    <td><span class="badge bg-success-subtle text-success">Active</span></td>
-                                    <td>$249</td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-1">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-half text-warning"></i>
-                                            <i class="bi bi-star-fill text-light"></i>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-light-primary icon-btn-sm"><i
-                                                class="bi bi-pencil-square"></i></button>
-                                        <button type="button" class="btn btn-light-danger icon-btn-sm"><i
-                                                class="ri-delete-bin-line"></i></button>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <td>6</td>
-                                    <td class="d-flex align-items-center gap-3">
-                                        <img src="/static/assets/images/avatar/avatar-6.jpg" alt="Avtar 6"
-                                            class="avatar-md rounded-pill">
-                                        <div>
-                                            <h6 class="mb-1">Introduction to Cloud Computing</h6>
-                                            <p class="fs-12 mb-0 text-muted">Instructor: <span class="fw-semibold">Sarah
-                                                    Williams</span></p>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge bg-secondary-subtle text-secondary">Cloud
-                                            Computing</span></td>
-                                    <td>
-                                        <span class="mb-0">Lessons: 22 / Sections: 5</span>
-                                    </td>
-                                    <td>198</td>
-                                    <td><span class="badge bg-warning-subtle text-warning">Upcoming</span></td>
-                                    <td>$399</td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-1">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-light-primary icon-btn-sm"><i
-                                                class="bi bi-pencil-square"></i></button>
-                                        <button type="button" class="btn btn-light-danger icon-btn-sm"><i
-                                                class="ri-delete-bin-line"></i></button>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <td>7</td>
-                                    <td class="d-flex align-items-center gap-3">
-                                        <img src="/static/assets/images/avatar/avatar-7.jpg" alt="Avtar 7"
-                                            class="avatar-md rounded-pill">
-                                        <div>
-                                            <h6 class="mb-1">React Native Development</h6>
-                                            <p class="fs-12 mb-0 text-muted">Instructor: <span
-                                                    class="fw-semibold">Jessica Brown</span></p>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge bg-secondary-subtle text-secondary">Mobile
-                                            Development</span></td>
-                                    <td>
-                                        <span class="mb-0">Lessons: 20 / Sections: 5</span>
-                                    </td>
-                                    <td>360</td>
-                                    <td><span class="badge bg-success-subtle text-success">Active</span></td>
-                                    <td>$399</td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-1">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-half text-warning"></i>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-light-primary icon-btn-sm"><i
-                                                class="bi bi-pencil-square"></i></button>
-                                        <button type="button" class="btn btn-light-danger icon-btn-sm"><i
-                                                class="ri-delete-bin-line"></i></button>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <td>8</td>
-                                    <td class="d-flex align-items-center gap-3">
-                                        <img src="/static/assets/images/avatar/avatar-8.jpg" alt="Avtar 8"
-                                            class="avatar-md rounded-pill">
-                                        <div>
-                                            <h6 class="mb-1">Cybersecurity Fundamentals</h6>
-                                            <p class="fs-12 mb-0 text-muted">Instructor: <span class="fw-semibold">David
-                                                    Harris</span></p>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge bg-secondary-subtle text-secondary">Cybersecurity</span>
-                                    </td>
-                                    <td>
-                                        <span class="mb-0">Lessons: 30 / Sections: 7</span>
-                                    </td>
-                                    <td>520</td>
-                                    <td><span class="badge bg-success-subtle text-success">Active</span></td>
-                                    <td>$549</td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-1">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-light"></i>
-                                            <i class="bi bi-star-fill text-light"></i>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-light-primary icon-btn-sm"><i
-                                                class="bi bi-pencil-square"></i></button>
-                                        <button type="button" class="btn btn-light-danger icon-btn-sm"><i
-                                                class="ri-delete-bin-line"></i></button>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <td>9</td>
-                                    <td class="d-flex align-items-center gap-3">
-                                        <img src="/static/assets/images/avatar/avatar-9.jpg" alt="Avtar 9"
-                                            class="avatar-md rounded-pill">
-                                        <div>
-                                            <h6 class="mb-1">Blockchain Development</h6>
-                                            <p class="fs-12 mb-0 text-muted">Instructor: <span class="fw-semibold">James
-                                                    Green</span></p>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge bg-secondary-subtle text-secondary">Blockchain</span>
-                                    </td>
-                                    <td>
-                                        <span class="mb-0">Lessons: 28 / Sections: 6</span>
-                                    </td>
-                                    <td>415</td>
-                                    <td><span class="badge bg-success-subtle text-success">Active</span></td>
-                                    <td>$599</td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-1">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-light-primary icon-btn-sm"><i
-                                                class="bi bi-pencil-square"></i></button>
-                                        <button type="button" class="btn btn-light-danger icon-btn-sm"><i
-                                                class="ri-delete-bin-line"></i></button>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <td>10</td>
-                                    <td class="d-flex align-items-center gap-3">
-                                        <img src="/static/assets/images/avatar/avatar-10.jpg" alt="Avtar 10"
-                                            class="avatar-md rounded-pill">
-                                        <div>
-                                            <h6 class="mb-1">Introduction to SQL</h6>
-                                            <p class="fs-12 mb-0 text-muted">Instructor: <span
-                                                    class="fw-semibold">Olivia Wilson</span></p>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge bg-secondary-subtle text-secondary">Database</span></td>
-                                    <td>
-                                        <span class="mb-0">Lessons: 18 / Sections: 4</span>
-                                    </td>
-                                    <td>300</td>
-                                    <td><span class="badge bg-warning-subtle text-warning">Upcoming</span></td>
-                                    <td>$199</td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-1">
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-warning"></i>
-                                            <i class="bi bi-star-fill text-light"></i>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-light-primary icon-btn-sm"><i
-                                                class="bi bi-pencil-square"></i></button>
-                                        <button type="button" class="btn btn-light-danger icon-btn-sm"><i
-                                                class="ri-delete-bin-line"></i></button>
-                                    </td>
-                                </tr>
-
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="d-flex flex-wrap gap-3 align-items-center mt-5">
-                        <div class="fw-medium"> Showing 1 - 10 of 18 Entries</div>
-                        <div class="ms-auto">
-                            <nav aria-label="Page navigation example">
-                                <ul class="pagination pagination-primary mb-0">
-                                    <li class="page-item">
-                                        <a class="page-link" href="javascript:void(0)">
-                                            <i class="ri-arrow-left-s-line fw-semibold"></i>
-                                        </a>
-                                    </li>
-                                    <li class="page-item"><a class="page-link" href="javascript:void(0)">1</a></li>
-                                    <li class="page-item active"><a class="page-link" href="javascript:void(0)">2</a>
-                                    </li>
-                                    <li class="page-item"><a class="page-link" href="javascript:void(0)">3</a></li>
-                                    <li class="page-item"><a class="page-link" href="javascript:void(0)">4</a></li>
-                                    <li class="page-item"><a class="page-link" href="javascript:void(0)">5</a></li>
-                                    <li class="page-item">
-                                        <a class="page-link" href="javascript:void(0)">
-                                            <i class="ri-arrow-right-s-line fw-semibold"></i>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </nav>
-                        </div>
-                    </div>
-                </div>
+<div class="card">
+    <div class="card-header">
+        <h4>Departments List</h4>
+        <div class="d-flex flex-wrap gap-3 ms-auto">
+            <div class="form-icon">
+                <input type="text" class="form-control form-control-icon" id="departmentSearch"
+                    placeholder="Search departments..." required>
+                <i class="ri-search-2-line text-muted"></i>
             </div>
-
-            <!-- Course Create Modal -->
-            <div class="modal fade" id="createCourseModal" data-bs-keyboard="false" tabindex="-1"
-                aria-labelledby="createCourseModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="createCourseModalLabel">Create New Course</h5>
-                            <button type="button" class="btn-close icon-btn-sm" data-bs-dismiss="modal"
-                                aria-label="Close">
-                                <i class="ri-close-large-line fw-semibold"></i>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <form>
-                                <div class="row g-3">
-                                    <div class="col-12">
-                                        <div
-                                            class="d-flex flex-column align-items-center justify-content-center p-3 rounded">
-                                            <div class="position-relative">
-                                                <img id="avatarPreview" src="/static/assets/images/avatar/15.jpg"
-                                                    alt="Avatar Preview"
-                                                    class="img-fluid rounded-circle h-80px w-80px object-fit-cover">
-                                                <div
-                                                    class="h-24px w-24px rounded-pill bg-primary d-flex justify-content-center align-items-center text-white border border-3 border-light-subtle position-absolute fs-10 top-0 end-0">
-                                                    <i class="bi bi-camera"></i></div>
-                                                <input type="file"
-                                                    class="position-absolute top-0 end-0 w-100 h-100 opacity-0 form-control"
-                                                    id="avatar">
-                                            </div>
-                                        </div>
+            <div class="dropdown">
+                <button class="btn btn-outline-light text-muted dropdown-toggle" type="button"
+                    id="sortByDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    Sort By
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="sortByDropdown">
+                    <li><a class="dropdown-item" href="javascript:void(0)">Name A-Z</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)">Name Z-A</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)">Most Employees</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)">Newest</a></li>
+                </ul>
+            </div>
+            <div class="dropdown">
+                <button class="btn btn-outline-light text-muted dropdown-toggle" type="button"
+                    id="filterByDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    Filter By
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="filterByDropdown">
+                    <li><a class="dropdown-item" href="javascript:void(0)">All Departments</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)">Active</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)">With Head</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)">Without Head</a></li>
+                </ul>
+            </div>
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    Export
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{% url 'accounts:department_export' %}">
+                        <i class="ri-file-text-line me-2"></i>Export CSV
+                    </a></li>
+                </ul>
+            </div>
+            {% if can_add_department %}
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createDepartmentModal">
+                <i class="bi bi-plus-lg me-1"></i>Add Department
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-box table-responsive">
+            <table class="table table-hover text-nowrap">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Department</th>
+                        <th>Head of Department</th>
+                        <th>Employees</th>
+                        <th>Roles</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for department in departments %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td class="d-flex align-items-center gap-3">
+                            <div class="avatar-md avatar-item bg-primary text-white rounded-circle d-flex align-items-center justify-content-center">
+                                <i class="ri-building-line"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1">{{ department.name }}</h6>
+                                <p class="fs-12 mb-0 text-muted">{{ department.description|truncatechars:50|default:"No description" }}</p>
+                            </div>
+                        </td>
+                        <td>
+                            {% if department.head_of_department %}
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="avatar avatar-sm bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center">
+                                        {{ department.head_of_department.first_name|first }}{{ department.head_of_department.last_name|first }}
                                     </div>
-                                    <div class="col-12">
-                                        <label for="courseTitle" class="form-label">Course Title</label>
-                                        <input type="text" class="form-control" id="courseTitle"
-                                            placeholder="Enter course title" required>
-                                    </div>
-                                    <div class="col-12">
-                                        <label for="courseCategory" class="form-label">Category</label>
-                                        <input type="text" class="form-control" id="courseCategory"
-                                            placeholder="Enter category" required>
-                                    </div>
-                                    <div class="col-12">
-                                        <label for="courseLessons" class="form-label">Lessons & Sections</label>
-                                        <input type="text" class="form-control" id="courseLessons"
-                                            placeholder="Enter lessons and sections" required>
-                                    </div>
-                                    <div class="col-12">
-                                        <label for="courseEnrolled" class="form-label">Enrolled Students</label>
-                                        <input type="number" class="form-control" id="courseEnrolled"
-                                            placeholder="Enter enrolled" required>
-                                    </div>
-                                    <div class="col-12">
-                                        <label for="courseStatus" class="form-label">Status</label>
-                                        <select id="courseStatus">
-                                            <option value="javascript">Active</option>
-                                            <option value="python">Upcoming</option>
-                                            <option value="java">Completed</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-12">
-                                        <label for="coursePrice" class="form-label">Price</label>
-                                        <input type="number" class="form-control" id="coursePrice"
-                                            placeholder="Enter course price" required>
+                                    <div>
+                                        <span class="fw-medium">{{ department.head_of_department.get_full_name }}</span>
+                                        <br><small class="text-muted">{{ department.head_of_department.employee_code }}</small>
                                     </div>
                                 </div>
-                            </form>
+                            {% else %}
+                                <span class="text-muted">Not Assigned</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-primary-subtle text-primary">{{ department.employee_count|default:0 }}</span>
+                                <span class="text-muted">employees</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for role in department.roles.all|slice:":3" %}
+                                    <span class="badge bg-secondary-subtle text-secondary">{{ role.display_name }}</span>
+                                {% endfor %}
+                                {% if department.roles.count > 3 %}
+                                    <span class="badge bg-light text-muted">+{{ department.roles.count|add:"-3" }} more</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if department.is_active %}
+                                <span class="badge bg-success-subtle text-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-danger-subtle text-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ department.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="{% url 'employee:department_detail' department.pk %}">
+                                        <i class="ri-eye-line me-2"></i>View Details
+                                    </a></li>
+                                    {% if can_add_department %}
+                                    <li><a class="dropdown-item" href="{% url 'accounts:department_update' department.pk %}">
+                                        <i class="ri-edit-line me-2"></i>Edit
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="#" onclick="confirmDelete('{{ department.pk }}', '{{ department.name }}')">
+                                        <i class="ri-delete-bin-line me-2"></i>Delete
+                                    </a></li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4">
+                            <div class="text-muted">
+                                <i class="ri-building-line fs-48"></i>
+                                <p class="mt-2">No departments found</p>
+                                {% if can_add_department %}
+                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createDepartmentModal">
+                                    <i class="ri-add-line me-1"></i>Add First Department
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if departments.has_other_pages %}
+        <div class="d-flex flex-wrap gap-3 align-items-center mt-5">
+            <div class="fw-medium">
+                Showing {{ departments.start_index }} - {{ departments.end_index }} of {{ departments.paginator.count }} Departments
+            </div>
+            <div class="ms-auto">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination pagination-primary mb-0">
+                        {% if departments.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ departments.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                                <i class="ri-arrow-left-s-line fw-semibold"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for num in departments.paginator.page_range %}
+                            {% if departments.number == num %}
+                            <li class="page-item active">
+                                <a class="page-link" href="#">{{ num }}</a>
+                            </li>
+                            {% elif num > departments.number|add:'-3' and num < departments.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">{{ num }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if departments.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ departments.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                                <i class="ri-arrow-right-s-line fw-semibold"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% if can_add_department %}
+<div class="modal fade" id="createDepartmentModal" tabindex="-1" aria-labelledby="createDepartmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createDepartmentModalLabel">Create New Department</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{% url 'accounts:department_create' %}" id="createDepartmentForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="departmentName" class="form-label">Department Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="name" id="departmentName" 
+                                   placeholder="Enter department name" required>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary">Create Course</button>
+                        
+                        <div class="col-12">
+                            <label for="departmentDescription" class="form-label">Description</label>
+                            <textarea class="form-control" name="description" id="departmentDescription" rows="3" 
+                                      placeholder="Enter department description"></textarea>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="headOfDepartment" class="form-label">Head of Department</label>
+                            <select class="form-control" name="head_of_department" id="headOfDepartment">
+                                <option value="">Select Head of Department</option>
+                                {% for employee in available_heads %}
+                                <option value="{{ employee.id }}">{{ employee.get_full_name }} ({{ employee.employee_code }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="departmentCode" class="form-label">Department Code</label>
+                            <input type="text" class="form-control" name="code" id="departmentCode" 
+                                   placeholder="e.g., HR, IT, FIN" maxlength="10">
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="departmentBudget" class="form-label">Annual Budget</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" name="budget" id="departmentBudget" 
+                                       placeholder="0.00" step="0.01" min="0">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="departmentLocation" class="form-label">Location</label>
+                            <input type="text" class="form-control" name="location" id="departmentLocation" 
+                                   placeholder="Office location or floor">
+                        </div>
+                        
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="departmentActive" checked>
+                                <label class="form-check-label" for="departmentActive">
+                                    Active Department
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Department</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteConfirmModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <div class="fs-4 mb-3 bg-danger-subtle text-danger avatar-lg d-inline-flex align-items-center justify-content-center rounded-circle">
+                        <i class="ri-delete-bin-line"></i>
+                    </div>
+                    <h5>Delete Department</h5>
+                    <p>Are you sure you want to delete <strong id="departmentNameToDelete"></strong>?</p>
+                    <div class="alert alert-warning">
+                        <i class="ri-alert-line me-2"></i>
+                        <strong>Warning:</strong> This action cannot be undone. All employees in this department will need to be reassigned.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete Department</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Department Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="fs-4 mb-3 bg-primary-subtle text-primary avatar-lg d-inline-flex align-items-center justify-content-center rounded-circle">
+                                <i class="ri-building-line"></i>
+                            </div>
+                            <h4>{{ total_departments|default:0 }}</h4>
+                            <span class="text-muted">Total Departments</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="fs-4 mb-3 bg-success-subtle text-success avatar-lg d-inline-flex align-items-center justify-content-center rounded-circle">
+                                <i class="ri-user-line"></i>
+                            </div>
+                            <h4>{{ total_employees|default:0 }}</h4>
+                            <span class="text-muted">Total Employees</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="fs-4 mb-3 bg-warning-subtle text-warning avatar-lg d-inline-flex align-items-center justify-content-center rounded-circle">
+                                <i class="ri-user-star-line"></i>
+                            </div>
+                            <h4>{{ departments_with_heads|default:0 }}</h4>
+                            <span class="text-muted">With Department Heads</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="fs-4 mb-3 bg-info-subtle text-info avatar-lg d-inline-flex align-items-center justify-content-center rounded-circle">
+                                <i class="ri-briefcase-line"></i>
+                            </div>
+                            <h4>{{ average_employees_per_dept|floatformat:0|default:0 }}</h4>
+                            <span class="text-muted">Avg Employees/Dept</span>
                         </div>
                     </div>
                 </div>
             </div>
-            <!-- Submit Section -->
         </div>
-    </main>
-    {% endblock content %}
-    {% block js %}
-    <!-- Select js -->
-    <script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
-    <!-- File js -->
-    <script src="/static/assets/js/app/school-course.init.js"></script>
-    <!-- App js -->
-    <script src="/static/assets/js/app.js"></script>
-    {% endblock js %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('departmentSearch');
+    const createForm = document.getElementById('createDepartmentForm');
+    const headSelect = document.getElementById('headOfDepartment');
+    
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const searchTerm = this.value.toLowerCase();
+                const tableRows = document.querySelectorAll('tbody tr');
+                
+                tableRows.forEach(row => {
+                    const departmentName = row.querySelector('td:nth-child(2)');
+                    const headName = row.querySelector('td:nth-child(3)');
+                    
+                    if (departmentName && headName) {
+                        const deptText = departmentName.textContent.toLowerCase();
+                        const headText = headName.textContent.toLowerCase();
+                        const isVisible = deptText.includes(searchTerm) || headText.includes(searchTerm);
+                        row.style.display = isVisible ? '' : 'none';
+                    }
+                });
+            }, 300);
+        });
+    }
+    
+    if (headSelect) {
+        new Choices(headSelect, {
+            searchEnabled: true,
+            placeholder: true,
+            placeholderValue: 'Select Head of Department'
+        });
+    }
+    
+    const sortDropdown = document.querySelectorAll('#sortByDropdown + .dropdown-menu a');
+    sortDropdown.forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const sortType = this.textContent.trim();
+            const tableBody = document.querySelector('tbody');
+            const rows = Array.from(tableBody.querySelectorAll('tr'));
+            
+            rows.sort((a, b) => {
+                let aValue, bValue;
+                
+                switch(sortType) {
+                    case 'Name A-Z':
+                        aValue = a.querySelector('td:nth-child(2) h6').textContent.trim();
+                        bValue = b.querySelector('td:nth-child(2) h6').textContent.trim();
+                        return aValue.localeCompare(bValue);
+                    case 'Name Z-A':
+                        aValue = a.querySelector('td:nth-child(2) h6').textContent.trim();
+                        bValue = b.querySelector('td:nth-child(2) h6').textContent.trim();
+                        return bValue.localeCompare(aValue);
+                    case 'Most Employees':
+                        aValue = parseInt(a.querySelector('td:nth-child(4) .badge').textContent) || 0;
+                        bValue = parseInt(b.querySelector('td:nth-child(4) .badge').textContent) || 0;
+                        return bValue - aValue;
+                    default:
+                        return 0;
+                }
+            });
+            
+            rows.forEach(row => tableBody.appendChild(row));
+        });
+    });
+    
+    const filterDropdown = document.querySelectorAll('#filterByDropdown + .dropdown-menu a');
+    filterDropdown.forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const filterType = this.textContent.trim();
+            const tableRows = document.querySelectorAll('tbody tr');
+            
+            tableRows.forEach(row => {
+                let showRow = true;
+                
+                switch(filterType) {
+                    case 'Active':
+                        const statusBadge = row.querySelector('td:nth-child(6) .badge');
+                        showRow = statusBadge && statusBadge.textContent.includes('Active');
+                        break;
+                    case 'With Head':
+                        const headCell = row.querySelector('td:nth-child(3)');
+                        showRow = headCell && !headCell.textContent.includes('Not Assigned');
+                        break;
+                    case 'Without Head':
+                        const headCell2 = row.querySelector('td:nth-child(3)');
+                        showRow = headCell2 && headCell2.textContent.includes('Not Assigned');
+                        break;
+                    default:
+                        showRow = true;
+                }
+                
+                row.style.display = showRow ? '' : 'none';
+            });
+        });
+    });
+    
+    if (createForm) {
+        createForm.addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="ri-loader-4-line me-1 spinner-border spinner-border-sm"></i>Creating...';
+        });
+    }
+    
+    window.confirmDelete = function(departmentId, departmentName) {
+        document.getElementById('departmentNameToDelete').textContent = departmentName;
+        document.getElementById('deleteForm').action = `/accounts/departments/${departmentId}/delete/`;
+        new bootstrap.Modal(document.getElementById('deleteConfirmModal')).show();
+    };
+});
+</script>
+{% endblock %}
+

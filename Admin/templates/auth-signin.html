@@ -3,65 +3,146 @@
 
 {% include "partials/main.html" %}
 {% block meta %}
-{% with title="Sign In" %}
+{% with title="HR System - Sign In" %}
 {% include "partials/title-meta.html" %}
 {% endwith %}
 {% endblock %}
 {% block content %}
-
 
 <div class="container">
   <div class="row justify-content-center align-items-center min-vh-100 pt-20 pb-10">
     <div class="col-12 col-md-8 col-lg-6 col-xl-5">
       <div class="card mx-xxl-8 shadow-none">
         <div class="card-body p-8">
-          <h3 class="fw-medium text-center">Welcome back!</h3>
-          <p class="mb-8 text-muted text-center">Create Your Account in Minutes</p>
-          <form>
-            <div class="mb-4">
-              <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" id="username" placeholder="Enter your username" required>
+          <div class="text-center mb-6">
+            <img height="50" width="48" class="mb-3" alt="HR System Logo" src="/static/assets/images/logo-md.png">
+            <h3 class="fw-medium">Welcome to HR System</h3>
+            <p class="text-muted">Sign in to access your account</p>
+          </div>
+
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          {% if success_message %}
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+              {{ success_message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
+          {% endif %}
+
+          <form method="post" action="{% url 'accounts:login' %}">
+            {% csrf_token %}
+            
             <div class="mb-4">
-              <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+              <label for="{{ form.username.id_for_label }}" class="form-label">Employee Code <span class="text-danger">*</span></label>
+              {{ form.username }}
+              {% if form.username.errors %}
+                <div class="text-danger fs-12 mt-1">
+                  {% for error in form.username.errors %}
+                    <div>{{ error }}</div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="mb-4">
+              <label for="{{ form.password.id_for_label }}" class="form-label">Password <span class="text-danger">*</span></label>
               <div class="position-relative">
-                <input type="password" class="form-control" id="password" placeholder="Enter your password" required>
+                {{ form.password }}
                 <button type="button"
                   class="btn btn-link position-absolute end-0 top-0 text-decoration-none text-muted toggle-password"
-                  id="toggle-password" data-target="password"><i class="ri-eye-off-line align-middle"></i></button>
+                  id="toggle-password" data-target="{{ form.password.id_for_label }}">
+                  <i class="ri-eye-off-line align-middle"></i>
+                </button>
               </div>
+              {% if form.password.errors %}
+                <div class="text-danger fs-12 mt-1">
+                  {% for error in form.password.errors %}
+                    <div>{{ error }}</div>
+                  {% endfor %}
+                </div>
+              {% endif %}
             </div>
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                  <div>{{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
             <div class="my-6">
               <div class="d-flex justify-content-between align-items-center">
                 <div class="form-check">
-                  <input type="checkbox" class="form-check-input" id="rememberMe">
-                  <label class="form-check-label" for="rememberMe">Remember me</label>
+                  {{ form.remember_me }}
+                  <label class="form-check-label" for="{{ form.remember_me.id_for_label }}">Remember me</label>
                 </div>
                 <div class="form-text">
-                  <a href="auth-forgot-password.html" class="link">Forgot password?</a>
+                  <a href="{% url 'accounts:password_reset' %}" class="link">Forgot password?</a>
                 </div>
               </div>
             </div>
+
             <div>
-              <button type="submit" class="btn btn-primary w-100 mb-4">Sign In</button>
-              <button type="button"
-                class="btn btn-outline-light w-100 d-flex align-items-center gap-2 justify-content-center text-muted">
-                <img src="/static/assets/images/google.png" alt="Google Logo" class="h-20px w-20px">Sign in with Google
+              <button type="submit" class="btn btn-primary w-100 mb-4">
+                <i class="ri-login-box-line me-2"></i>Sign In
               </button>
             </div>
           </form>
-          <p class="text-center mt-6 mb-0 text-muted fs-13">Don't have an account? <a href="auth-signup.html"
-              class="link fw-semibold">Sign up here</a></p>
+
+          <div class="text-center mt-6">
+            <p class="text-muted fs-13 mb-2">Need help accessing your account?</p>
+            <p class="text-muted fs-12">Contact your HR administrator or IT support</p>
+          </div>
         </div>
       </div>
-      <p class="position-relative text-center fs-13 mb-0">©
-        <script>document.write(new Date().getFullYear())</script> Urbix. Crafted with by Pixeleyez
+      <p class="position-relative text-center fs-13 mb-0 text-muted">©
+        <script>document.write(new Date().getFullYear())</script> HR System. Powered by Operon
       </p>
     </div>
   </div>
 </div>
 
 {% endblock content %}
+
 {% block js %}
 <script src="/static/assets/js/auth/auth.init.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const togglePassword = document.getElementById('toggle-password');
+    if (togglePassword) {
+        togglePassword.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const passwordField = document.getElementById(targetId);
+            const icon = this.querySelector('i');
+            
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                icon.className = 'ri-eye-line align-middle';
+            } else {
+                passwordField.type = 'password';
+                icon.className = 'ri-eye-off-line align-middle';
+            }
+        });
+    }
+
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function() {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="ri-loader-4-line me-2 spinner-border spinner-border-sm"></i>Signing In...';
+                submitBtn.disabled = true;
+            }
+        });
+    }
+});
+</script>
 {% endblock js %}

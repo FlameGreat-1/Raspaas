@@ -3,570 +3,506 @@
 
 {% include "partials/main.html" %}
 {% block meta %}
-{% with title="School Teacher" %}
+{% with title="HR Role Management" %}
 {% include "partials/title-meta.html" %}
 {% endwith %}
 {% endblock %}
 {% block css %}
-  <!-- Select css -->
-        <link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
-        <!-- Picker css -->
-        <link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
 {% endblock %}
 {% block content %}
-{% with title_sub="School" title="Teachers"%}
+{% with title_sub="HR Management" title="Roles"%}
 {% include "partials/pagetitle.html" %}
 {% endwith %}
 
-
-    <!-- Begin page -->
-                <div class="row">
-                    <div class="col-lg-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h4>Teachers</h4>
-                                <div class="d-flex flex-wrap gap-3 ms-auto">
-                                    <!-- Add New Exam Button -->
-                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTeacherModal">
-                                        <i class="bi bi-plus-lg me-1"></i> Add Teacher
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <!-- Teachers Table -->
-                                <div class="table-box table-responsive">
-                                    <table class="table table-hover text-nowrap">
-                                        <thead>
-                                            <tr>
-                                                <th style="width: 40px;">
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="selectAll">
-                                                    </div>
-                                                </th>
-                                                <th>Teacher</th>
-                                                <th>Department</th>
-                                                <th>Subjects</th>
-                                                <th>Contact</th>
-                                                <th>Status</th>
-                                                <th>Students</th>
-                                                <th>Rating</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <!-- Teacher 1 -->
-                                            <tr>
-                                                <td>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox">
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <img src="/static/assets/images/avatar/avatar-1.jpg" alt="Profile" class="avatar-md avatar-item me-1">
-                                                        <div>
-                                                            <h6 class="mb-0">Sarah Johnson</h6>
-                                                            <small class="text-muted">ID: TCH-1001 • 8 yrs exp</small>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>Mathematics</td>
-                                                <td>
-                                                    <span class="badge bg-primary bg-opacity-10 text-primary badge-subject">Algebra</span>
-                                                    <span class="badge bg-info bg-opacity-10 text-info badge-subject">Calculus</span>
-                                                </td>
-                                                <td>
-                                                    <div><i class="ri-mail-line me-1"></i> sarah.j@example.com</div>
-                                                    <div><i class="ri-phone-line me-1"></i> (123) 456-7890</div>
-                                                </td>
-                                                <td><span class="badge bg-success-subtle text-success teacher-status">Active</span></td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="me-2">124</span>
-                                                        <div class="progress progress-sm w-100">
-                                                            <div class="progress-bar bg-success" style="width: 85%"></div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="me-2">4.9</span>
-                                                        <div class="text-warning">
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>                                                   
-                                                    <button class="btn icon-btn-sm btn-light-primary action-btn" data-bs-toggle="tooltip" title="View Profile">
-                                                        <i class="ri-eye-line"></i>
-                                                    </button>
-                                                    <button class="btn icon-btn-sm btn-light-success action-btn" data-bs-toggle="tooltip" title="Edit">
-                                                        <i class="ri-edit-line"></i>
-                                                    </button>
-                                                    <button class="btn icon-btn-sm btn-light-danger action-btn" data-bs-toggle="tooltip" title="Delete">
-                                                        <i class="ri-delete-bin-line"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-
-                                            <!-- Teacher 2 -->
-                                            <tr>
-                                                <td>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox">
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <img src="/static/assets/images/avatar/avatar-2.jpg" alt="Profile" class="avatar-md avatar-item me-1">
-                                                        <div>
-                                                            <h6 class="mb-0">Michael Chen</h6>
-                                                            <small class="text-muted">ID: TCH-1002 • 5 yrs exp</small>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>Science</td>
-                                                <td>
-                                                    <span class="badge bg-success bg-opacity-10 text-success badge-subject">Biology</span>
-                                                    <span class="badge bg-danger bg-opacity-10 text-danger badge-subject">Chemistry</span>
-                                                </td>
-                                                <td>
-                                                    <div><i class="ri-mail-line me-1"></i> mchen@example.com</div>
-                                                    <div><i class="ri-phone-line me-1"></i> (234) 567-8901</div>
-                                                </td>
-                                                <td><span class="badge bg-warning-subtle text-warning teacher-status">On Leave</span></td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="me-2">86</span>
-                                                        <div class="progress progress-sm w-100">
-                                                            <div class="progress-bar bg-info" style="width: 70%"></div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="me-2">4.6</span>
-                                                        <div class="text-warning">
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-half-fill"></i>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>                                                   
-                                                    <button class="btn icon-btn-sm btn-light-primary action-btn" data-bs-toggle="tooltip" title="View Profile">
-                                                        <i class="ri-eye-line"></i>
-                                                    </button>
-                                                    <button class="btn icon-btn-sm btn-light-success action-btn" data-bs-toggle="tooltip" title="Edit">
-                                                        <i class="ri-edit-line"></i>
-                                                    </button>
-                                                    <button class="btn icon-btn-sm btn-light-danger action-btn" data-bs-toggle="tooltip" title="Delete">
-                                                        <i class="ri-delete-bin-line"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-
-                                            <!-- Teacher 3 -->
-                                            <tr>
-                                                <td>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox">
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <img src="/static/assets/images/avatar/avatar-3.jpg" alt="Profile" class="avatar-md avatar-item me-1">
-                                                        <div>
-                                                            <h6 class="mb-0">Emily Rodriguez</h6>
-                                                            <small class="text-muted">ID: TCH-1003 • 12 yrs exp</small>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>English</td>
-                                                <td>
-                                                    <span class="badge bg-warning bg-opacity-10 text-warning badge-subject">Literature</span>
-                                                    <span class="badge bg-secondary bg-opacity-10 text-secondary badge-subject">Grammar</span>
-                                                </td>
-                                                <td>
-                                                    <div><i class="ri-mail-line me-1"></i> e.rodriguez@example.com</div>
-                                                    <div><i class="ri-phone-line me-1"></i> (345) 678-9012</div>
-                                                </td>
-                                                <td><span class="badge bg-success-subtle text-success teacher-status">Active</span></td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="me-2">108</span>
-                                                        <div class="progress progress-sm w-100">
-                                                            <div class="progress-bar bg-success" style="width: 80%"></div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="me-2">4.8</span>
-                                                        <div class="text-warning">
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>                                                   
-                                                    <button class="btn icon-btn-sm btn-light-primary action-btn" data-bs-toggle="tooltip" title="View Profile">
-                                                        <i class="ri-eye-line"></i>
-                                                    </button>
-                                                    <button class="btn icon-btn-sm btn-light-success action-btn" data-bs-toggle="tooltip" title="Edit">
-                                                        <i class="ri-edit-line"></i>
-                                                    </button>
-                                                    <button class="btn icon-btn-sm btn-light-danger action-btn" data-bs-toggle="tooltip" title="Delete">
-                                                        <i class="ri-delete-bin-line"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-
-                                            <!-- Teacher 4 -->
-                                            <tr>
-                                                <td>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox">
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <img src="/static/assets/images/avatar/avatar-4.jpg" alt="Profile" class="avatar-md avatar-item me-1">
-                                                        <div>
-                                                            <h6 class="mb-0">David Wilson</h6>
-                                                            <small class="text-muted">ID: TCH-1004 • 3 yrs exp</small>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>Physical Education</td>
-                                                <td>
-                                                    <span class="badge bg-success bg-opacity-10 text-success badge-subject">Sports</span>
-                                                    <span class="badge bg-primary bg-opacity-10 text-primary badge-subject">Health</span>
-                                                </td>
-                                                <td>
-                                                    <div><i class="ri-mail-line me-1"></i> dwilson@example.com</div>
-                                                    <div><i class="ri-phone-line me-1"></i> (456) 789-0123</div>
-                                                </td>
-                                                <td><span class="badge bg-info-subtle text-info teacher-status">Contract</span></td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="me-2">74</span>
-                                                        <div class="progress progress-sm w-100">
-                                                            <div class="progress-bar bg-primary" style="width: 65%"></div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="me-2">4.5</span>
-                                                        <div class="text-warning">
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>                                                   
-                                                    <button class="btn icon-btn-sm btn-light-primary action-btn" data-bs-toggle="tooltip" title="View Profile">
-                                                        <i class="ri-eye-line"></i>
-                                                    </button>
-                                                    <button class="btn icon-btn-sm btn-light-success action-btn" data-bs-toggle="tooltip" title="Edit">
-                                                        <i class="ri-edit-line"></i>
-                                                    </button>
-                                                    <button class="btn icon-btn-sm btn-light-danger action-btn" data-bs-toggle="tooltip" title="Delete">
-                                                        <i class="ri-delete-bin-line"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-
-                                            <!-- Teacher 5 -->
-                                            <tr>
-                                                <td>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox">
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <img src="/static/assets/images/avatar/avatar-5.jpg" alt="Profile" class="avatar-md avatar-item me-1">
-                                                        <div>
-                                                            <h6 class="mb-0">Isabella Frandsen</h6>
-                                                            <small class="text-muted">ID: TCH-1005 • 8 yrs exp</small>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>Mathematics</td>
-                                                <td>
-                                                    <span class="badge bg-primary bg-opacity-10 text-primary badge-subject">Algebra</span>
-                                                    <span class="badge bg-info bg-opacity-10 text-info badge-subject">Geometry</span>
-                                                </td>
-                                                <td>
-                                                    <div><i class="ri-mail-line me-1"></i> ifrandsen@example.com</div>
-                                                    <div><i class="ri-phone-line me-1"></i> (687) 986-4798</div>
-                                                </td>
-                                                <td><span class="badge bg-success-subtle text-success teacher-status">Active</span></td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="me-2">49</span>
-                                                        <div class="progress progress-sm w-100">
-                                                            <div class="progress-bar bg-danger" style="width: 49%"></div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="me-2">4.9</span>
-                                                        <div class="text-warning">
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>                                                   
-                                                    <button class="btn icon-btn-sm btn-light-primary action-btn" data-bs-toggle="tooltip" title="View Profile">
-                                                        <i class="ri-eye-line"></i>
-                                                    </button>
-                                                    <button class="btn icon-btn-sm btn-light-success action-btn" data-bs-toggle="tooltip" title="Edit">
-                                                        <i class="ri-edit-line"></i>
-                                                    </button>
-                                                    <button class="btn icon-btn-sm btn-light-danger action-btn" data-bs-toggle="tooltip" title="Delete">
-                                                        <i class="ri-delete-bin-line"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-
-                                            <!-- Teacher 6 -->
-                                            <tr>
-                                                <td>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox">
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <img src="/static/assets/images/avatar/avatar-6.jpg" alt="Profile" class="avatar-md avatar-item me-1">
-                                                        <div>
-                                                            <h6 class="mb-0">Carl Hansen</h6>
-                                                            <small class="text-muted">ID: TCH-1006 • 5 yrs exp</small>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>Sciences</td>
-                                                <td>
-                                                    <span class="badge bg-danger bg-opacity-10 text-danger badge-subject">Biology</span>
-                                                    <span class="badge bg-secondary bg-opacity-10 text-secondary badge-subject">Chemistry</span>
-                                                </td>
-                                                <td>
-                                                    <div><i class="ri-mail-line me-1"></i> chansen@example.com</div>
-                                                    <div><i class="ri-phone-line me-1"></i> (268) 256-7566</div>
-                                                </td>
-                                                <td><span class="badge bg-danger-subtle text-danger teacher-status">Vacation</span></td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="me-2">80</span>
-                                                        <div class="progress progress-sm w-100">
-                                                            <div class="progress-bar bg-warning" style="width: 80%"></div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="me-2">4.5</span>
-                                                        <div class="text-warning">
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>                                                   
-                                                    <button class="btn icon-btn-sm btn-light-primary action-btn" data-bs-toggle="tooltip" title="View Profile">
-                                                        <i class="ri-eye-line"></i>
-                                                    </button>
-                                                    <button class="btn icon-btn-sm btn-light-success action-btn" data-bs-toggle="tooltip" title="Edit">
-                                                        <i class="ri-edit-line"></i>
-                                                    </button>
-                                                    <button class="btn icon-btn-sm btn-light-danger action-btn" data-bs-toggle="tooltip" title="Delete">
-                                                        <i class="ri-delete-bin-line"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-
-                                            <!-- Teacher 7 -->
-                                            <tr>
-                                                <td>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox">
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <img src="/static/assets/images/avatar/avatar-8.jpg" alt="Profile" class="avatar-md avatar-item me-1">
-                                                        <div>
-                                                            <h6 class="mb-0">Soren Mathiasen</h6>
-                                                            <small class="text-muted">ID: TCH-1007 • 6 yrs exp</small>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>Humanities</td>
-                                                <td>
-                                                    <span class="badge bg-success bg-opacity-10 text-success badge-subject">History</span>
-                                                    <span class="badge bg-primary bg-opacity-10 text-primary badge-subject">Literature</span>
-                                                </td>
-                                                <td>
-                                                    <div><i class="ri-mail-line me-1"></i> smathiasen@example.com</div>
-                                                    <div><i class="ri-phone-line me-1"></i> (719) 189-7561</div>
-                                                </td>
-                                                <td><span class="badge bg-info-subtle text-info teacher-status">Contract</span></td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="me-2">74</span>
-                                                        <div class="progress progress-sm w-100">
-                                                            <div class="progress-bar bg-primary" style="width: 65%"></div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="me-2">4.5</span>
-                                                        <div class="text-warning">
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                            <i class="ri-star-fill"></i>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>                                                   
-                                                    <button class="btn icon-btn-sm btn-light-primary action-btn" data-bs-toggle="tooltip" title="View Profile">
-                                                        <i class="ri-eye-line"></i>
-                                                    </button>
-                                                    <button class="btn icon-btn-sm btn-light-success action-btn" data-bs-toggle="tooltip" title="Edit">
-                                                        <i class="ri-edit-line"></i>
-                                                    </button>
-                                                    <button class="btn icon-btn-sm btn-light-danger action-btn" data-bs-toggle="tooltip" title="Delete">
-                                                        <i class="ri-delete-bin-line"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="d-flex flex-wrap gap-3 align-items-center mt-5">
-                                    <div class="fw-medium"> Showing 1 - 10 of 17 Entries</div>
-                                    <div class="ms-auto">
-                                        <nav aria-label="Page navigation example">
-                                            <ul class="pagination pagination-primary mb-0">
-                                                <li class="page-item">
-                                                    <a class="page-link" href="#!">
-                                                        <i class="ri-arrow-left-s-line fw-semibold"></i>
-                                                    </a>
-                                                </li>
-                                                <li class="page-item"><a class="page-link" href="#!">1</a></li>
-                                                <li class="page-item active"><a class="page-link" href="#!">2</a></li>
-                                                <li class="page-item"><a class="page-link" href="#!">3</a></li>
-                                                <li class="page-item"><a class="page-link" href="#!">4</a></li>
-                                                <li class="page-item">
-                                                    <a class="page-link" href="#!">
-                                                        <i class="ri-arrow-right-s-line fw-semibold"></i>
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                        </nav>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Add Teacher Modal -->
-                <div class="modal fade" id="addTeacherModal" tabindex="-1" aria-labelledby="addTeacherModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered modal-lg">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="addTeacherModalLabel">Add Teacher</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                <form>
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <label for="nameInput" class="form-label">Teacher Name</label>
-                                            <input type="name" id="nameInput" class="form-control rounded-2" placeholder="Teacher Name" required>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="subjectSelect" class="form-label">Subject</label>
-                                            <select id="subjectSelect" required>
-                                                <option value="1">Mathematics</option>
-                                                <option value="2">English</option>
-                                                <option value="3">Science</option>
-                                                <option value="4">History</option>
-                                                <option value="5">Physical Education</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="emailInput" class="form-label">Email</label>
-                                            <input type="email" id="emailInput" class="form-control rounded-2" placeholder="Enter your email" required>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="phonenumberInput" class="form-label">Phone</label>
-                                            <input type="tel" id="phonenumberInput" class="form-control rounded-2" placeholder="Enter your phone number" required>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="salaryInput" class="form-label">Salary ($)</label>
-                                            <input id="salaryInput" class="form-control rounded-2" placeholder="$0" required>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <label for="experienceInput" class="form-label">Experience (Years)</label>
-                                            <input id="experienceInput" class="form-control rounded-2" placeholder="0" required>
-                                        </div>
-                                        <div class="col-6">
-                                            <label for="joinDate" class="form-label">Joining Date</label>
-                                            <input type="text" class="form-control" id="joinDate" placeholder="Select a date" required>
-                                        </div>
-                                        <div class="col-6">
-                                            <label for="lastSchoolNameInput" class="form-label">Last School Name</label>
-                                            <input id="lastSchoolNameInput" class="form-control rounded-2" placeholder="School Name" required>
-                                        </div>
-                                        <div class="col-12">
-                                            <label for="TeacherNotes" class="form-label">Notes</label>
-                                            <textarea class="form-control" id="TeacherNotes" placeholder="Notes..." rows="3"></textarea>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                <button type="button" class="btn btn-primary">Add Teacher</button>
-                            </div>
-                        </div>
-                    </div>
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>Roles</h4>
+                <div class="d-flex flex-wrap gap-3 ms-auto">
+                    {% if can_add_role %}
+                    <a href="{% url 'accounts:role_create' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-lg me-1"></i> Add Role
+                    </a>
+                    {% endif %}
+                    {% if can_export %}
+                    <a href="{% url 'accounts:role_export' %}" class="btn btn-success">
+                        <i class="bi bi-download me-1"></i> Export
+                    </a>
+                    {% endif %}
                 </div>
             </div>
-        </main>
+            <div class="card-body">
+                {% if search_query %}
+                <div class="alert alert-info">
+                    <i class="ri-search-line me-2"></i>Search results for: <strong>{{ search_query }}</strong>
+                    <a href="{% url 'accounts:role_list' %}" class="btn btn-sm btn-outline-info ms-2">Clear</a>
+                </div>
+                {% endif %}
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <form method="get" class="d-flex">
+                            <input type="text" name="search" class="form-control me-2" placeholder="Search roles..." value="{{ search_query }}">
+                            <button type="submit" class="btn btn-outline-primary">Search</button>
+                        </form>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <small class="text-muted">Total Roles: {{ total_roles }}</small>
+                    </div>
+                </div>
 
- {% endblock content %}
-    {% block js %}
-    <!-- Select js -->
-    <script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
-    <!-- Picker js -->
-    <script src="/static/assets/libs/air-datepicker/air-datepicker.js"></script>
-    <!-- Init -->
-    <script src="/static/assets/js/app/teachers.init.js"></script>
-    <!-- App js -->
-    <script src="/static/assets/js/app.js"></script>
- {% endblock js %}
+                <div class="table-box table-responsive">
+                    <table class="table table-hover text-nowrap">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="selectAll">
+                                    </div>
+                                </th>
+                                <th>Role</th>
+                                <th>Department</th>
+                                <th>Permissions</th>
+                                <th>Level</th>
+                                <th>Status</th>
+                                <th>Employees</th>
+                                <th>Priority</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for role in roles %}
+                            <tr>
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="{{ role.id }}">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-md avatar-item me-1 bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center">
+                                            <i class="ri-user-settings-line fs-18"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0">{{ role.display_name }}</h6>
+                                            <small class="text-muted">{{ role.name }} • Level {{ role.level }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if role.department %}
+                                        {{ role.department.name }}
+                                    {% else %}
+                                        <span class="text-muted">All Departments</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% for permission in role.permissions.all|slice:":3" %}
+                                    <span class="badge bg-primary bg-opacity-10 text-primary badge-subject">{{ permission.name|title }}</span>
+                                    {% endfor %}
+                                    {% if role.permissions.count > 3 %}
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary badge-subject">+{{ role.permissions.count|add:"-3" }} more</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div><i class="ri-mail-line me-1"></i> {{ role.email|default:"N/A" }}</div>
+                                    <div><i class="ri-shield-check-line me-1"></i> {{ role.get_permission_level_display }}</div>
+                                </td>
+                                <td>
+                                    {% if role.is_active %}
+                                    <span class="badge bg-success-subtle text-success teacher-status">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-danger-subtle text-danger teacher-status">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="me-2">{{ role.user_count }}</span>
+                                        <div class="progress progress-sm w-100">
+                                            {% if role.user_count > 50 %}
+                                            <div class="progress-bar bg-success" style="width: 85%"></div>
+                                            {% elif role.user_count > 20 %}
+                                            <div class="progress-bar bg-info" style="width: 70%"></div>
+                                            {% elif role.user_count > 5 %}
+                                            <div class="progress-bar bg-warning" style="width: 50%"></div>
+                                            {% else %}
+                                            <div class="progress-bar bg-danger" style="width: 25%"></div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="me-2">{{ role.level }}</span>
+                                        <div class="text-warning">
+                                            {% for i in "12345"|make_list %}
+                                                {% if forloop.counter <= role.level %}
+                                                <i class="ri-star-fill"></i>
+                                                {% else %}
+                                                <i class="ri-star-line"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <a href="{% url 'accounts:role_detail' role_id=role.id %}" class="btn icon-btn-sm btn-light-primary action-btn" data-bs-toggle="tooltip" title="View Details">
+                                        <i class="ri-eye-line"></i>
+                                    </a>
+                                    {% if can_edit %}
+                                    <a href="{% url 'accounts:role_update' role_id=role.id %}" class="btn icon-btn-sm btn-light-success action-btn" data-bs-toggle="tooltip" title="Edit">
+                                        <i class="ri-edit-line"></i>
+                                    </a>
+                                    {% endif %}
+                                    {% if can_delete %}
+                                    <button class="btn icon-btn-sm btn-light-danger action-btn" data-bs-toggle="tooltip" title="Delete" onclick="confirmDelete('{{ role.id }}', '{{ role.display_name }}')">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-center py-4">
+                                    <div class="text-muted">
+                                        <i class="ri-user-settings-line fs-48 mb-3 d-block"></i>
+                                        <h5>No Roles Found</h5>
+                                        <p>No roles match your search criteria.</p>
+                                        {% if can_add_role %}
+                                        <a href="{% url 'accounts:role_create' %}" class="btn btn-primary">Add First Role</a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex flex-wrap gap-3 align-items-center mt-5">
+                    {% if is_paginated %}
+                    <div class="fw-medium">
+                        Showing {{ page_obj.start_index }} - {{ page_obj.end_index }} of {{ paginator.count }} Entries
+                    </div>
+                    <div class="ms-auto">
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination pagination-primary mb-0">
+                                {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="ri-arrow-left-s-line fw-semibold"></i>
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">
+                                        <i class="ri-arrow-left-s-line fw-semibold"></i>
+                                    </span>
+                                </li>
+                                {% endif %}
+
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="ri-arrow-right-s-line fw-semibold"></i>
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">
+                                        <i class="ri-arrow-right-s-line fw-semibold"></i>
+                                    </span>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% else %}
+                    <div class="fw-medium">Showing {{ roles|length }} of {{ total_roles }} Entries</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addRoleModal" tabindex="-1" aria-labelledby="addRoleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addRoleModalLabel">Add Role</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" action="{% url 'accounts:role_create' %}">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="roleNameInput" class="form-label">Role Name</label>
+                            <input type="text" id="roleNameInput" name="name" class="form-control rounded-2" placeholder="Role Name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="displayNameInput" class="form-label">Display Name</label>
+                            <input type="text" id="displayNameInput" name="display_name" class="form-control rounded-2" placeholder="Display Name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="departmentSelect" class="form-label">Department</label>
+                            <select id="departmentSelect" name="department" class="form-select">
+                                <option value="">All Departments</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="levelInput" class="form-label">Role Level</label>
+                            <select id="levelInput" name="level" class="form-select" required>
+                                <option value="1">Level 1 - Entry</option>
+                                <option value="2">Level 2 - Junior</option>
+                                <option value="3">Level 3 - Senior</option>
+                                <option value="4">Level 4 - Lead</option>
+                                <option value="5">Level 5 - Executive</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label for="descriptionInput" class="form-label">Description</label>
+                            <textarea id="descriptionInput" name="description" class="form-control rounded-2" rows="3" placeholder="Role description and responsibilities"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Permissions</label>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="permissions" value="manage_employees" id="perm1">
+                                        <label class="form-check-label" for="perm1">Manage Employees</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="permissions" value="view_reports" id="perm2">
+                                        <label class="form-check-label" for="perm2">View Reports</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="permissions" value="manage_departments" id="perm3">
+                                        <label class="form-check-label" for="perm3">Manage Departments</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="permissions" value="manage_roles" id="perm4">
+                                        <label class="form-check-label" for="perm4">Manage Roles</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="permissions" value="view_audit_logs" id="perm5">
+                                        <label class="form-check-label" for="perm5">View Audit Logs</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="permissions" value="manage_system_settings" id="perm6">
+                                        <label class="form-check-label" for="perm6">System Settings</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="permissions" value="approve_leave" id="perm7">
+                                        <label class="form-check-label" for="perm7">Approve Leave</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="permissions" value="manage_payroll" id="perm8">
+                                        <label class="form-check-label" for="perm8">Manage Payroll</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="permissions" value="view_all_reports" id="perm9">
+                                        <label class="form-check-label" for="perm9">All Reports</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="isActiveSwitch" checked>
+                                <label class="form-check-label" for="isActiveSwitch">Active Role</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="can_manage_subordinates" id="manageSubSwitch">
+                                <label class="form-check-label" for="manageSubSwitch">Can Manage Subordinates</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create Role</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="deleteRoleModal" tabindex="-1" aria-labelledby="deleteRoleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteRoleModalLabel">Delete Role</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <i class="ri-delete-bin-line text-danger fs-48 mb-3"></i>
+                    <h5>Are you sure?</h5>
+                    <p class="text-muted">You are about to delete the role "<span id="roleNameToDelete"></span>". This action cannot be undone.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" id="deleteRoleForm" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete Role</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="bulkActionModal" tabindex="-1" aria-labelledby="bulkActionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkActionModalLabel">Bulk Actions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="bulkActionForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="bulkActionSelect" class="form-label">Select Action</label>
+                        <select id="bulkActionSelect" name="action" class="form-select" required>
+                            <option value="">Choose action...</option>
+                            <option value="activate">Activate Roles</option>
+                            <option value="deactivate">Deactivate Roles</option>
+                            <option value="export">Export Selected</option>
+                        </select>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="ri-information-line me-2"></i>
+                        <span id="selectedCount">0</span> role(s) selected
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="bulkActionForm" class="btn btn-primary">Apply Action</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block js %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="/static/assets/libs/air-datepicker/air-datepicker.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const rowCheckboxes = document.querySelectorAll('tbody input[type="checkbox"]');
+        const selectedCount = document.getElementById('selectedCount');
+        
+        function updateSelectedCount() {
+            const checked = document.querySelectorAll('tbody input[type="checkbox"]:checked').length;
+            if (selectedCount) {
+                selectedCount.textContent = checked;
+            }
+        }
+        
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                rowCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+                updateSelectedCount();
+            });
+        }
+        
+        rowCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = Array.from(rowCheckboxes).every(cb => cb.checked);
+                }
+                updateSelectedCount();
+            });
+        });
+        
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        const departmentSelect = document.getElementById('departmentSelect');
+        if (departmentSelect) {
+            new Choices(departmentSelect, {
+                searchEnabled: true,
+                placeholder: true,
+                placeholderValue: 'Select Department'
+            });
+        }
+        
+        const levelSelect = document.getElementById('levelInput');
+        if (levelSelect) {
+            new Choices(levelSelect, {
+                searchEnabled: false
+            });
+        }
+        
+        updateSelectedCount();
+    });
+    
+    function confirmDelete(roleId, roleName) {
+        document.getElementById('roleNameToDelete').textContent = roleName;
+        const deleteForm = document.getElementById('deleteRoleForm');
+        deleteForm.action = `/accounts/roles/${roleId}/delete/`;
+        
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteRoleModal'));
+        deleteModal.show();
+    }
+    
+    function showBulkActions() {
+        const checkedBoxes = document.querySelectorAll('tbody input[type="checkbox"]:checked');
+        if (checkedBoxes.length === 0) {
+            alert('Please select at least one role.');
+            return;
+        }
+        
+        alert('Bulk actions feature will be implemented in future updates.');
+    }
+    
+    const searchForm = document.querySelector('form[method="get"]');
+    if (searchForm) {
+        const searchInput = searchForm.querySelector('input[name="search"]');
+        let searchTimeout;
+        
+        searchInput?.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                if (this.value.length >= 2 || this.value.length === 0) {
+                    searchForm.submit();
+                }
+            }, 500);
+        });
+    }
+    </script>
+    {% endblock %}
+    
