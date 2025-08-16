@@ -56,8 +56,8 @@
                         </a>
                     </li>
                     <li class="pe-slide-item">
-                        <a href="apps-kanban.html" class="pe-nav-link">
-                            Kanban
+                        <a href="{% url 'accounts:system_config' %}" class="pe-nav-link">
+                            System Configuration
                         </a>
                     </li>
                     <li class="pe-slide-item pe-has-sub">
@@ -136,13 +136,13 @@
                                 </a>
                                 <ul class="pe-slide-menu collapse" id="collapseStudents">
                                     <li class="pe-slide-item">
-                                        <a href="apps-school-students.html" class="pe-nav-link">
-                                            All Students
+                                        <a href="{% url 'employee:employee_list' %}" class="pe-nav-link">
+                                            Employees List
                                         </a>
                                     </li>
                                     <li class="pe-slide-item">
-                                        <a href="apps-school-admission-form.html" class="pe-nav-link">
-                                            Admission Form
+                                        <a href="{% url 'accounts:employee_create' %}" class="pe-nav-link">
+                                            Employee Registration
                                         </a>
                                     </li>
                                 </ul>
@@ -189,45 +189,30 @@
             <li class="pe-slide pe-has-sub">
                 <a href="#collapseAuth" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseAuth">
                     <i class="ri-user-line pe-nav-icon"></i>
-                    <span class="pe-nav-content">Authentication</span>
+                    <span class="pe-nav-content">Accounts</span>
                     <i class="ri-arrow-down-s-line pe-nav-arrow"></i>
                 </a>
                 <ul class="pe-slide-menu collapse" id="collapseAuth">
                     <li class="slide pe-nav-content1">
-                        <a href="javascript:void(0)">Authentication</a>
+                        <a href="javascript:void(0)">Accounts</a>
                     </li>
                     <li class="pe-slide-item">
-                        <a href="auth-signin.html" class="pe-nav-link">
+                        <a href="{% url 'accounts:login' %}" class="pe-nav-link">
                             Sign in
                         </a>
                     </li>
                     <li class="pe-slide-item">
-                        <a href="auth-signup.html" class="pe-nav-link">
-                            Register
-                        </a>
-                    </li>
-                    <li class="pe-slide-item">
-                        <a href="auth-forgot-password.html" class="pe-nav-link">
+                        <a href="{% url 'accounts:password_reset' %}" class="pe-nav-link">
                             Forgot Password
                         </a>
                     </li>
                     <li class="pe-slide-item">
-                        <a href="auth-two-step-verify.html" class="pe-nav-link">
-                            Two Step Verification
-                        </a>
-                    </li>
-                    <li class="pe-slide-item">
-                        <a href="auth-reset-password.html" class="pe-nav-link">
+                        <a href="{% url 'accounts:password_reset_confirm' token='sample-token' %}" class="pe-nav-link">
                             Reset Password
                         </a>
                     </li>
                     <li class="pe-slide-item">
-                        <a href="auth-email-verify.html" class="pe-nav-link">
-                            Email Verification
-                        </a>
-                    </li>
-                    <li class="pe-slide-item">
-                        <a href="coming-soon.html" class="pe-nav-link">
+                        <a href="{% url 'accounts:logout' %}" class="pe-nav-link">
                             Log out
                         </a>
                     </li>

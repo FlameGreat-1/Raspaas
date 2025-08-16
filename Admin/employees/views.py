@@ -23,6 +23,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.conf import settings
 import json
+import csv
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -47,6 +48,7 @@ from .utils import (
     BulkOperationUtils,
     CalculationUtils,
 )
+from accounts.analytics import UnifiedAnalytics
 
 User = get_user_model()
 
@@ -72,36 +74,9 @@ def is_admin_user(user):
 def dashboard_view(request):
     if is_admin_user(request.user):
         template_name = "dashboard-analytics.html"
-
-        employee_stats = EmployeeUtils.get_employee_summary_stats()
-        contract_stats = ContractUtils.get_contract_summary_stats()
-
-        probation_ending = EmployeeProfile.objects.filter(
-            employment_status="PROBATION",
-            probation_end_date__lte=timezone.now().date() + timedelta(days=30),
-            is_active=True,
-        ).count()
-
-        contracts_expiring = ContractUtils.get_expiring_contracts(30).count()
-
-        recent_employees = (
-            EmployeeProfile.objects.filter(is_active=True)
-            .select_related("user", "user__department")
-            .order_by("-created_at")[:5]
-        )
-
-        context = {
-            "employee_stats": employee_stats,
-            "contract_stats": contract_stats,
-            "probation_ending": probation_ending,
-            "contracts_expiring": contracts_expiring,
-            "recent_employees": recent_employees,
-            "total_departments": Department.active.count(),
-            "total_roles": Role.active.count(),
-        }
+        context = UnifiedAnalytics.get_complete_dashboard_data()
     else:
         template_name = "index.html"
-
         if hasattr(request.user, "employee_profile"):
             profile = request.user.employee_profile
             context = {
@@ -119,7 +94,6 @@ def dashboard_view(request):
             context = {}
 
     return render(request, template_name, context)
-
 
 @login_required
 @user_passes_test(is_admin_user)
@@ -142,7 +116,7 @@ def system_statistics_view(request):
 
 class EmployeeListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = EmployeeProfile
-    template_name = "apps-school-students.html"
+    template_name = "employee/employee-list.html"
     context_object_name = "employees"
     paginate_by = 25
 
@@ -180,12 +154,13 @@ class EmployeeListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         context["employment_statuses"] = EmployeeProfile.EMPLOYMENT_STATUS_CHOICES
         context["grade_levels"] = EmployeeProfile.GRADE_LEVELS
         context["total_employees"] = self.get_queryset().count()
+        context["can_add_employee"] = is_hr_staff(self.request.user)
         return context
 
 
 class EmployeeDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     model = EmployeeProfile
-    template_name = "apps-school-parents.html"
+    template_name = "employee/employee-detail.html"
     context_object_name = "employee"
 
     def test_func(self):
@@ -228,7 +203,7 @@ class EmployeeDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
 class EmployeeCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = EmployeeProfile
     form_class = EmployeeProfileForm
-    template_name = "apps-school-admission-form.html"
+    template_name = "employee/employee-update.html"
 
     def test_func(self):
         return is_hr_staff(self.request.user)
@@ -245,7 +220,7 @@ class EmployeeCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 class EmployeeUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = EmployeeProfile
     form_class = EmployeeProfileForm
-    template_name = "apps-school-admission-form.html"
+    template_name = "employee/employee-create.html"
 
     def test_func(self):
         return is_hr_staff(self.request.user)
@@ -357,10 +332,9 @@ class RoleDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
         context["user_count"] = context["users"].count()
         return context
 
-
 class ContractListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = Contract
-    template_name = "ui-tables-datatables.html"
+    template_name = "employee/contract-list.html"
     context_object_name = "contracts"
     paginate_by = 25
 
@@ -368,10 +342,20 @@ class ContractListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         return is_hr_staff(self.request.user)
 
     def get_queryset(self):
-        queryset = Contract.active.select_related("employee", "department").order_by(
-            "-start_date"
-        )
+        queryset = Contract.active.select_related("employee", "department", "reporting_manager").order_by("-start_date")
 
+        # Handle search
+        search = self.request.GET.get("search")
+        if search:
+            queryset = queryset.filter(
+                Q(contract_number__icontains=search) |
+                Q(employee__first_name__icontains=search) |
+                Q(employee__last_name__icontains=search) |
+                Q(employee__employee_code__icontains=search) |
+                Q(job_title__icontains=search)
+            )
+
+        # Handle filters
         status = self.request.GET.get("status")
         contract_type = self.request.GET.get("contract_type")
         department = self.request.GET.get("department")
@@ -396,7 +380,7 @@ class ContractListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
 
 class ContractDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     model = Contract
-    template_name = "ui-tables-datatables.html"
+    template_name = "employee/contract-detail.html"
     context_object_name = "contract"
 
     def test_func(self):
@@ -405,7 +389,7 @@ class ContractDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     def get_object(self):
         return get_object_or_404(
             Contract.active.select_related(
-                "employee", "department", "reporting_manager"
+                "employee", "department", "reporting_manager", "created_by", "terminated_by"
             ),
             pk=self.kwargs["pk"],
         )
@@ -417,6 +401,10 @@ class ContractDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
         context["days_remaining"] = contract.days_remaining
         context["contract_duration"] = contract.contract_duration_days
         context["is_expired"] = contract.is_expired
+        context["can_edit"] = is_hr_staff(self.request.user)
+        context["can_delete"] = is_hr_staff(self.request.user)
+    
+        context["recent_activities"] = []
 
         return context
 
@@ -424,13 +412,43 @@ class ContractDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
 class ContractCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = Contract
     form_class = ContractForm
-    template_name = "ui-form-elements.html"
+    template_name = "employee/contract-create.html"
 
     def test_func(self):
         return is_hr_staff(self.request.user)
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "Create New Contract"
+        context["employees"] = CustomUser.active.filter(
+            employee_profile__isnull=False
+        ).select_related("employee_profile").order_by("first_name", "last_name")
+        context["departments"] = Department.active.all().order_by("name")
+        context["managers"] = CustomUser.active.filter(
+            role__name__in=["MANAGER", "HR_MANAGER", "ADMIN"]
+        ).order_by("first_name", "last_name")
+        context["contract_types"] = Contract.CONTRACT_TYPES
+        context["contract_statuses"] = Contract.CONTRACT_STATUS
+        return context
+
     def form_valid(self, form):
         form.instance.created_by = self.request.user
+        
+        # Handle salary breakdown
+        breakdown_keys = self.request.POST.getlist('breakdown_key[]')
+        breakdown_values = self.request.POST.getlist('breakdown_value[]')
+        
+        salary_breakdown = {}
+        for key, value in zip(breakdown_keys, breakdown_values):
+            if key.strip() and value.strip():
+                try:
+                    salary_breakdown[key.strip()] = float(value)
+                except ValueError:
+                    pass
+        
+        if salary_breakdown:
+            form.instance.salary_breakdown = salary_breakdown
+
         messages.success(self.request, "Contract created successfully.")
         return super().form_valid(form)
 
@@ -441,7 +459,7 @@ class ContractCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 class ContractUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Contract
     form_class = ContractForm
-    template_name = "ui-form-elements.html"
+    template_name = "employee/contract-create.html"
 
     def test_func(self):
         return is_hr_staff(self.request.user)
@@ -449,7 +467,36 @@ class ContractUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     def get_object(self):
         return get_object_or_404(Contract.active, pk=self.kwargs["pk"])
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "Update Contract"
+        context["contract"] = self.object
+        context["employees"] = CustomUser.active.filter(
+            employee_profile__isnull=False
+        ).select_related("employee_profile").order_by("first_name", "last_name")
+        context["departments"] = Department.active.all().order_by("name")
+        context["managers"] = CustomUser.active.filter(
+            role__name__in=["MANAGER", "HR_MANAGER", "ADMIN"]
+        ).order_by("first_name", "last_name")
+        context["contract_types"] = Contract.CONTRACT_TYPES
+        context["contract_statuses"] = Contract.CONTRACT_STATUS
+        return context
+
     def form_valid(self, form):
+        # Handle salary breakdown
+        breakdown_keys = self.request.POST.getlist('breakdown_key[]')
+        breakdown_values = self.request.POST.getlist('breakdown_value[]')
+        
+        salary_breakdown = {}
+        for key, value in zip(breakdown_keys, breakdown_values):
+            if key.strip() and value.strip():
+                try:
+                    salary_breakdown[key.strip()] = float(value)
+                except ValueError:
+                    pass
+        
+        form.instance.salary_breakdown = salary_breakdown
+
         messages.success(self.request, "Contract updated successfully.")
         return super().form_valid(form)
 
@@ -460,7 +507,7 @@ class ContractUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 class ContractRenewalView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = Contract
     form_class = ContractRenewalForm
-    template_name = "ui-form-elements.html"
+    template_name = "employee/contract-create.html"
 
     def test_func(self):
         return is_hr_staff(self.request.user)
@@ -473,6 +520,22 @@ class ContractRenewalView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
         kwargs["original_contract"] = self.original_contract
         return kwargs
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "Renew Contract"
+        context["original_contract"] = self.original_contract
+        context["is_renewal"] = True
+        context["employees"] = CustomUser.active.filter(
+            employee_profile__isnull=False
+        ).select_related("employee_profile").order_by("first_name", "last_name")
+        context["departments"] = Department.active.all().order_by("name")
+        context["managers"] = CustomUser.active.filter(
+            role__name__in=["MANAGER", "HR_MANAGER", "ADMIN"]
+        ).order_by("first_name", "last_name")
+        context["contract_types"] = Contract.CONTRACT_TYPES
+        context["contract_statuses"] = Contract.CONTRACT_STATUS
+        return context
+
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         with transaction.atomic():
@@ -483,17 +546,10 @@ class ContractRenewalView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
         messages.success(self.request, "Contract renewed successfully.")
         return redirect("employee:contract_detail", pk=new_contract.pk)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["original_contract"] = self.original_contract
-        context["is_renewal"] = True
-        return context
-
-
 class EducationCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = Education
     form_class = EducationForm
-    template_name = "ui-form-elements.html"
+    template_name = "employee/education-create.html"
 
     def test_func(self):
         return is_hr_staff(self.request.user)
@@ -520,7 +576,7 @@ class EducationCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 class EducationUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Education
     form_class = EducationForm
-    template_name = "ui-form-elements.html"
+    template_name = "employee/education-update.html"
 
     def test_func(self):
         return is_hr_staff(self.request.user)
@@ -538,9 +594,80 @@ class EducationUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
             kwargs={"pk": self.object.employee.employee_profile.pk},
         )
 
+class EducationListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+    model = Education
+    template_name = "employee/education-list.html"
+    context_object_name = "education_records"
+    paginate_by = 25
+
+    def test_func(self):
+        return is_hr_staff(self.request.user)
+
+    def get_queryset(self):
+        queryset = Education.active.select_related(
+            "employee", "employee__department", "verified_by"
+        ).order_by("-completion_year", "employee__first_name")
+
+        search = self.request.GET.get("search")
+        if search:
+            queryset = queryset.filter(
+                Q(employee__first_name__icontains=search) |
+                Q(employee__last_name__icontains=search) |
+                Q(employee__employee_code__icontains=search) |
+                Q(qualification__icontains=search) |
+                Q(institution__icontains=search)
+            )
+
+        education_level = self.request.GET.get("education_level")
+        is_verified = self.request.GET.get("is_verified")
+
+        if education_level:
+            queryset = queryset.filter(education_level=education_level)
+        if is_verified == "true":
+            queryset = queryset.filter(is_verified=True)
+        elif is_verified == "false":
+            queryset = queryset.filter(is_verified=False)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["education_levels"] = Education.EDUCATION_LEVELS
+        context["total_records"] = self.get_queryset().count()
+        context["verified_count"] = self.get_queryset().filter(is_verified=True).count()
+        context["unverified_count"] = self.get_queryset().filter(is_verified=False).count()
+        return context
+
+class EducationDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
+    model = Education
+    template_name = "employee/education-detail.html"
+    context_object_name = "education"
+
+    def test_func(self):
+        return is_hr_staff(self.request.user)
+
+    def get_object(self):
+        return get_object_or_404(
+            Education.active.select_related(
+                "employee", "employee__department", "verified_by", "created_by"
+            ),
+            pk=self.kwargs["pk"],
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        education = self.object
+
+        context["can_verify"] = not education.is_verified and is_hr_staff(
+            self.request.user
+        )
+        context["can_edit"] = is_hr_staff(self.request.user)
+
+        return context
+
 
 class BulkEmployeeUploadView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
-    template_name = "ui-form-file-uploads.html"
+    template_name = "employee/bulk-upload.html"
 
     def test_func(self):
         return is_admin_user(self.request.user)
@@ -635,7 +762,7 @@ def advanced_search_view(request):
         "total_results": len(employees) if employees else 0,
     }
 
-    return render(request, "apps-school-students.html", context)
+    return render(request, "employee/employee-list.html", context)
 
 
 @login_required
@@ -673,7 +800,7 @@ def employee_hierarchy_view(request):
         "total_employees": EmployeeProfile.active.count(),
     }
 
-    return render(request, "ui-treeview.html", context)
+    return render(request, "employee/employee-hierarchy.html", context)
 
 
 @login_required
@@ -793,8 +920,7 @@ def bulk_notification_view(request):
         ).count(),
         "total_employees": EmployeeProfile.active.count(),
     }
-
-    return render(request, "apps-email.html", context)
+    return render(request, "employee/bulk-notification.html", context)
 
 
 @login_required
@@ -807,7 +933,7 @@ def user_sessions_view(request):
         .select_related("employee_profile")
         .order_by("-last_login"),
     }
-    return render(request, "ui-tables-datatables.html", context)
+    return render(request, "employee/user-sessions.html", context)
 
 
 @login_required
@@ -818,7 +944,7 @@ def user_activity_log_view(request):
         .select_related("user", "created_by")
         .order_by("-updated_at")[:50],
     }
-    return render(request, "ui-tables-datatables.html", context)
+    return render(request, "employee/activity-log.html", context)
 
 
 @login_required
@@ -832,8 +958,7 @@ def audit_log_view(request):
             "employee", "created_by"
         ).order_by("-updated_at")[:100],
     }
-    return render(request, "ui-tables-datatables.html", context)
-
+    return render(request, "employee/audit-log.html", context)
 
 @login_required
 @user_passes_test(is_admin_user)
@@ -860,7 +985,7 @@ def session_management_view(request):
         .select_related("employee_profile")
         .order_by("-last_login"),
     }
-    return render(request, "ui-tables-datatables.html", context)
+    return render(request, "employee/session-management.html", context)
 
 
 @login_required
@@ -915,39 +1040,104 @@ def bulk_deactivate_employees(request):
 
 
 @login_required
-@require_http_methods(["POST"])
 @user_passes_test(is_hr_staff)
 def activate_contract(request, pk):
     contract = get_object_or_404(Contract.active, pk=pk)
 
-    try:
-        contract.activate_contract()
-        messages.success(
-            request, f"Contract {contract.contract_number} activated successfully."
-        )
-    except Exception as e:
-        messages.error(request, f"Error activating contract: {str(e)}")
+    if contract.status != "DRAFT":
+        messages.error(request, "Only draft contracts can be activated.")
+        return redirect("employee:contract_detail", pk=pk)
+
+    if request.method == "POST":
+        try:
+            contract.activate_contract()
+            messages.success(
+                request,
+                f"Contract {contract.contract_number} has been activated successfully.",
+            )
+        except Exception as e:
+            messages.error(request, f"Error activating contract: {str(e)}")
 
     return redirect("employee:contract_detail", pk=pk)
 
 
 @login_required
-@require_http_methods(["POST"])
 @user_passes_test(is_hr_staff)
 def terminate_contract(request, pk):
     contract = get_object_or_404(Contract.active, pk=pk)
-    termination_reason = request.POST.get("termination_reason", "")
 
-    try:
-        contract.terminate_contract(request.user, termination_reason)
-        messages.success(
-            request, f"Contract {contract.contract_number} terminated successfully."
-        )
-    except Exception as e:
-        messages.error(request, f"Error terminating contract: {str(e)}")
+    if contract.status != "ACTIVE":
+        messages.error(request, "Only active contracts can be terminated.")
+        return redirect("employee:contract_detail", pk=pk)
+
+    if request.method == "POST":
+        termination_reason = request.POST.get("termination_reason", "").strip()
+
+        if not termination_reason:
+            messages.error(request, "Termination reason is required.")
+            return redirect("employee:contract_detail", pk=pk)
+
+        try:
+            contract.terminate_contract(
+                terminated_by=request.user, reason=termination_reason
+            )
+            messages.success(
+                request,
+                f"Contract {contract.contract_number} has been terminated successfully.",
+            )
+        except Exception as e:
+            messages.error(request, f"Error terminating contract: {str(e)}")
 
     return redirect("employee:contract_detail", pk=pk)
 
+
+@login_required
+@user_passes_test(is_hr_staff)
+def export_contracts_csv(request):
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="contracts_export.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(
+        [
+            "Contract Number",
+            "Employee Name",
+            "Employee Code",
+            "Contract Type",
+            "Status",
+            "Job Title",
+            "Department",
+            "Start Date",
+            "End Date",
+            "Basic Salary",
+            "Working Hours",
+            "Created Date",
+        ]
+    )
+
+    contracts = Contract.active.select_related("employee", "department").order_by(
+        "-created_at"
+    )
+
+    for contract in contracts:
+        writer.writerow(
+            [
+                contract.contract_number,
+                contract.employee.get_full_name(),
+                contract.employee.employee_code,
+                contract.get_contract_type_display(),
+                contract.get_status_display(),
+                contract.job_title,
+                contract.department.name if contract.department else "",
+                contract.start_date.strftime("%Y-%m-%d") if contract.start_date else "",
+                contract.end_date.strftime("%Y-%m-%d") if contract.end_date else "",
+                str(contract.basic_salary),
+                str(contract.working_hours),
+                contract.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            ]
+        )
+
+    return response
 
 @login_required
 @require_http_methods(["POST"])
@@ -1139,8 +1329,7 @@ def probation_report_view(request):
         "total_count": probation_employees.count(),
         "report_date": timezone.now().date(),
     }
-
-    return render(request, "ui-tables-datatables.html", context)
+    return render(request, "employee/probation-report.html", context)
 
 
 @login_required
@@ -1156,7 +1345,7 @@ def contract_expiry_report_view(request):
         "report_date": timezone.now().date(),
     }
 
-    return render(request, "ui-tables-datatables.html", context)
+    return render(request, "employee/contract-expiry-report.html", context)
 
 
 @login_required
@@ -1169,4 +1358,4 @@ def salary_analysis_report_view(request):
         "report_date": timezone.now().date(),
     }
 
-    return render(request, "ui-tables-datatables.html", context)
+    return render(request, "employee/salary-analysis-report.html", context)

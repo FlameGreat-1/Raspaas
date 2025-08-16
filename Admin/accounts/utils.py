@@ -128,19 +128,23 @@ def get_user_agent(request) -> str:
     return request.META.get("HTTP_USER_AGENT", "Unknown")
 
 
-def log_user_activity(user, action: str, description: str, request, additional_data: Dict = None):
+def log_user_activity(
+    user, action: str, description: str, request, additional_data: Dict = None
+):
     try:
         ip_address = get_client_ip(request) if request else "127.0.0.1"
         user_agent = get_user_agent(request) if request else "System"
-        
+
         AuditLog.log_action(
             user=user,
             action=action,
-            description=description,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            additional_data=additional_data or {},
+            model_name=additional_data.get("model_name") if additional_data else None,
+            object_id=additional_data.get("object_id") if additional_data else None,
+            object_repr=description,
+            ip_address=get_client_ip(request) if request else None,
+            user_agent=get_user_agent(request) if request else None,
         )
+
     except Exception as e:
         logger.error(f"Failed to log user activity: {e}")
 
@@ -151,12 +155,26 @@ def create_user_session(user, request) -> UserSession:
         request.session.create()
         session_key = request.session.session_key
 
-    user_session = UserSession()
-    user_session.user = user
-    user_session._session_key = session_key
-    user_session.ip_address = get_client_ip(request)
-    user_session.user_agent = get_user_agent(request)
-    user_session.save()
+    session_key_hash = hashlib.sha256(session_key.encode()).hexdigest()
+    
+    UserSession.objects.filter(user=user, is_active=True).update(is_active=False)
+    
+    user_session, created = UserSession.objects.get_or_create(
+        user=user,
+        session_key_hash=session_key_hash,
+        defaults={
+            'ip_address': get_client_ip(request),
+            'user_agent': get_user_agent(request),
+            'is_active': True,
+        }
+    )
+    
+    if not created:
+        user_session.ip_address = get_client_ip(request)
+        user_session.user_agent = get_user_agent(request)
+        user_session.is_active = True
+        user_session._session_key = session_key
+        user_session.save()
 
     user.last_login_ip = get_client_ip(request)
     user.save(update_fields=["last_login_ip"])
@@ -865,8 +883,7 @@ class SystemUtilities:
         ).count()
 
         failed_logins = AuditLog.objects.filter(
-            action="LOGIN",
-            description__icontains="failed",
+            action="LOGIN_FAILED",
             timestamp__gte=timezone.now() - timedelta(days=7),
         ).count()
 

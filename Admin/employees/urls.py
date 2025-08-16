@@ -48,8 +48,10 @@ urlpatterns = [
     path('contracts/export/csv/', views.export_contracts_csv, name='export_contracts_csv'),
     
     # Education Management URLs
+    path('education/', views.EducationListView.as_view(), name='education_list'),
     path('education/create/', views.EducationCreateView.as_view(), name='education_create'),
     path('education/create/<int:employee_id>/', views.EducationCreateView.as_view(), name='education_create_for_employee'),
+    path('education/<int:pk>/', views.EducationDetailView.as_view(), name='education_detail'),
     path('education/<int:pk>/edit/', views.EducationUpdateView.as_view(), name='education_update'),
     path('education/<int:pk>/verify/', views.verify_education, name='verify_education'),
     

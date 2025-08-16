@@ -1,0 +1,518 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Contract Management" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Human Resources" title="Contract Management"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="card-title mb-0">
+                            <i class="ri-file-text-line me-2 text-primary"></i>All Contracts
+                            <span class="badge bg-primary-subtle text-primary ms-2">{{ contracts.count }}</span>
+                        </h5>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'employee:contract_create' %}" class="btn btn-primary text-nowrap">
+                                <i class="ri-add-line me-1"></i>New Contract
+                            </a>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary dropdown-toggle text-nowrap" type="button" data-bs-toggle="dropdown">
+                                    <i class="ri-download-line me-1"></i>Export
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="{% url 'employee:export_contracts_csv' %}">
+                                        <i class="ri-file-excel-line me-2"></i>Export CSV
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <form method="get" class="d-flex gap-3 align-items-end">
+                            <div class="flex-grow-1">
+                                <label class="form-label small text-muted">Search Contracts</label>
+                                <input type="text" class="form-control" name="search" value="{{ request.GET.search }}" placeholder="Contract number, employee name...">
+                            </div>
+                            <div>
+                                <label class="form-label small text-muted">Status</label>
+                                <select class="form-select" name="status">
+                                    <option value="">All Status</option>
+                                    <option value="DRAFT" {% if request.GET.status == 'DRAFT' %}selected{% endif %}>Draft</option>
+                                    <option value="ACTIVE" {% if request.GET.status == 'ACTIVE' %}selected{% endif %}>Active</option>
+                                    <option value="EXPIRED" {% if request.GET.status == 'EXPIRED' %}selected{% endif %}>Expired</option>
+                                    <option value="TERMINATED" {% if request.GET.status == 'TERMINATED' %}selected{% endif %}>Terminated</option>
+                                    <option value="RENEWED" {% if request.GET.status == 'RENEWED' %}selected{% endif %}>Renewed</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label small text-muted">Type</label>
+                                <select class="form-select" name="contract_type">
+                                    <option value="">All Types</option>
+                                    <option value="PERMANENT" {% if request.GET.contract_type == 'PERMANENT' %}selected{% endif %}>Permanent</option>
+                                    <option value="FIXED_TERM" {% if request.GET.contract_type == 'FIXED_TERM' %}selected{% endif %}>Fixed Term</option>
+                                    <option value="PROBATION" {% if request.GET.contract_type == 'PROBATION' %}selected{% endif %}>Probation</option>
+                                    <option value="INTERNSHIP" {% if request.GET.contract_type == 'INTERNSHIP' %}selected{% endif %}>Internship</option>
+                                    <option value="CONSULTANT" {% if request.GET.contract_type == 'CONSULTANT' %}selected{% endif %}>Consultant</option>
+                                    <option value="PART_TIME" {% if request.GET.contract_type == 'PART_TIME' %}selected{% endif %}>Part Time</option>
+                                </select>
+                            </div>
+                            <div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="ri-search-line me-1"></i>Filter
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        {% if request.GET.search or request.GET.status or request.GET.contract_type %}
+                        <a href="{% url 'employee:contract_list' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="ri-close-line me-1"></i>Clear Filters
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if contracts %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="border-0">Contract Details</th>
+                                <th class="border-0">Employee</th>
+                                <th class="border-0">Type & Status</th>
+                                <th class="border-0">Duration</th>
+                                <th class="border-0">Salary</th>
+                                <th class="border-0">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for contract in contracts %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0 me-3">
+                                            <div class="avatar-sm">
+                                                <div class="avatar-title bg-primary-subtle text-primary rounded-circle">
+                                                    <i class="ri-file-text-line"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1 fw-semibold">{{ contract.contract_number }}</h6>
+                                            <p class="text-muted mb-0 small">{{ contract.job_title }}</p>
+                                            {% if contract.department %}
+                                            <small class="text-muted">{{ contract.department.name }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0 me-3">
+                                            {% if contract.employee.profile_picture %}
+                                                <img src="{{ contract.employee.profile_picture.url }}" alt="{{ contract.employee.get_full_name }}" class="avatar-xs rounded-circle">
+                                            {% else %}
+                                                <div class="avatar-xs">
+                                                    <span class="avatar-title rounded-circle bg-secondary-subtle text-secondary">
+                                                        {{ contract.employee.first_name|first|upper }}{{ contract.employee.last_name|first|upper }}
+                                                    </span>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1 fw-medium">{{ contract.employee.get_full_name }}</h6>
+                                            <p class="text-muted mb-0 small">{{ contract.employee.employee_code }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column gap-1">
+                                        <span class="badge bg-info-subtle text-info">
+                                            {{ contract.get_contract_type_display }}
+                                        </span>
+                                        {% if contract.status == 'ACTIVE' %}
+                                            <span class="badge bg-success-subtle text-success">
+                                                <i class="ri-check-line me-1"></i>{{ contract.get_status_display }}
+                                            </span>
+                                        {% elif contract.status == 'DRAFT' %}
+                                            <span class="badge bg-warning-subtle text-warning">
+                                                <i class="ri-draft-line me-1"></i>{{ contract.get_status_display }}
+                                            </span>
+                                        {% elif contract.status == 'EXPIRED' %}
+                                            <span class="badge bg-danger-subtle text-danger">
+                                                <i class="ri-time-line me-1"></i>{{ contract.get_status_display }}
+                                            </span>
+                                        {% elif contract.status == 'TERMINATED' %}
+                                            <span class="badge bg-dark-subtle text-dark">
+                                                <i class="ri-close-line me-1"></i>{{ contract.get_status_display }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary-subtle text-secondary">
+                                                {{ contract.get_status_display }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column">
+                                        <span class="fw-medium">{{ contract.start_date|date:"M d, Y" }}</span>
+                                        {% if contract.end_date %}
+                                            <span class="text-muted small">to {{ contract.end_date|date:"M d, Y" }}</span>
+                                            {% if contract.days_remaining %}
+                                                {% if contract.days_remaining <= 30 %}
+                                                    <small class="text-warning">
+                                                        <i class="ri-alarm-warning-line me-1"></i>{{ contract.days_remaining }} days left
+                                                    </small>
+                                                {% else %}
+                                                    <small class="text-muted">{{ contract.days_remaining }} days left</small>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted small">Ongoing</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column">
+                                        <span class="fw-semibold text-success">${{ contract.basic_salary|floatformat:2 }}</span>
+                                        <small class="text-muted">Basic Salary</small>
+                                        {% if contract.working_hours %}
+                                        <small class="text-muted">{{ contract.working_hours }}hrs/day</small>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        <a href="{% url 'employee:contract_detail' contract.pk %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="ri-eye-line"></i>
+                                        </a>
+                                        {% if contract.status == 'DRAFT' or contract.status == 'ACTIVE' %}
+                                        <a href="{% url 'employee:contract_update' contract.pk %}" class="btn btn-sm btn-outline-secondary" title="Edit Contract">
+                                            <i class="ri-edit-line"></i>
+                                        </a>
+                                        {% endif %}
+                                        {% if contract.status == 'DRAFT' %}
+                                        <form method="post" action="{% url 'employee:activate_contract' contract.pk %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Activate Contract">
+                                                <i class="ri-play-line"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        {% if contract.status == 'ACTIVE' %}
+                                        <button type="button" class="btn btn-sm btn-outline-warning" title="Renew Contract" data-bs-toggle="modal" data-bs-target="#renewModal{{ contract.pk }}">
+                                            <i class="ri-refresh-line"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" title="Terminate Contract" data-bs-toggle="modal" data-bs-target="#terminateModal{{ contract.pk }}">
+                                            <i class="ri-stop-line"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <div class="avatar-xl mx-auto mb-4">
+                        <div class="avatar-title bg-light text-muted rounded-circle">
+                            <i class="ri-file-text-line fs-36"></i>
+                        </div>
+                    </div>
+                    <h5 class="mb-3">No Contracts Found</h5>
+                    <p class="text-muted mb-4">
+                        {% if request.GET.search or request.GET.status or request.GET.contract_type %}
+                            No contracts match your current filters. Try adjusting your search criteria.
+                        {% else %}
+                            Start by creating your first employee contract.
+                        {% endif %}
+                    </p>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <a href="{% url 'employee:contract_create' %}" class="btn btn-primary">
+                            <i class="ri-add-line me-1"></i>Create Contract
+                        </a>
+                        {% if request.GET.search or request.GET.status or request.GET.contract_type %}
+                        <a href="{% url 'employee:contract_list' %}" class="btn btn-outline-secondary">
+                            <i class="ri-refresh-line me-1"></i>Clear Filters
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% if contracts.has_other_pages %}
+            <div class="card-footer border-0 bg-light">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <p class="text-muted mb-0">
+                            Showing {{ contracts.start_index }} to {{ contracts.end_index }} of {{ contracts.paginator.count }} contracts
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <nav aria-label="Contract pagination">
+                            <ul class="pagination pagination-sm justify-content-end mb-0">
+                                {% if contracts.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}{% if request.GET.contract_type %}contract_type={{ request.GET.contract_type }}&{% endif %}page={{ contracts.previous_page_number }}">
+                                        <i class="ri-arrow-left-line"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for num in contracts.paginator.page_range %}
+                                    {% if contracts.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                    {% elif num > contracts.number|add:'-3' and num < contracts.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}{% if request.GET.contract_type %}contract_type={{ request.GET.contract_type }}&{% endif %}page={{ num }}">{{ num }}</a>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if contracts.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}{% if request.GET.status %}status={{ request.GET.status }}&{% endif %}{% if request.GET.contract_type %}contract_type={{ request.GET.contract_type }}&{% endif %}page={{ contracts.next_page_number }}">
+                                        <i class="ri-arrow-right-line"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% for contract in contracts %}
+{% if contract.status == 'ACTIVE' %}
+<div class="modal fade" id="renewModal{{ contract.pk }}" tabindex="-1" aria-labelledby="renewModalLabel{{ contract.pk }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="renewModalLabel{{ contract.pk }}">Renew Contract</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <div class="avatar-lg mx-auto mb-3">
+                        <div class="avatar-title bg-warning-subtle text-warning rounded-circle">
+                            <i class="ri-refresh-line fs-24"></i>
+                        </div>
+                    </div>
+                    <h5 class="mb-3">Renew Contract</h5>
+                    <p class="text-muted mb-0">Are you sure you want to renew contract <strong>{{ contract.contract_number }}</strong> for <strong>{{ contract.employee.get_full_name }}</strong>?</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="{% url 'employee:contract_renewal' contract.pk %}" class="btn btn-warning">
+                    <i class="ri-refresh-line me-1"></i>Proceed to Renewal
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="terminateModal{{ contract.pk }}" tabindex="-1" aria-labelledby="terminateModalLabel{{ contract.pk }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="terminateModalLabel{{ contract.pk }}">Terminate Contract</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'employee:terminate_contract' contract.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <div class="avatar-lg mx-auto mb-3">
+                            <div class="avatar-title bg-danger-subtle text-danger rounded-circle">
+                                <i class="ri-alert-line fs-24"></i>
+                            </div>
+                        </div>
+                        <h5 class="mb-3">Terminate Contract</h5>
+                        <p class="text-muted mb-0">This will terminate contract <strong>{{ contract.contract_number }}</strong> for <strong>{{ contract.employee.get_full_name }}</strong>.</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Termination Reason <span class="text-danger">*</span></label>
+                        <textarea class="form-control" name="termination_reason" rows="3" placeholder="Please provide reason for termination..." required></textarea>
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="ri-alert-line me-2"></i>
+                        <strong>Warning:</strong> This action cannot be undone. The contract will be marked as terminated.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="ri-stop-line me-1"></i>Terminate Contract
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card bg-primary-subtle border-0">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6 class="text-primary mb-2">
+                            <i class="ri-information-line me-2"></i>Contract Management Tips
+                        </h6>
+                        <ul class="text-primary mb-0 small">
+                            <li>Review contracts regularly for upcoming expirations</li>
+                            <li>Ensure all contract terms are properly documented</li>
+                            <li>Keep contract files updated and accessible</li>
+                            <li>Monitor probation periods and confirmation dates</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'employee:contract_expiry_report' %}" class="btn btn-outline-primary btn-sm">
+                                <i class="ri-calendar-check-line me-1"></i>Expiry Report
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if messages %}
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+    {% for message in messages %}
+    <div class="toast align-items-center text-white bg-{{ message.tags }} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+        <div class="d-flex">
+            <div class="toast-body">
+                {% if message.tags == 'success' %}
+                    <i class="ri-check-line me-2"></i>
+                {% elif message.tags == 'error' %}
+                    <i class="ri-error-warning-line me-2"></i>
+                {% elif message.tags == 'warning' %}
+                    <i class="ri-alert-line me-2"></i>
+                {% else %}
+                    <i class="ri-information-line me-2"></i>
+                {% endif %}
+                {{ message }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block script %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="/static/assets/libs/air-datepicker/air-datepicker.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toastElList = [].slice.call(document.querySelectorAll('.toast'));
+    const toastList = toastElList.map(function(toastEl) {
+        return new bootstrap.Toast(toastEl);
+    });
+    toastList.forEach(toast => toast.show());
+
+    const choicesElements = document.querySelectorAll('.form-select');
+    choicesElements.forEach(element => {
+        new Choices(element, {
+            searchEnabled: false,
+            removeItemButton: false,
+            shouldSort: false
+        });
+    });
+
+    const searchForm = document.querySelector('form[method="get"]');
+    if (searchForm) {
+        const searchInput = searchForm.querySelector('input[name="search"]');
+        if (searchInput) {
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchForm.submit();
+                }
+            });
+        }
+    }
+
+    const activateButtons = document.querySelectorAll('form[action*="activate"] button[type="submit"]');
+    activateButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            if (!confirm('Are you sure you want to activate this contract?')) {
+                e.preventDefault();
+            }
+        });
+    });
+
+    const terminateModals = document.querySelectorAll('[id^="terminateModal"]');
+    terminateModals.forEach(modal => {
+        const form = modal.querySelector('form');
+        const textarea = modal.querySelector('textarea[name="termination_reason"]');
+        
+        form.addEventListener('submit', function(e) {
+            if (!textarea.value.trim()) {
+                e.preventDefault();
+                textarea.focus();
+                alert('Please provide a termination reason.');
+            }
+        });
+    });
+
+    const statusBadges = document.querySelectorAll('.badge');
+    statusBadges.forEach(badge => {
+        if (badge.textContent.includes('days left')) {
+            const daysText = badge.textContent.match(/(\d+) days left/);
+            if (daysText && parseInt(daysText[1]) <= 7) {
+                badge.classList.remove('text-warning');
+                badge.classList.add('text-danger');
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
+
+

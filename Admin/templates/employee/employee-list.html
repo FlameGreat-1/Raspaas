@@ -1,0 +1,656 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Employee Management" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+<link rel="stylesheet" href="/static/assets/libs/datatables.net-bs5/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="/static/assets/libs/datatables.net-responsive-bs5/css/responsive.bootstrap5.min.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Human Resources" title="Employee Management"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h5 class="card-title mb-0">
+                            <i class="ri-team-line me-2 text-primary"></i>Employee Database
+                        </h5>
+                        <p class="text-muted mb-0 small">View and manage all employee information</p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="d-flex gap-2 justify-content-end">
+
+                            <div class="dropdown">
+                                <button class="btn btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="ri-download-line me-1"></i>Export
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#" onclick="window.location.href='{% url 'accounts:employee_export' %}?format=csv'">
+                                        <i class="ri-file-text-line me-2"></i>Export as CSV
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="window.location.href='{% url 'accounts:employee_export' %}?format=excel'">
+                                        <i class="ri-file-excel-line me-2"></i>Export as Excel
+                                    </a></li>
+                                </ul>
+                            </div>
+
+                            {% if can_add_employee %}
+                            <a href="{% url 'employee:bulk_employee_upload' %}" class="btn btn-outline-primary" style="white-space: nowrap;">
+                                <i class="ri-upload-line me-1"></i>Bulk Import
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-bottom">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-4">
+                        <div class="search-box">
+                            <form method="GET" id="searchForm" class="position-relative">
+                                <input type="text" name="search" class="form-control search" 
+                                       placeholder="Search employees, departments, roles..." 
+                                       value="{{ request.GET.search }}" id="searchInput">
+                                <i class="ri-search-line search-icon"></i>
+                                {% if request.GET.department %}
+                                <input type="hidden" name="department" value="{{ request.GET.department }}">
+                                {% endif %}
+                                {% if request.GET.employment_status %}
+                                <input type="hidden" name="employment_status" value="{{ request.GET.employment_status }}">
+                                {% endif %}
+                            </form>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="d-flex gap-2 justify-content-end flex-wrap">
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="ri-filter-3-line me-1"></i>
+                                    {% if request.GET.department %}
+                                        {% for dept in departments %}
+                                            {% if dept.id|stringformat:"s" == request.GET.department %}
+                                                {{ dept.name }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        All Departments
+                                    {% endif %}
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}{% if request.GET.employment_status %}employment_status={{ request.GET.employment_status }}&{% endif %}">
+                                        <i class="ri-list-check me-2"></i>All Departments
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    {% for dept in departments %}
+                                    <li><a class="dropdown-item" href="?department={{ dept.id }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.employment_status %}&employment_status={{ request.GET.employment_status }}{% endif %}">
+                                        <i class="ri-building-line me-2"></i>{{ dept.name }}
+                                    </a></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="ri-user-settings-line me-1"></i>
+                                    {% if request.GET.employment_status %}
+                                        {% for status in employment_statuses %}
+                                            {% if status.0 == request.GET.employment_status %}
+                                                {{ status.1 }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        All Status
+                                    {% endif %}
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}{% if request.GET.department %}department={{ request.GET.department }}&{% endif %}">
+                                        <i class="ri-list-check me-2"></i>All Status
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    {% for status in employment_statuses %}
+                                    <li><a class="dropdown-item" href="?employment_status={{ status.0 }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.department %}&department={{ request.GET.department }}{% endif %}">
+                                        {% if status.0 == 'PROBATION' %}
+                                            <i class="ri-time-line me-2 text-warning"></i>
+                                        {% elif status.0 == 'CONFIRMED' %}
+                                            <i class="ri-check-line me-2 text-success"></i>
+                                        {% elif status.0 == 'CONTRACT' %}
+                                            <i class="ri-file-text-line me-2 text-info"></i>
+                                        {% elif status.0 == 'INTERN' %}
+                                            <i class="ri-graduation-cap-line me-2 text-purple"></i>
+                                        {% else %}
+                                            <i class="ri-user-line me-2"></i>
+                                        {% endif %}
+                                        {{ status.1 }}
+                                    </a></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-nowrap align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col" class="ps-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="selectAll">
+                                        <label class="form-check-label" for="selectAll"></label>
+                                    </div>
+                                </th>
+                                <th scope="col">Employee Code</th>
+                                <th scope="col">Employee Name</th>
+                                <th scope="col">Department</th>
+                                <th scope="col">Role</th>
+                                <th scope="col">Email</th>
+                                <th scope="col">Phone</th>
+                                <th scope="col">Employment Status</th>
+                                <th scope="col">Hire Date</th>
+                                <th scope="col" class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for employee in employees %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input employee-checkbox" type="checkbox" value="{{ employee.pk }}">
+                                        <label class="form-check-label"></label>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark fw-medium">{{ employee.user.employee_code }}</span>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0 me-3">
+                                            {% if employee.user.profile_picture %}
+                                                <img src="{{ employee.user.profile_picture.url }}" alt="{{ employee.user.get_full_name }}" class="avatar-sm rounded-circle">
+                                            {% else %}
+                                                <div class="avatar-sm">
+                                                    <span class="avatar-title rounded-circle bg-primary-subtle text-primary fs-16">
+                                                        {{ employee.user.first_name|first|upper }}{{ employee.user.last_name|first|upper }}
+                                                    </span>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0 fw-semibold">{{ employee.user.get_full_name }}</h6>
+                                            {% if employee.user.job_title %}
+                                            <p class="text-muted mb-0 small">{{ employee.user.job_title }}</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if employee.user.department %}
+                                        <div class="d-flex align-items-center">
+                                            <i class="ri-building-line text-muted me-2"></i>
+                                            <div>
+                                                <span class="fw-medium">{{ employee.user.department.name }}</span>
+                                                {% if employee.user.department.code %}
+                                                <br><small class="text-muted">{{ employee.user.department.code }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">
+                                            <i class="ri-question-line me-1"></i>Not Assigned
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if employee.user.role %}
+                                        <div class="d-flex align-items-center">
+                                            <i class="ri-user-settings-line text-muted me-2"></i>
+                                            <div>
+                                                <span class="fw-medium">{{ employee.user.role.display_name }}</span>
+                                                {% if employee.grade_level %}
+                                                <br><small class="text-muted">{{ employee.get_grade_level_display }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">
+                                            <i class="ri-question-line me-1"></i>No Role
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <i class="ri-mail-line text-muted me-2"></i>
+                                        <span class="fw-medium">{{ employee.user.email }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if employee.phone_number %}
+                                    <div class="d-flex align-items-center">
+                                        <i class="ri-phone-line text-muted me-2"></i>
+                                        <span class="fw-medium">{{ employee.phone_number }}</span>
+                                    </div>
+                                    {% else %}
+                                        <span class="text-muted">
+                                            <i class="ri-question-line me-1"></i>Not Set
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if employee.employment_status == 'PROBATION' %}
+                                        <span class="badge bg-warning-subtle text-warning">
+                                            <i class="ri-time-line me-1"></i>Probation
+                                        </span>
+                                        {% if employee.probation_end_date %}
+                                        <br><small class="text-muted">Ends: {{ employee.probation_end_date|date:"M d, Y" }}</small>
+                                        {% endif %}
+                                    {% elif employee.employment_status == 'CONFIRMED' %}
+                                        <span class="badge bg-success-subtle text-success">
+                                            <i class="ri-check-line me-1"></i>Confirmed
+                                        </span>
+                                        {% if employee.confirmation_date %}
+                                        <br><small class="text-muted">Since: {{ employee.confirmation_date|date:"M d, Y" }}</small>
+                                        {% endif %}
+                                    {% elif employee.employment_status == 'CONTRACT' %}
+                                        <span class="badge bg-info-subtle text-info">
+                                            <i class="ri-file-text-line me-1"></i>Contract
+                                        </span>
+                                    {% elif employee.employment_status == 'INTERN' %}
+                                        <span class="badge bg-purple-subtle text-purple">
+                                            <i class="ri-graduation-cap-line me-1"></i>Intern
+                                        </span>
+                                    {% elif employee.employment_status == 'CONSULTANT' %}
+                                        <span class="badge bg-orange-subtle text-orange">
+                                            <i class="ri-briefcase-line me-1"></i>Consultant
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary-subtle text-secondary">
+                                            {{ employee.get_employment_status_display }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if employee.user.hire_date %}
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-medium">{{ employee.user.hire_date|date:"M d, Y" }}</span>
+                                            <small class="text-muted">
+                                                <i class="ri-calendar-line me-1"></i>{{ employee.years_of_service|floatformat:1 }} years
+                                            </small>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">Not Set</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="ri-more-2-fill"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li>
+                                                <a class="dropdown-item" href="{% url 'accounts:employee_detail' employee.pk %}">
+                                                    <i class="ri-eye-line me-2 text-primary"></i>View Details
+                                                </a>
+                                            </li>
+                                            {% if can_add_employee %}
+                                            <li>
+                                                <a class="dropdown-item" href="{% url 'accounts:employee_update' employee.pk %}">
+                                                    <i class="ri-edit-line me-2 text-info"></i>Edit Employee
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item" href="{% url 'accounts:employee_delete' employee.pk %}" onclick="return confirm('Are you sure you want to delete this employee?')">
+                                                    <i class="ri-delete-bin-line me-2 text-danger"></i>Delete Employee
+                                                </a>
+                                            </li>
+                                            {% endif %}
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="10" class="text-center py-5">
+                                    <div class="d-flex flex-column align-items-center">
+                                        <div class="avatar-lg mb-3">
+                                            <div class="avatar-title bg-light text-muted rounded-circle">
+                                                <i class="ri-team-line fs-24"></i>
+                                            </div>
+                                        </div>
+                                        <h6 class="mb-1">No Employees Found</h6>
+                                        <p class="text-muted mb-0">No employees match your current search criteria.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% if employees %}
+            <div class="card-footer border-top bg-light">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center text-muted">
+                            <i class="ri-information-line me-2"></i>
+                            Showing {{ employees.start_index|default:0 }} to {{ employees.end_index|default:0 }} of {{ total_employees|default:0 }} employees
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        {% if employees.has_other_pages %}
+                        <nav aria-label="Employee pagination" class="d-flex justify-content-end">
+                            <ul class="pagination pagination-sm mb-0">
+                                {% if employees.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ employees.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.department %}&department={{ request.GET.department }}{% endif %}{% if request.GET.employment_status %}&employment_status={{ request.GET.employment_status }}{% endif %}">
+                                        <i class="ri-arrow-left-s-line"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for num in employees.paginator.page_range %}
+                                    {% if employees.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                    {% elif num > employees.number|add:'-3' and num < employees.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.department %}&department={{ request.GET.department }}{% endif %}{% if request.GET.employment_status %}&employment_status={{ request.GET.employment_status }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if employees.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ employees.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.department %}&department={{ request.GET.department }}{% endif %}{% if request.GET.employment_status %}&employment_status={{ request.GET.employment_status }}{% endif %}">
+                                        <i class="ri-arrow-right-s-line"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if can_add_employee %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-dashed border-2">
+            <div class="card-body text-center">
+                <div class="row align-items-center">
+                    <div class="col-md-8 text-start">
+                        <h6 class="mb-1">
+                            <i class="ri-settings-3-line me-2 text-primary"></i>Bulk Operations
+                        </h6>
+                        <p class="text-muted mb-0">Select employees above to perform bulk actions on multiple records</p>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="btn-group" id="bulkActions" style="display: none;">
+                            <button type="button" class="btn btn-outline-success btn-sm" onclick="bulkAction('confirm')">
+                                <i class="ri-check-line me-1"></i>Confirm
+                            </button>
+                            <button type="button" class="btn btn-outline-warning btn-sm" onclick="bulkAction('deactivate')">
+                                <i class="ri-pause-line me-1"></i>Deactivate
+                            </button>
+                            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#bulkSalaryModal">
+                                <i class="ri-money-dollar-line me-1"></i>Update Salary
+                            </button>
+                        </div>
+                        <div id="bulkInfo" class="text-muted small">
+                            <i class="ri-information-line me-1"></i>Select employees to see bulk actions
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="bulkSalaryModal" tabindex="-1" aria-labelledby="bulkSalaryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary-subtle">
+                <h5 class="modal-title" id="bulkSalaryModalLabel">
+                    <i class="ri-money-dollar-line me-2"></i>Bulk Salary Update
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="bulkSalaryForm" method="POST" action="{% url 'employee:bulk_salary_update' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="ri-information-line me-2"></i>
+                        <strong>Selected Employees:</strong> <span id="selectedCount">0</span>
+                    </div>
+                    <div class="mb-3">
+                        <label for="percentageIncrease" class="form-label">Percentage Increase (%)</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="percentageIncrease" name="percentage_increase" 
+                                   min="0" max="100" step="0.1" required placeholder="Enter percentage">
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <div class="form-text">
+                            <i class="ri-lightbulb-line me-1"></i>
+                            Enter the percentage increase to apply to selected employees' basic salary
+                        </div>
+                    </div>
+                    <input type="hidden" id="selectedEmployeeIds" name="employee_ids">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="ri-close-line me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="ri-check-line me-1"></i>Update Salaries
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="bulkActionModal" tabindex="-1" aria-labelledby="bulkActionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkActionModalLabel">
+                    <i class="ri-settings-3-line me-2"></i>Bulk Action Confirmation
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <div class="avatar-lg mx-auto mb-3">
+                        <div class="avatar-title bg-primary-subtle text-primary rounded-circle">
+                            <i class="ri-team-line fs-24"></i>
+                        </div>
+                    </div>
+                    <h6 class="mb-1" id="bulkActionTitle">Confirm Bulk Action</h6>
+                    <p class="text-muted" id="bulkActionDescription">This action will be applied to selected employees.</p>
+                </div>
+                <div class="alert alert-info">
+                    <i class="ri-information-line me-2"></i>
+                    <strong>Selected Employees:</strong> <span id="bulkSelectedCount">0</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="ri-close-line me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-primary" id="confirmBulkAction">
+                    <i class="ri-check-line me-1"></i>Confirm Action
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block script %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="/static/assets/libs/air-datepicker/air-datepicker.js"></script>
+<script src="/static/assets/libs/datatables.net/js/jquery.dataTables.min.js"></script>
+<script src="/static/assets/libs/datatables.net-bs5/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const employeeCheckboxes = document.querySelectorAll('.employee-checkbox');
+    const bulkActions = document.getElementById('bulkActions');
+    const bulkInfo = document.getElementById('bulkInfo');
+    const searchInput = document.getElementById('searchInput');
+    const searchForm = document.getElementById('searchForm');
+    
+    let searchTimeout;
+    let selectedEmployees = [];
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                searchForm.submit();
+            }, 800);
+        });
+    }
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            const isChecked = this.checked;
+            employeeCheckboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+            updateBulkActions();
+        });
+    }
+    
+    employeeCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            updateSelectAllState();
+            updateBulkActions();
+        });
+    });
+    
+    function updateSelectAllState() {
+        const checkedBoxes = document.querySelectorAll('.employee-checkbox:checked');
+        const totalBoxes = employeeCheckboxes.length;
+        
+        if (checkedBoxes.length === 0) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = false;
+        } else if (checkedBoxes.length === totalBoxes) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = true;
+        } else {
+            selectAllCheckbox.indeterminate = true;
+            selectAllCheckbox.checked = false;
+        }
+    }
+    
+    function updateBulkActions() {
+        const checkedBoxes = document.querySelectorAll('.employee-checkbox:checked');
+        selectedEmployees = Array.from(checkedBoxes).map(cb => cb.value);
+        
+        if (selectedEmployees.length > 0) {
+            bulkActions.style.display = 'block';
+            bulkInfo.style.display = 'none';
+            
+            const countElements = document.querySelectorAll('#selectedCount, #bulkSelectedCount');
+            countElements.forEach(el => el.textContent = selectedEmployees.length);
+            
+            const selectedIdsInput = document.getElementById('selectedEmployeeIds');
+            if (selectedIdsInput) {
+                selectedIdsInput.value = selectedEmployees.join(',');
+            }
+        } else {
+            bulkActions.style.display = 'none';
+            bulkInfo.style.display = 'block';
+        }
+    }
+    
+    window.bulkAction = function(action) {
+        if (selectedEmployees.length === 0) {
+            alert('Please select employees first.');
+            return;
+        }
+        
+        const modal = new bootstrap.Modal(document.getElementById('bulkActionModal'));
+        const titleEl = document.getElementById('bulkActionTitle');
+        const descEl = document.getElementById('bulkActionDescription');
+        const confirmBtn = document.getElementById('confirmBulkAction');
+        
+        if (action === 'confirm') {
+            titleEl.textContent = 'Confirm Employees';
+            descEl.textContent = 'This will change the employment status of selected employees to "Confirmed".';
+            confirmBtn.onclick = () => submitBulkAction('{% url "employee:bulk_confirm_employees" %}');
+        } else if (action === 'deactivate') {
+            titleEl.textContent = 'Deactivate Employees';
+            descEl.textContent = 'This will deactivate the selected employees. They will no longer appear in active employee lists.';
+            confirmBtn.onclick = () => submitBulkAction('{% url "employee:bulk_deactivate_employees" %}');
+        }
+        
+        modal.show();
+    };
+    
+    function submitBulkAction(url) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+        
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        selectedEmployees.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'employee_ids';
+            input.value = id;
+            form.appendChild(input);
+        });
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+    
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}
+
+

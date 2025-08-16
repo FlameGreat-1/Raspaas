@@ -1,0 +1,695 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+{% load file_filters %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Contract Details" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Human Resources" title="Contract Details"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0 me-3">
+                                <div class="avatar-lg">
+                                    <span class="avatar-title rounded-circle bg-primary-subtle text-primary fs-24">
+                                        <i class="ri-file-text-line"></i>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h4 class="mb-1 fw-bold">{{ contract.contract_number }}</h4>
+                                <p class="text-muted mb-1">
+                                    <span class="badge bg-info-subtle text-info me-2">{{ contract.get_contract_type_display }}</span>
+                                    {% if contract.status == 'ACTIVE' %}
+                                        <span class="badge bg-success-subtle text-success">
+                                            <i class="ri-check-line me-1"></i>{{ contract.get_status_display }}
+                                        </span>
+                                    {% elif contract.status == 'DRAFT' %}
+                                        <span class="badge bg-warning-subtle text-warning">
+                                            <i class="ri-draft-line me-1"></i>{{ contract.get_status_display }}
+                                        </span>
+                                    {% elif contract.status == 'EXPIRED' %}
+                                        <span class="badge bg-danger-subtle text-danger">
+                                            <i class="ri-time-line me-1"></i>{{ contract.get_status_display }}
+                                        </span>
+                                    {% elif contract.status == 'TERMINATED' %}
+                                        <span class="badge bg-dark-subtle text-dark">
+                                            <i class="ri-close-line me-1"></i>{{ contract.get_status_display }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary-subtle text-secondary">
+                                            {{ contract.get_status_display }}
+                                        </span>
+                                    {% endif %}
+                                </p>
+                                <div class="d-flex gap-3">
+                                    <span class="text-muted small">
+                                        <i class="ri-user-line me-1"></i>{{ contract.employee.get_full_name }}
+                                    </span>
+                                    <span class="text-muted small">
+                                        <i class="ri-building-line me-1"></i>{{ contract.department.name }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="d-flex gap-2 justify-content-end">
+                            {% if contract.status == 'DRAFT' or contract.status == 'ACTIVE' %}
+                            <a href="{% url 'employee:contract_update' contract.pk %}" class="btn btn-outline-primary">
+                                <i class="ri-edit-line me-1"></i>Edit Contract
+                            </a>
+                            {% endif %}
+                            {% if contract.status == 'DRAFT' %}
+                            <form method="post" action="{% url 'employee:activate_contract' contract.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success">
+                                    <i class="ri-play-line me-1"></i>Activate
+                                </button>
+                            </form>
+                            {% endif %}
+                            <a href="{% url 'employee:contract_list' %}" class="btn btn-outline-secondary">
+                                <i class="ri-arrow-left-line me-1"></i>Back to List
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-user-line me-2 text-primary"></i>Employee Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Employee Name</label>
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0 me-3">
+                                {% if contract.employee.profile_picture %}
+                                    <img src="{{ contract.employee.profile_picture.url }}" alt="{{ contract.employee.get_full_name }}" class="avatar-sm rounded-circle">
+                                {% else %}
+                                    <div class="avatar-sm">
+                                        <span class="avatar-title rounded-circle bg-primary-subtle text-primary">
+                                            {{ contract.employee.first_name|first|upper }}{{ contract.employee.last_name|first|upper }}
+                                        </span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="fw-medium mb-0">{{ contract.employee.get_full_name }}</p>
+                                <small class="text-muted">{{ contract.employee.employee_code }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Email Address</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-mail-line me-2 text-muted"></i>{{ contract.employee.email }}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Department</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-building-line me-2 text-muted"></i>{{ contract.department.name }}
+                            {% if contract.department.code %}
+                            <br><small class="text-muted">{{ contract.department.code }}</small>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Job Title</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-briefcase-line me-2 text-muted"></i>{{ contract.job_title }}
+                        </p>
+                    </div>
+                    {% if contract.reporting_manager %}
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Reporting Manager</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-user-star-line me-2 text-muted"></i>{{ contract.reporting_manager.get_full_name }}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-calendar-line me-2 text-primary"></i>Contract Duration
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Start Date</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-calendar-check-line me-2 text-muted"></i>{{ contract.start_date|date:"M d, Y" }}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">End Date</label>
+                        <p class="fw-medium mb-0">
+                            {% if contract.end_date %}
+                                <i class="ri-calendar-close-line me-2 text-muted"></i>{{ contract.end_date|date:"M d, Y" }}
+                                {% if contract.days_remaining %}
+                                    {% if contract.days_remaining <= 30 %}
+                                        <br><small class="text-warning">
+                                            <i class="ri-alarm-warning-line me-1"></i>{{ contract.days_remaining }} days remaining
+                                        </small>
+                                    {% else %}
+                                        <br><small class="text-muted">{{ contract.days_remaining }} days remaining</small>
+                                    {% endif %}
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">Ongoing Contract</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% if contract.signed_date %}
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Signed Date</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-pen-nib-line me-2 text-muted"></i>{{ contract.signed_date|date:"M d, Y" }}
+                        </p>
+                    </div>
+                    {% endif %}
+                    {% if contract.contract_duration_days %}
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Contract Duration</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-time-line me-2 text-muted"></i>{{ contract.contract_duration_days }} days
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-money-dollar-line me-2 text-primary"></i>Salary & Compensation
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Basic Salary</label>
+                        <p class="fw-medium mb-0 text-success fs-18">
+                            <i class="ri-money-dollar-line me-2"></i>${{ contract.basic_salary|floatformat:2 }}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Working Hours</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-time-line me-2 text-muted"></i>{{ contract.working_hours }} hours/day
+                        </p>
+                    </div>
+                    {% if contract.salary_breakdown %}
+                    <div class="col-md-12">
+                        <label class="form-label text-muted small">Salary Breakdown</label>
+                        <div class="border rounded p-3 bg-light">
+                            {% for key, value in contract.salary_breakdown.items %}
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">{{ key|title }}:</span>
+                                <span class="fw-medium">${{ value|floatformat:2 }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-file-list-line me-2 text-primary"></i>Contract Terms & Conditions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Probation Period</label>
+                        <p class="fw-medium mb-0">
+                            {% if contract.probation_period_months > 0 %}
+                                <i class="ri-time-line me-2 text-muted"></i>{{ contract.probation_period_months }} month{{ contract.probation_period_months|pluralize }}
+                            {% else %}
+                                <span class="text-muted">No probation period</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Notice Period</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-calendar-line me-2 text-muted"></i>{{ contract.notice_period_days }} day{{ contract.notice_period_days|pluralize }}
+                        </p>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label text-muted small">Terms & Conditions</label>
+                        <div class="border rounded p-3 bg-light">
+                            <p class="mb-0">{{ contract.terms_and_conditions|linebreaks }}</p>
+                        </div>
+                    </div>
+                    {% if contract.benefits %}
+                    <div class="col-md-12">
+                        <label class="form-label text-muted small">Benefits</label>
+                        <div class="border rounded p-3 bg-success-subtle">
+                            <p class="mb-0 text-success">{{ contract.benefits|linebreaks }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if contract.contract_file %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-attachment-line me-2 text-primary"></i>Contract Document
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center p-3 border rounded bg-light">
+                    <div class="flex-shrink-0 me-3">
+                        <div class="avatar-sm">
+                            <div class="avatar-title bg-primary-subtle text-primary rounded-circle">
+                                <i class="ri-file-pdf-line"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">Contract Document</h6>
+                        <p class="text-muted mb-0 small">{{ contract.contract_file.name|basename }}</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <a href="{{ contract.contract_file.url }}" class="btn btn-outline-primary btn-sm" target="_blank">
+                            <i class="ri-download-line me-1"></i>Download
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-information-line me-2 text-primary"></i>Contract Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="flex-shrink-0 me-3">
+                        <div class="avatar-sm">
+                            {% if contract.status == 'ACTIVE' %}
+                                <div class="avatar-title bg-success-subtle text-success rounded-circle">
+                                    <i class="ri-check-line"></i>
+                                </div>
+                            {% elif contract.status == 'DRAFT' %}
+                                <div class="avatar-title bg-warning-subtle text-warning rounded-circle">
+                                    <i class="ri-draft-line"></i>
+                                </div>
+                            {% elif contract.status == 'EXPIRED' %}
+                                <div class="avatar-title bg-danger-subtle text-danger rounded-circle">
+                                    <i class="ri-time-line"></i>
+                                </div>
+                            {% else %}
+                                <div class="avatar-title bg-secondary-subtle text-secondary rounded-circle">
+                                    <i class="ri-file-line"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">Current Status</h6>
+                        <p class="text-muted mb-0 small">{{ contract.get_status_display }}</p>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center mb-3">
+                    <div class="flex-shrink-0 me-3">
+                        <div class="avatar-sm">
+                            <div class="avatar-title bg-info-subtle text-info rounded-circle">
+                                <i class="ri-file-text-line"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">Contract Type</h6>
+                        <p class="text-muted mb-0 small">{{ contract.get_contract_type_display }}</p>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center mb-3">
+                    <div class="flex-shrink-0 me-3">
+                        <div class="avatar-sm">
+                            <div class="avatar-title bg-primary-subtle text-primary rounded-circle">
+                                <i class="ri-calendar-line"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">Created Date</h6>
+                        <p class="text-muted mb-0 small">{{ contract.created_at|date:"M d, Y H:i" }}</p>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center">
+                    <div class="flex-shrink-0 me-3">
+                        <div class="avatar-sm">
+                            <div class="avatar-title bg-secondary-subtle text-secondary rounded-circle">
+                                <i class="ri-user-line"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">Created By</h6>
+                        <p class="text-muted mb-0 small">
+                            {% if contract.created_by %}
+                                {{ contract.created_by.get_full_name }}
+                            {% else %}
+                                System
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if contract.status == 'ACTIVE' %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-settings-line me-2 text-primary"></i>Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#renewModal">
+                        <i class="ri-refresh-line me-1"></i>Renew Contract
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#terminateModal">
+                        <i class="ri-stop-line me-1"></i>Terminate Contract
+                    </button>
+                    <a href="{% url 'employee:employee_detail' contract.employee.employee_profile.pk %}" class="btn btn-outline-primary btn-sm">
+                        <i class="ri-user-line me-1"></i>View Employee
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if contract.status == 'TERMINATED' %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-close-circle-line me-2 text-danger"></i>Termination Details
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-danger border-0">
+                    <div class="d-flex align-items-start">
+                        <div class="flex-shrink-0 me-3">
+                            <i class="ri-alert-line fs-20"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="alert-heading mb-2">Contract Terminated</h6>
+                            {% if contract.termination_date %}
+                            <p class="mb-1"><strong>Termination Date:</strong> {{ contract.termination_date|date:"M d, Y H:i" }}</p>
+                            {% endif %}
+                            {% if contract.terminated_by %}
+                            <p class="mb-1"><strong>Terminated By:</strong> {{ contract.terminated_by.get_full_name }}</p>
+                            {% endif %}
+                            {% if contract.termination_reason %}
+                            <p class="mb-0"><strong>Reason:</strong> {{ contract.termination_reason }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-history-line me-2 text-primary"></i>Contract History
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-primary"></div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">Contract Created</h6>
+                            <p class="text-muted mb-0 small">{{ contract.created_at|date:"M d, Y H:i" }}</p>
+                        </div>
+                    </div>
+                    {% if contract.signed_date %}
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-success"></div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">Contract Signed</h6>
+                            <p class="text-muted mb-0 small">{{ contract.signed_date|date:"M d, Y" }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if contract.status == 'ACTIVE' %}
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-success"></div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">Contract Activated</h6>
+                            <p class="text-muted mb-0 small">{{ contract.start_date|date:"M d, Y" }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if contract.status == 'TERMINATED' %}
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-danger"></div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1">Contract Terminated</h6>
+                            <p class="text-muted mb-0 small">{{ contract.termination_date|date:"M d, Y H:i" }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if contract.status == 'ACTIVE' %}
+<div class="modal fade" id="renewModal" tabindex="-1" aria-labelledby="renewModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="renewModalLabel">Renew Contract</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <div class="avatar-lg mx-auto mb-3">
+                        <div class="avatar-title bg-warning-subtle text-warning rounded-circle">
+                            <i class="ri-refresh-line fs-24"></i>
+                        </div>
+                    </div>
+                    <h5 class="mb-3">Renew Contract</h5>
+                    <p class="text-muted mb-0">Are you sure you want to renew contract <strong>{{ contract.contract_number }}</strong> for <strong>{{ contract.employee.get_full_name }}</strong>?</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <a href="{% url 'employee:contract_renewal' contract.pk %}" class="btn btn-warning">
+                    <i class="ri-refresh-line me-1"></i>Proceed to Renewal
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="terminateModal" tabindex="-1" aria-labelledby="terminateModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="terminateModalLabel">Terminate Contract</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'employee:terminate_contract' contract.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <div class="avatar-lg mx-auto mb-3">
+                            <div class="avatar-title bg-danger-subtle text-danger rounded-circle">
+                                <i class="ri-alert-line fs-24"></i>
+                            </div>
+                        </div>
+                        <h5 class="mb-3">Terminate Contract</h5>
+                        <p class="text-muted mb-0">This will terminate contract <strong>{{ contract.contract_number }}</strong> for <strong>{{ contract.employee.get_full_name }}</strong>.</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Termination Reason <span class="text-danger">*</span></label>
+                        <textarea class="form-control" name="termination_reason" rows="3" placeholder="Please provide reason for termination..." required></textarea>
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="ri-alert-line me-2"></i>
+                        <strong>Warning:</strong> This action cannot be undone. The contract will be marked as terminated.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="ri-stop-line me-1"></i>Terminate Contract
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if messages %}
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+    {% for message in messages %}
+    <div class="toast align-items-center text-white bg-{{ message.tags }} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+        <div class="d-flex">
+            <div class="toast-body">
+                {% if message.tags == 'success' %}
+                    <i class="ri-check-line me-2"></i>
+                {% elif message.tags == 'error' %}
+                    <i class="ri-error-warning-line me-2"></i>
+                {% elif message.tags == 'warning' %}
+                    <i class="ri-alert-line me-2"></i>
+                {% else %}
+                    <i class="ri-information-line me-2"></i>
+                {% endif %}
+                {{ message }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block script %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="/static/assets/libs/air-datepicker/air-datepicker.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toastElList = [].slice.call(document.querySelectorAll('.toast'));
+    const toastList = toastElList.map(function(toastEl) {
+        return new bootstrap.Toast(toastEl);
+    });
+    toastList.forEach(toast => toast.show());
+
+    const activateButton = document.querySelector('form[action*="activate"] button[type="submit"]');
+    if (activateButton) {
+        activateButton.addEventListener('click', function(e) {
+            if (!confirm('Are you sure you want to activate this contract? This action will make the contract active and binding.')) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    const terminateModal = document.getElementById('terminateModal');
+    if (terminateModal) {
+        const form = terminateModal.querySelector('form');
+        const textarea = terminateModal.querySelector('textarea[name="termination_reason"]');
+        
+        form.addEventListener('submit', function(e) {
+            if (!textarea.value.trim()) {
+                e.preventDefault();
+                textarea.focus();
+                alert('Please provide a termination reason.');
+            }
+        });
+    }
+
+    const timelineItems = document.querySelectorAll('.timeline-item');
+    timelineItems.forEach((item, index) => {
+        setTimeout(() => {
+            item.style.opacity = '1';
+            item.style.transform = 'translateY(0)';
+        }, index * 200);
+    });
+});
+</script>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e9ecef;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -22px;
+    top: 5px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #e9ecef;
+}
+
+.timeline-content {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 3px solid #0d6efd;
+}
+</style>
+
+{% endblock %}
+
+

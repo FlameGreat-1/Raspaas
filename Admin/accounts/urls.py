@@ -78,15 +78,12 @@ urlpatterns = [
     path('users/<int:user_id>/activity-log/', views.user_activity_log_view, name='user_activity_log'),
     path('activity-log/', views.user_activity_log_view, name='my_activity_log'),
     
-    # System Configuration URLs
-    path('system-config/', views.SystemConfigurationListView.as_view(), name='system_config_list'),
-    path('system-config/create/', views.SystemConfigurationCreateView.as_view(), name='system_config_create'),
-    path('system-config/<int:config_id>/', views.SystemConfigurationDetailView.as_view(), name='system_config_detail'),
-    path('system-config/<int:config_id>/edit/', views.SystemConfigurationUpdateView.as_view(), name='system_config_update'),
+    # System Configuration URLs - Single View Approach
+    path('system-config/', views.SystemConfigurationView.as_view(), name='system_config'),
+    path('system-config/<str:action>/', views.SystemConfigurationView.as_view(), name='system_config'),
+    path('system-config/<str:action>/<int:config_id>/', views.SystemConfigurationView.as_view(), name='system_config'),
     
     # System Administration URLs
-    path('system-stats/', views.system_statistics_view, name='system_statistics'),
-    path('system-maintenance/', views.system_maintenance_view, name='system_maintenance'),
     path('system-init/', views.system_initialization_view, name='system_initialization'),
     
     # Audit Log URLs

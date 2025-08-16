@@ -19,8 +19,8 @@
     <div class="col-xl-9">
         <div class="card">
             <div class="card-header pb-0">
-                <h4>Employee Overview</h4>
-                <a href="{% url 'employee:employee_list' %}" class="link">View All</a>
+                <h4>System Overview</h4>
+                <a href="{% url 'accounts:employee_list' %}" class="link">View All</a>
             </div>
             <div class="card-body">
                 <div class="row gy-6">
@@ -41,21 +41,21 @@
                     <div class="col-md-6 col-xl-3">
                         <div class="card border shadow-none mb-0">
                             <div class="card-body">
-                                <div class="h-50px w-50px position-relative d-flex justify-content-center align-items-center text-primary bg-light-subtle rounded-2 fs-4">
+                                <div class="h-50px w-50px position-relative d-flex justify-content-center align-items-center text-success bg-success-subtle rounded-2 fs-4">
                                     <i class="ri-building-line"></i>
                                 </div>
                                 <h2 class="mt-8 mb-2 fs-24 fw-semibold">
                                     <span class="counter-value" data-target="{{ total_departments|default:0 }}">{{ total_departments|default:0 }}</span>
                                 </h2>
                                 <p class="mb-0 text-truncate fs-16 mb-1">Departments</p>
-                                <span class="text-primary">{{ total_roles|default:0 }} Roles</span>
+                                <span class="text-success">{{ total_roles|default:0 }} Roles</span>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-6 col-xl-3">
                         <div class="card border shadow-none mb-0">
                             <div class="card-body">
-                                <div class="h-50px w-50px position-relative d-flex justify-content-center align-items-center text-primary bg-light-subtle rounded-2 fs-4">
+                                <div class="h-50px w-50px position-relative d-flex justify-content-center align-items-center text-warning bg-warning-subtle rounded-2 fs-4">
                                     <i class="ri-file-text-line"></i>
                                 </div>
                                 <h2 class="mt-8 mb-2 fs-24 fw-semibold">
@@ -69,14 +69,14 @@
                     <div class="col-md-6 col-xl-3">
                         <div class="card border shadow-none mb-0">
                             <div class="card-body">
-                                <div class="h-50px w-50px position-relative d-flex justify-content-center align-items-center text-primary bg-light-subtle rounded-2 fs-4">
-                                    <i class="ri-time-line"></i>
+                                <div class="h-50px w-50px position-relative d-flex justify-content-center align-items-center text-info bg-info-subtle rounded-2 fs-4">
+                                    <i class="ri-shield-check-line"></i>
                                 </div>
                                 <h2 class="mt-8 mb-2 fs-24 fw-semibold">
-                                    <span class="counter-value" data-target="{{ probation_ending|default:0 }}">{{ probation_ending|default:0 }}</span>
+                                    <span class="counter-value" data-target="{{ session_analytics.active_sessions|default:0 }}">{{ session_analytics.active_sessions|default:0 }}</span>
                                 </h2>
-                                <p class="mb-0 text-truncate fs-16 mb-1">Probation Ending</p>
-                                <span class="text-info">Next 30 Days</span>
+                                <p class="mb-0 text-truncate fs-16 mb-1">Active Sessions</p>
+                                <span class="text-info">Current Users</span>
                             </div>
                         </div>
                     </div>
@@ -87,93 +87,80 @@
     <div class="col-xl-3">
         <div class="card card-h-100">
             <div class="card-header">
-                <h4>Employment Status</h4>
+                <h4>User Status Distribution</h4>
             </div>
             <div class="card-body">
-                <div id="level-chart"></div>
-                <div class="row">
-                    <div class="col-6 py-1 border-end">
-                        <ul class="list-unstyled mb-0">
-                            <li><i class="bi bi-circle-fill me-2 text-primary"></i>Active</li>
-                        </ul>
-                    </div>
+                <div id="user-status-chart"></div>
+                <div class="row mt-3">
+                    {% for status in user_analytics.status_distribution %}
                     <div class="col-6 py-1">
-                        <ul class="d-flex justify-content-end list-unstyled mb-0">
-                            <li><i class="bi bi-circle-fill me-2 text-light"></i>Probation</li>
+                        <ul class="list-unstyled mb-0">
+                            <li class="d-flex align-items-center">
+                                <i class="bi bi-circle-fill me-2 {% if status.status == 'ACTIVE' %}text-success{% elif status.status == 'INACTIVE' %}text-danger{% elif status.status == 'SUSPENDED' %}text-warning{% else %}text-secondary{% endif %}"></i>
+                                <span class="small">{{ status.status|title }} ({{ status.count }})</span>
+                            </li>
                         </ul>
                     </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
     </div>
+</div>
+
+<div class="row">
     <div class="col-xl-8">
         <div class="card">
             <div class="card-header">
-                <h4>Monthly Employee Hiring Trends</h4>
+                <h4>Department Analytics</h4>
+                <a href="{% url 'accounts:department_list' %}" class="link">View All</a>
             </div>
             <div class="card-body">
-                <div id="transaction"></div>
+                <div id="department-chart"></div>
+                <div class="row mt-4">
+                    {% for dept in department_analytics.employee_distribution|slice:":6" %}
+                    <div class="col-md-4 col-sm-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar avatar-sm me-3">
+                                <span class="avatar-title bg-primary-subtle text-primary rounded-circle">
+                                    {{ dept.name|first }}
+                                </span>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">{{ dept.name }}</h6>
+                                <small class="text-muted">{{ dept.employee_count }} employees</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>
     <div class="col-xl-4">
         <div class="card">
             <div class="card-header">
-                <h4>Salary Overview</h4>
+                <h4>Role Distribution</h4>
+                <a href="{% url 'accounts:role_list' %}" class="link">View All</a>
             </div>
             <div class="card-body">
-                <div id="overview"></div>
-                <div class="row">
-                    <div class="col-6 py-1">
-                        <ul class="list-unstyled mb-0">
-                            <li class="d-flex justify-content-end">
-                                <i class="bi bi-circle-fill me-2 text-primary"></i>
-                                <div>
-                                    <h5 class="fs-18">${{ salary_analysis.average_salary|default:"0"|floatformat:2 }}</h5>
-                                    <p class="fs-18 mb-0">Avg Salary</p>
-                                </div>
-                            </li>
-                        </ul>
+                <div id="role-chart"></div>
+                <div class="mt-3">
+                    {% for role in role_analytics.role_distribution|slice:":5" %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small">{{ role.display_name|default:"Unknown" }}</span>
+                        <span class="badge bg-primary-subtle text-primary">{{ role.user_count }}</span>
                     </div>
-                    <div class="col-6 py-1">
-                        <ul class="list-unstyled mb-0">
-                            <li class="d-flex">
-                                <i class="bi bi-circle-fill me-2 text-primary opacity-25"></i>
-                                <div>
-                                    <h5 class="fs-18">${{ salary_analysis.total_payroll|default:"0"|floatformat:2 }}</h5>
-                                    <p class="fs-18 mb-0">Total Payroll</p>
-                                </div>
-                            </li>
-                        </ul>
-                    </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 <div class="row">
     <div class="col-xl-6">
         <div class="row">
-            <div class="col-lg-12">
-                <div class="card">
-                    <div class="card-header">
-                        <div>
-                            <h4 class="flex-grow-1">Department Distribution</h4>
-                            <p class="mb-0 fs-14"><span class="text-success">{{ employee_stats.active_employees|default:0 }}</span> Active Employees</p>
-                        </div>
-                        <a href="{% url 'employee:department_list' %}" class="link">View All</a>
-                    </div>
-                    <div class="card-body">
-                        <div class="d-flex">
-                            <div class="mt-auto">
-                                <h5>{{ total_departments|default:0 }}</h5>
-                                <p class="text-nowrap">Total Departments</p>
-                            </div>
-                            <div id="world-map" class="min-h-320px"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
             <div class="col-lg-12">
                 <div class="card">
                     <div class="card-header flex-wrap gap-4">
@@ -244,8 +231,8 @@
                                                     <i class="bi bi-three-dots-vertical"></i>
                                                 </button>
                                                 <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="{% url 'employee:employee_detail' employee.pk %}">View</a></li>
-                                                    <li><a class="dropdown-item" href="{% url 'employee:employee_update' employee.pk %}">Edit</a></li>
+                                                    <li><a class="dropdown-item" href="{% url 'accounts:employee_detail' employee.user.pk %}">View</a></li>
+                                                    <li><a class="dropdown-item" href="{% url 'accounts:employee_update' employee.user.pk %}">Edit</a></li>
                                                 </ul>
                                             </div>
                                         </td>
@@ -269,7 +256,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h4>Notifications & Alerts</h4>
-                        <a href="{% url 'employee:probation_report' %}" class="link">View All</a>
+                        <a href="{% url 'accounts:audit_logs' %}" class="link">View All</a>
                     </div>
                     <div class="card-body">
                         <div class="list-group list-group-flush">
@@ -348,22 +335,22 @@
                     <div class="card-body">
                         <div class="row g-3">
                             <div class="col-6">
-                                <a href="{% url 'employee:employee_create' %}" class="btn btn-primary w-100">
+                                <a href="{% url 'accounts:employee_create' %}" class="btn btn-primary w-100">
                                     <i class="ri-user-add-line me-2"></i>Add Employee
                                 </a>
                             </div>
                             <div class="col-6">
-                                <a href="{% url 'employee:contract_create' %}" class="btn btn-outline-primary w-100">
-                                    <i class="ri-file-add-line me-2"></i>New Contract
+                                <a href="{% url 'accounts:department_create' %}" class="btn btn-outline-primary w-100">
+                                    <i class="ri-building-add-line me-2"></i>New Department
                                 </a>
                             </div>
                             <div class="col-6">
-                                <a href="{% url 'employee:bulk_employee_upload' %}" class="btn btn-outline-secondary w-100">
+                                <a href="{% url 'accounts:bulk_employee_upload' %}" class="btn btn-outline-secondary w-100">
                                     <i class="ri-upload-line me-2"></i>Bulk Import
                                 </a>
                             </div>
                             <div class="col-6">
-                                <a href="{% url 'employee:export_employees_excel' %}" class="btn btn-outline-success w-100">
+                                <a href="{% url 'accounts:employee_export' %}" class="btn btn-outline-success w-100">
                                     <i class="ri-download-line me-2"></i>Export Data
                                 </a>
                             </div>
@@ -374,14 +361,15 @@
         </div>
     </div>
 </div>
+
 <div class="row">
     <div class="col-xl-12">
         <div class="card">
             <div class="card-header">
                 <h4>System Statistics</h4>
                 <div class="d-flex gap-2">
-                    <a href="{% url 'accounts:system_statistics' %}" class="btn btn-sm btn-outline-primary">
-                        <i class="ri-bar-chart-line me-1"></i>Detailed Stats
+                    <a href="{% url 'accounts:user_sessions' %}" class="btn btn-sm btn-outline-primary">
+                        <i class="ri-shield-check-line me-1"></i>Sessions
                     </a>
                     <a href="{% url 'accounts:audit_logs' %}" class="btn btn-sm btn-outline-secondary">
                         <i class="ri-file-list-line me-1"></i>Audit Logs
@@ -411,10 +399,10 @@
                     <div class="col-md-3">
                         <div class="text-center">
                             <div class="h-60px w-60px mx-auto d-flex justify-content-center align-items-center text-info bg-info-subtle rounded-circle fs-3 mb-3">
-                                <i class="ri-contract-line"></i>
+                                <i class="ri-shield-check-line"></i>
                             </div>
-                            <h4 class="mb-1">{{ contract_stats.total_contracts|default:0 }}</h4>
-                            <p class="text-muted mb-0">Total Contracts</p>
+                            <h4 class="mb-1">{{ session_analytics.active_sessions|default:0 }}</h4>
+                            <p class="text-muted mb-0">Active Sessions</p>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -457,27 +445,95 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    {% if employee_stats %}
-    const levelChartOptions = {
-        series: [{{ employee_stats.active_employees|default:0 }}, {{ employee_stats.probation_employees|default:0 }}],
+    {% if user_analytics.status_distribution %}
+    const userStatusData = [
+        {% for status in user_analytics.status_distribution %}
+        {{ status.count }}{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    const userStatusLabels = [
+        {% for status in user_analytics.status_distribution %}
+        '{{ status.status|title }}'{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    const userStatusOptions = {
+        series: userStatusData,
         chart: {
             type: 'donut',
             height: 200
         },
-        labels: ['Active', 'Probation'],
-        colors: ['#3b82f6', '#e5e7eb'],
+        labels: userStatusLabels,
+        colors: ['#10b981', '#ef4444', '#f59e0b', '#6b7280'],
         legend: {
             show: false
         }
     };
     
-    const levelChart = new ApexCharts(document.querySelector("#level-chart"), levelChartOptions);
-    levelChart.render();
+    const userStatusChart = new ApexCharts(document.querySelector("#user-status-chart"), userStatusOptions);
+    userStatusChart.render();
+    {% endif %}
+    
+    {% if department_analytics.employee_distribution %}
+    const departmentData = [
+        {% for dept in department_analytics.employee_distribution|slice:":8" %}
+        {{ dept.employee_count }}{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    const departmentLabels = [
+        {% for dept in department_analytics.employee_distribution|slice:":8" %}
+        '{{ dept.name }}'{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    const departmentOptions = {
+        series: [{
+            name: 'Employees',
+            data: departmentData
+        }],
+        chart: {
+            type: 'bar',
+            height: 300
+        },
+        xaxis: {
+            categories: departmentLabels
+        },
+        colors: ['#3b82f6']
+    };
+    
+    const departmentChart = new ApexCharts(document.querySelector("#department-chart"), departmentOptions);
+    departmentChart.render();
+    {% endif %}
+    
+    {% if role_analytics.role_distribution %}
+    const roleData = [
+        {% for role in role_analytics.role_distribution|slice:":6" %}
+        {{ role.user_count }}{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    const roleLabels = [
+        {% for role in role_analytics.role_distribution|slice:":6" %}
+        '{{ role.display_name|default:"Unknown" }}'{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    const roleOptions = {
+        series: roleData,
+        chart: {
+            type: 'pie',
+            height: 250
+        },
+        labels: roleLabels,
+        colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
+        legend: {
+            show: false
+        }
+    };
+    
+    const roleChart = new ApexCharts(document.querySelector("#role-chart"), roleOptions);
+    roleChart.render();
     {% endif %}
 });
 </script>
 {% endblock %}
-
-
-                                    
 

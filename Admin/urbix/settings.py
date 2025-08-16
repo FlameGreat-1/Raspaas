@@ -198,7 +198,10 @@ else:
     CSRF_COOKIE_SECURE = False
 
 # Guardian (Object-level permissions) - HR system
-AUTHENTICATION_BACKENDS = ("django.contrib.auth.backends.ModelBackend",)
+AUTHENTICATION_BACKENDS = [
+    "accounts.manager.MultiFieldAuthBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
 
 # Session Configuration (HR system)
 SESSION_COOKIE_AGE = 3600  # 1 hour

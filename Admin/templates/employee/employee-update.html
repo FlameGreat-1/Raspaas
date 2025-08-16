@@ -1,0 +1,518 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Update Employee" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Human Resources" title="Update Employee"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light border-0">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0 me-3">
+                                    {% if employee.user.profile_picture %}
+                                        <img src="{{ employee.user.profile_picture.url }}" alt="{{ employee.user.get_full_name }}" class="avatar-lg rounded-circle">
+                                    {% else %}
+                                        <div class="avatar-lg">
+                                            <span class="avatar-title rounded-circle bg-primary-subtle text-primary fs-24">
+                                                {{ employee.user.first_name|first|upper }}{{ employee.user.last_name|first|upper }}
+                                            </span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h4 class="mb-1 fw-bold">Update Employee Information</h4>
+                                    <p class="text-muted mb-0">
+                                        <span class="badge bg-primary text-white me-2">{{ employee.user.employee_code }}</span>
+                                        {{ employee.user.get_full_name }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="d-flex gap-2 justify-content-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="ri-save-line me-1"></i>Save Changes
+                                </button>
+                                <a href="{% url 'accounts:employee_detail' employee.pk %}" class="btn btn-outline-secondary">
+                                    <i class="ri-arrow-left-line me-1"></i>Cancel
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-user-line me-2 text-primary"></i>Personal Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">First Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="first_name" value="{{ employee.user.first_name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Last Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="last_name" value="{{ employee.user.last_name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" name="email" value="{{ employee.user.email }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone Number</label>
+                            <input type="text" class="form-control" name="phone_number" value="{{ employee.user.phone_number|default:'' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Date of Birth</label>
+                            <input type="date" class="form-control" name="date_of_birth" value="{{ employee.user.date_of_birth|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Gender</label>
+                            <select class="form-select" name="gender">
+                                <option value="">Select Gender</option>
+                                <option value="MALE" {% if employee.user.gender == 'MALE' %}selected{% endif %}>Male</option>
+                                <option value="FEMALE" {% if employee.user.gender == 'FEMALE' %}selected{% endif %}>Female</option>
+                                <option value="OTHER" {% if employee.user.gender == 'OTHER' %}selected{% endif %}>Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Marital Status</label>
+                            <select class="form-select" name="marital_status">
+                                <option value="">Select Status</option>
+                                {% for value, display in marital_statuses %}
+                                <option value="{{ value }}" {% if employee.marital_status == value %}selected{% endif %}>{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Number of Children</label>
+                            <input type="number" class="form-control" name="number_of_children" value="{{ employee.number_of_children }}" min="0">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Spouse Name</label>
+                            <input type="text" class="form-control" name="spouse_name" value="{{ employee.spouse_name|default:'' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-briefcase-line me-2 text-primary"></i>Employment Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Department <span class="text-danger">*</span></label>
+                            <select class="form-select" name="department" required>
+                                <option value="">Select Department</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept.id }}" {% if employee.user.department.id == dept.id %}selected{% endif %}>{{ dept.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Role <span class="text-danger">*</span></label>
+                            <select class="form-select" name="role" required>
+                                <option value="">Select Role</option>
+                                {% for role in roles %}
+                                <option value="{{ role.id }}" {% if employee.user.role.id == role.id %}selected{% endif %}>{{ role.display_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Job Title</label>
+                            <input type="text" class="form-control" name="job_title" value="{{ employee.user.job_title|default:'' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Grade Level</label>
+                            <select class="form-select" name="grade_level">
+                                <option value="">Select Grade Level</option>
+                                {% for value, display in grade_levels %}
+                                <option value="{{ value }}" {% if employee.grade_level == value %}selected{% endif %}>{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Employment Status <span class="text-danger">*</span></label>
+                            <select class="form-select" name="employment_status" required>
+                                <option value="">Select Status</option>
+                                {% for value, display in employment_statuses %}
+                                <option value="{{ value }}" {% if employee.employment_status == value %}selected{% endif %}>{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Basic Salary <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" name="basic_salary" value="{{ employee.basic_salary }}" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Hire Date</label>
+                            <input type="date" class="form-control" name="hire_date" value="{{ employee.user.hire_date|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Manager</label>
+                            <select class="form-select" name="manager">
+                                <option value="">Select Manager</option>
+                                {% for mgr in managers %}
+                                <option value="{{ mgr.id }}" {% if employee.user.manager.id == mgr.id %}selected{% endif %}>{{ mgr.get_full_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Probation End Date</label>
+                            <input type="date" class="form-control" name="probation_end_date" value="{{ employee.probation_end_date|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Confirmation Date</label>
+                            <input type="date" class="form-control" name="confirmation_date" value="{{ employee.confirmation_date|date:'Y-m-d' }}">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Work Location</label>
+                            <input type="text" class="form-control" name="work_location" value="{{ employee.work_location|default:'' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-bank-line me-2 text-primary"></i>Banking Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Bank Name</label>
+                            <input type="text" class="form-control" name="bank_name" value="{{ employee.bank_name|default:'' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Account Number</label>
+                            <input type="text" class="form-control" name="bank_account_number" value="{{ employee.bank_account_number|default:'' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Bank Branch</label>
+                            <input type="text" class="form-control" name="bank_branch" value="{{ employee.bank_branch|default:'' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tax ID Number</label>
+                            <input type="text" class="form-control" name="tax_identification_number" value="{{ employee.tax_identification_number|default:'' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-information-line me-2 text-primary"></i>Update Guidelines
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info border-0">
+                        <h6 class="alert-heading">
+                            <i class="ri-lightbulb-line me-2"></i>Important Notes
+                        </h6>
+                        <ul class="mb-0 small">
+                            <li>Fields marked with <span class="text-danger">*</span> are required</li>
+                            <li>Email address must be unique</li>
+                            <li>Salary changes may require approval</li>
+                            <li>Department changes affect access permissions</li>
+                            <li>All changes are logged for audit purposes</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-shield-check-line me-2 text-primary"></i>Current Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="avatar-sm">
+                                <div class="avatar-title bg-success-subtle text-success rounded-circle">
+                                    <i class="ri-user-line"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">Account Status</h6>
+                            <p class="text-muted mb-0 small">
+                                {% if employee.user.is_active %}
+                                    <span class="badge bg-success-subtle text-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-danger-subtle text-danger">Inactive</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="avatar-sm">
+                                <div class="avatar-title bg-primary-subtle text-primary rounded-circle">
+                                    <i class="ri-briefcase-line"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">Employment Status</h6>
+                            <p class="text-muted mb-0 small">
+                                {% if employee.employment_status == 'PROBATION' %}
+                                    <span class="badge bg-warning-subtle text-warning">{{ employee.get_employment_status_display }}</span>
+                                {% elif employee.employment_status == 'CONFIRMED' %}
+                                    <span class="badge bg-success-subtle text-success">{{ employee.get_employment_status_display }}</span>
+                                {% else %}
+                                    <span class="badge bg-info-subtle text-info">{{ employee.get_employment_status_display }}</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="avatar-sm">
+                                <div class="avatar-title bg-warning-subtle text-warning rounded-circle">
+                                    <i class="ri-calendar-line"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">Years of Service</h6>
+                            <p class="text-muted mb-0 small">{{ employee.years_of_service|floatformat:1 }} years</p>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="avatar-sm">
+                                <div class="avatar-title bg-info-subtle text-info rounded-circle">
+                                    <i class="ri-time-line"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">Last Updated</h6>
+                            <p class="text-muted mb-0 small">{{ employee.updated_at|date:"M d, Y H:i" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-history-line me-2 text-primary"></i>Recent Changes
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_activities %}
+                        {% for activity in recent_activities|slice:":5" %}
+                        <div class="d-flex mb-3">
+                            <div class="flex-shrink-0 me-3">
+                                <div class="avatar-xs">
+                                    <div class="avatar-title bg-light text-muted rounded-circle">
+                                        <i class="ri-edit-line"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1">
+                                <p class="mb-1 fw-medium small">{{ activity.action }}</p>
+                                <p class="text-muted mb-0 small">{{ activity.description|truncatechars:50 }}</p>
+                                <small class="text-muted">{{ activity.timestamp|timesince }} ago</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-3">
+                            <div class="avatar-md mx-auto mb-3">
+                                <div class="avatar-title bg-light text-muted rounded-circle">
+                                    <i class="ri-history-line fs-20"></i>
+                                </div>
+                            </div>
+                            <p class="text-muted mb-0 small">No recent changes</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-settings-line me-2 text-primary"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'accounts:employee_detail' employee.pk %}" class="btn btn-outline-primary btn-sm">
+                            <i class="ri-eye-line me-1"></i>View Details
+                        </a>
+                        {% if can_delete %}
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                            <i class="ri-delete-bin-line me-1"></i>Deactivate Employee
+                        </button>
+                        {% endif %}
+                        <a href="{% url 'accounts:employee_list' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="ri-list-check me-1"></i>All Employees
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">Ready to save changes?</h6>
+                            <p class="text-muted mb-0 small">Make sure all required fields are filled correctly before saving.</p>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="{% url 'accounts:employee_detail' employee.pk %}" class="btn btn-outline-secondary">
+                                <i class="ri-close-line me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="ri-save-line me-1"></i>Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+{% if can_delete %}
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Deactivate Employee</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <div class="avatar-lg mx-auto mb-3">
+                        <div class="avatar-title bg-danger-subtle text-danger rounded-circle">
+                            <i class="ri-alert-line fs-24"></i>
+                        </div>
+                    </div>
+                    <h5 class="mb-3">Are you sure?</h5>
+                    <p class="text-muted mb-0">This will deactivate <strong>{{ employee.user.get_full_name }}</strong> and erase their data from Operon. This action can be reversed later.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'accounts:employee_deactivate' employee.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Deactivate Employee</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if messages %}
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+    {% for message in messages %}
+    <div class="toast align-items-center text-white bg-{{ message.tags }} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="ri-check-line me-2"></i>{{ message }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block script %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="/static/assets/libs/air-datepicker/air-datepicker.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toastElList = [].slice.call(document.querySelectorAll('.toast'));
+    const toastList = toastElList.map(function(toastEl) {
+        return new bootstrap.Toast(toastEl);
+    });
+    toastList.forEach(toast => toast.show());
+
+    const choicesElements = document.querySelectorAll('.form-select');
+    choicesElements.forEach(element => {
+        new Choices(element, {
+            searchEnabled: true,
+            removeItemButton: false,
+            shouldSort: false
+        });
+    });
+
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const requiredFields = form.querySelectorAll('[required]');
+        let isValid = true;
+        
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+        
+        if (!isValid) {
+            e.preventDefault();
+            alert('Please fill in all required fields.');
+        }
+    });
+});
+</script>
+{% endblock %}
+
+

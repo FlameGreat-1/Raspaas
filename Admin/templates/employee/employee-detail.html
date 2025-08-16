@@ -1,0 +1,530 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Employee Details" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Human Resources" title="Employee Details"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0 me-3">
+                                {% if employee.user.profile_picture %}
+                                    <img src="{{ employee.user.profile_picture.url }}" alt="{{ employee.user.get_full_name }}" class="avatar-lg rounded-circle">
+                                {% else %}
+                                    <div class="avatar-lg">
+                                        <span class="avatar-title rounded-circle bg-primary-subtle text-primary fs-24">
+                                            {{ employee.user.first_name|first|upper }}{{ employee.user.last_name|first|upper }}
+                                        </span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1">
+                                <h4 class="mb-1 fw-bold">{{ employee.user.get_full_name }}</h4>
+                                <p class="text-muted mb-1">
+                                    <span class="badge bg-primary text-white me-2">{{ employee.user.employee_code }}</span>
+                                    {% if employee.user.job_title %}{{ employee.user.job_title }}{% endif %}
+                                </p>
+                                <div class="d-flex gap-3">
+                                    {% if employee.user.department %}
+                                    <span class="text-muted small">
+                                        <i class="ri-building-line me-1"></i>{{ employee.user.department.name }}
+                                    </span>
+                                    {% endif %}
+                                    {% if employee.user.role %}
+                                    <span class="text-muted small">
+                                        <i class="ri-user-settings-line me-1"></i>{{ employee.user.role.display_name }}
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="d-flex gap-2 justify-content-end">
+                            {% if can_edit %}
+                            <a href="{% url 'accounts:employee_update' employee.pk %}" class="btn btn-outline-primary">
+                                <i class="ri-edit-line me-1"></i>Edit Employee
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'accounts:employee_list' %}" class="btn btn-outline-secondary">
+                                <i class="ri-arrow-left-line me-1"></i>Back to List
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-user-line me-2 text-primary"></i>Personal Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Full Name</label>
+                        <p class="fw-medium mb-0">{{ employee.user.get_full_name }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Employee Code</label>
+                        <p class="fw-medium mb-0">
+                            <span class="badge bg-light text-dark">{{ employee.user.employee_code }}</span>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Email Address</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-mail-line me-2 text-muted"></i>{{ employee.user.email }}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Phone Number</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.phone_number %}
+                                <i class="ri-phone-line me-2 text-muted"></i>{{ employee.phone_number }}
+                            {% else %}
+                                <span class="text-muted">Not provided</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Date of Birth</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.user.date_of_birth %}
+                                <i class="ri-calendar-line me-2 text-muted"></i>{{ employee.user.date_of_birth|date:"M d, Y" }}
+                            {% else %}
+                                <span class="text-muted">Not provided</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Gender</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.user.gender %}
+                                <i class="ri-user-line me-2 text-muted"></i>{{ employee.user.get_gender_display }}
+                            {% else %}
+                                <span class="text-muted">Not specified</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Marital Status</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.marital_status %}
+                                <i class="ri-heart-line me-2 text-muted"></i>{{ employee.get_marital_status_display }}
+                            {% else %}
+                                <span class="text-muted">Not specified</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Number of Children</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-group-line me-2 text-muted"></i>{{ employee.number_of_children }}
+                        </p>
+                    </div>
+                    {% if employee.spouse_name %}
+                    <div class="col-md-12">
+                        <label class="form-label text-muted small">Spouse Name</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-user-heart-line me-2 text-muted"></i>{{ employee.spouse_name }}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-briefcase-line me-2 text-primary"></i>Employment Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Department</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.user.department %}
+                                <i class="ri-building-line me-2 text-muted"></i>{{ employee.user.department.name }}
+                                {% if employee.user.department.code %}
+                                <br><small class="text-muted">{{ employee.user.department.code }}</small>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">Not assigned</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Role</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.user.role %}
+                                <i class="ri-user-settings-line me-2 text-muted"></i>{{ employee.user.role.display_name }}
+                            {% else %}
+                                <span class="text-muted">Not assigned</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Job Title</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.user.job_title %}
+                                <i class="ri-briefcase-line me-2 text-muted"></i>{{ employee.user.job_title }}
+                            {% else %}
+                                <span class="text-muted">Not specified</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Grade Level</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.grade_level %}
+                                <i class="ri-medal-line me-2 text-muted"></i>{{ employee.get_grade_level_display }}
+                            {% else %}
+                                <span class="text-muted">Not assigned</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Employment Status</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.employment_status == 'PROBATION' %}
+                                <span class="badge bg-warning-subtle text-warning">
+                                    <i class="ri-time-line me-1"></i>{{ employee.get_employment_status_display }}
+                                </span>
+                            {% elif employee.employment_status == 'CONFIRMED' %}
+                                <span class="badge bg-success-subtle text-success">
+                                    <i class="ri-check-line me-1"></i>{{ employee.get_employment_status_display }}
+                                </span>
+                            {% elif employee.employment_status == 'CONTRACT' %}
+                                <span class="badge bg-info-subtle text-info">
+                                    <i class="ri-file-text-line me-1"></i>{{ employee.get_employment_status_display }}
+                                </span>
+                            {% elif employee.employment_status == 'INTERN' %}
+                                <span class="badge bg-purple-subtle text-purple">
+                                    <i class="ri-graduation-cap-line me-1"></i>{{ employee.get_employment_status_display }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary">
+                                    {{ employee.get_employment_status_display }}
+                                </span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Basic Salary</label>
+                        <p class="fw-medium mb-0 text-success">
+                            <i class="ri-money-dollar-line me-2"></i>${{ employee.basic_salary|floatformat:2 }}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Hire Date</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.user.hire_date %}
+                                <i class="ri-calendar-line me-2 text-muted"></i>{{ employee.user.hire_date|date:"M d, Y" }}
+                                <br><small class="text-muted">{{ employee.years_of_service|floatformat:1 }} years of service</small>
+                            {% else %}
+                                <span class="text-muted">Not set</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Manager</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.user.manager %}
+                                <i class="ri-user-star-line me-2 text-muted"></i>{{ employee.user.manager.get_full_name }}
+                            {% else %}
+                                <span class="text-muted">No manager assigned</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% if employee.probation_end_date %}
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Probation End Date</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-calendar-check-line me-2 text-muted"></i>{{ employee.probation_end_date|date:"M d, Y" }}
+                        </p>
+                    </div>
+                    {% endif %}
+                    {% if employee.confirmation_date %}
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Confirmation Date</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-check-double-line me-2 text-muted"></i>{{ employee.confirmation_date|date:"M d, Y" }}
+                        </p>
+                    </div>
+                    {% endif %}
+                    {% if employee.work_location %}
+                    <div class="col-md-12">
+                        <label class="form-label text-muted small">Work Location</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-map-pin-line me-2 text-muted"></i>{{ employee.work_location }}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if employee.bank_name or employee.bank_account_number %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-bank-line me-2 text-primary"></i>Banking Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    {% if employee.bank_name %}
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Bank Name</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-bank-line me-2 text-muted"></i>{{ employee.bank_name }}
+                        </p>
+                    </div>
+                    {% endif %}
+                    {% if employee.bank_account_number %}
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Account Number</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-bank-card-line me-2 text-muted"></i>{{ employee.bank_account_number }}
+                        </p>
+                    </div>
+                    {% endif %}
+                    {% if employee.bank_branch %}
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Branch</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-building-2-line me-2 text-muted"></i>{{ employee.bank_branch }}
+                        </p>
+                    </div>
+                    {% endif %}
+                    {% if employee.tax_identification_number %}
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Tax ID Number</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-file-text-line me-2 text-muted"></i>{{ employee.tax_identification_number }}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    <div class="col-xl-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-graduation-cap-line me-2 text-primary"></i>Education Records
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if education_records %}
+                    {% for education in education_records %}
+                    <div class="border rounded p-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="mb-1 fw-semibold">{{ education.qualification }}</h6>
+                            {% if education.is_verified %}
+                                <span class="badge bg-success-subtle text-success">
+                                    <i class="ri-check-line me-1"></i>Verified
+                                </span>
+                            {% else %}
+                                <span class="badge bg-warning-subtle text-warning">
+                                    <i class="ri-time-line me-1"></i>Pending
+                                </span>
+                            {% endif %}
+                        </div>
+                        <p class="text-muted mb-1">
+                            <i class="ri-building-line me-1"></i>{{ education.institution }}
+                        </p>
+                        <p class="text-muted mb-1">
+                            <i class="ri-calendar-line me-1"></i>{{ education.start_year }} - {{ education.completion_year }}
+                        </p>
+                        {% if education.field_of_study %}
+                        <p class="text-muted mb-1">
+                            <i class="ri-book-line me-1"></i>{{ education.field_of_study }}
+                        </p>
+                        {% endif %}
+                        {% if education.grade_gpa %}
+                        <p class="text-muted mb-0">
+                            <i class="ri-medal-line me-1"></i>Grade: {{ education.grade_gpa }}
+                        </p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <div class="avatar-md mx-auto mb-3">
+                            <div class="avatar-title bg-light text-muted rounded-circle">
+                                <i class="ri-graduation-cap-line fs-20"></i>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-0">No education records found</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-file-text-line me-2 text-primary"></i>Active Contracts
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if contracts %}
+                    {% for contract in contracts %}
+                    <div class="border rounded p-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="mb-1 fw-semibold">{{ contract.contract_number }}</h6>
+                            {% if contract.status == 'ACTIVE' %}
+                                <span class="badge bg-success-subtle text-success">
+                                    <i class="ri-check-line me-1"></i>Active
+                                </span>
+                            {% elif contract.status == 'EXPIRED' %}
+                                <span class="badge bg-danger-subtle text-danger">
+                                    <i class="ri-close-line me-1"></i>Expired
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary">
+                                    {{ contract.get_status_display }}
+                                </span>
+                            {% endif %}
+                        </div>
+                        <p class="text-muted mb-1">
+                            <i class="ri-briefcase-line me-1"></i>{{ contract.get_contract_type_display }}
+                        </p>
+                        <p class="text-muted mb-1">
+                            <i class="ri-calendar-line me-1"></i>{{ contract.start_date|date:"M d, Y" }}
+                            {% if contract.end_date %} - {{ contract.end_date|date:"M d, Y" }}{% endif %}
+                        </p>
+                        <p class="text-success mb-0">
+                            <i class="ri-money-dollar-line me-1"></i>${{ contract.basic_salary|floatformat:2 }}
+                        </p>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <div class="avatar-md mx-auto mb-3">
+                            <div class="avatar-title bg-light text-muted rounded-circle">
+                                <i class="ri-file-text-line fs-20"></i>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-0">No contracts found</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-team-line me-2 text-primary"></i>Team Members
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if subordinates %}
+                    {% for subordinate in subordinates %}
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0 me-3">
+                            {% if subordinate.profile_picture %}
+                                <img src="{{ subordinate.profile_picture.url }}" alt="{{ subordinate.get_full_name }}" class="avatar-sm rounded-circle">
+                            {% else %}
+                                <div class="avatar-sm">
+                                    <span class="avatar-title rounded-circle bg-primary-subtle text-primary">
+                                        {{ subordinate.first_name|first|upper }}{{ subordinate.last_name|first|upper }}
+                                    </span>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-0 fw-medium">{{ subordinate.get_full_name }}</h6>
+                            <p class="text-muted mb-0 small">{{ subordinate.job_title|default:"Employee" }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <div class="avatar-md mx-auto mb-3">
+                            <div class="avatar-title bg-light text-muted rounded-circle">
+                                <i class="ri-team-line fs-20"></i>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-0">No team members</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-time-line me-2 text-primary"></i>Recent Activities
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_activities %}
+                    {% for activity in recent_activities %}
+                    <div class="d-flex mb-3">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="avatar-xs">
+                                <div class="avatar-title bg-primary-subtle text-primary rounded-circle">
+                                    <i class="ri-history-line"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <p class="mb-1 fw-medium">{{ activity.action }}</p>
+                            <p class="text-muted mb-0 small">{{ activity.description }}</p>
+                            <small class="text-muted">{{ activity.timestamp|date:"M d, Y H:i" }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <div class="avatar-md mx-auto mb-3">
+                            <div class="avatar-title bg-light text-muted rounded-circle">
+                                <i class="ri-time-line fs-20"></i>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-0">No recent activities</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="/static/assets/libs/air-datepicker/air-datepicker.js"></script>
+{% endblock %}
+
+

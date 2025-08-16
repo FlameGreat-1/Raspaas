@@ -1,0 +1,382 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Education Management" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+<link rel="stylesheet" href="/static/assets/libs/datatables.net-bs5/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="/static/assets/libs/datatables.net-responsive-bs5/css/responsive.bootstrap5.min.css">
+<link rel="stylesheet" href="/static/assets/libs/datatables.net-buttons-bs5/css/buttons.bootstrap5.min.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Human Resources" title="Education Management" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-bottom">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h4 class="card-title mb-0">Education Records</h4>
+                        <p class="text-muted mb-0">Manage employee education qualifications</p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'employee:education_create' %}" class="btn btn-primary text-nowrap">
+                                <i class="ri-add-line me-1"></i>Add Education
+                            </a>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary dropdown-toggle text-nowrap" type="button" data-bs-toggle="dropdown">
+                                    <i class="ri-download-line me-1"></i>Export
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#">
+                                        <i class="ri-file-excel-line me-2"></i>Export CSV
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="card bg-primary-subtle border-0">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <div class="avatar-sm">
+                                            <div class="avatar-title bg-primary rounded-circle">
+                                                <i class="ri-graduation-cap-line"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h5 class="mb-1">{{ total_records }}</h5>
+                                        <p class="text-muted mb-0 fs-13">Total Records</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success-subtle border-0">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <div class="avatar-sm">
+                                            <div class="avatar-title bg-success rounded-circle">
+                                                <i class="ri-shield-check-line"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h5 class="mb-1">{{ verified_count }}</h5>
+                                        <p class="text-muted mb-0 fs-13">Verified</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning-subtle border-0">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <div class="avatar-sm">
+                                            <div class="avatar-title bg-warning rounded-circle">
+                                                <i class="ri-time-line"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h5 class="mb-1">{{ unverified_count }}</h5>
+                                        <p class="text-muted mb-0 fs-13">Pending Verification</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info-subtle border-0">
+                            <div class="card-body p-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <div class="avatar-sm">
+                                            <div class="avatar-title bg-info rounded-circle">
+                                                <i class="ri-file-text-line"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h5 class="mb-1">{{ education_records|length }}</h5>
+                                        <p class="text-muted mb-0 fs-13">This Page</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <form method="get" class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Search</label>
+                                <input type="text" class="form-control" name="search" value="{{ request.GET.search }}" placeholder="Search by employee, qualification, or institution">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Education Level</label>
+                                <select class="form-select" name="education_level">
+                                    <option value="">All Levels</option>
+                                    {% for level_code, level_name in education_levels %}
+                                    <option value="{{ level_code }}" {% if request.GET.education_level == level_code %}selected{% endif %}>{{ level_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Verification Status</label>
+                                <select class="form-select" name="is_verified">
+                                    <option value="">All Status</option>
+                                    <option value="true" {% if request.GET.is_verified == 'true' %}selected{% endif %}>Verified</option>
+                                    <option value="false" {% if request.GET.is_verified == 'false' %}selected{% endif %}>Pending</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="ri-search-line me-1"></i>Filter
+                                    </button>
+                                    {% if request.GET.search or request.GET.education_level or request.GET.is_verified %}
+                                    <a href="{% url 'employee:education_list' %}" class="btn btn-outline-secondary">
+                                        <i class="ri-refresh-line me-1"></i>Clear
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                {% if education_records %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="educationTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Employee</th>
+                                <th>Education Level</th>
+                                <th>Qualification</th>
+                                <th>Institution</th>
+                                <th>Year</th>
+                                <th>Grade/GPA</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for education in education_records %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0 me-2">
+                                            <div class="avatar-xs">
+                                                <div class="avatar-title bg-primary-subtle text-primary rounded-circle">
+                                                    {{ education.employee.first_name|first }}{{ education.employee.last_name|first }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0">{{ education.employee.get_full_name }}</h6>
+                                            <small class="text-muted">{{ education.employee.employee_code }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info-subtle text-info">{{ education.get_education_level_display }}</span>
+                                </td>
+                                <td>
+                                    <div>
+                                        <h6 class="mb-0">{{ education.qualification }}</h6>
+                                        {% if education.field_of_study %}
+                                        <small class="text-muted">{{ education.field_of_study }}</small>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>{{ education.institution }}</td>
+                                <td>
+                                    <div>
+                                        <span class="fw-medium">{{ education.completion_year }}</span>
+                                        {% if education.start_year != education.completion_year %}
+                                        <br><small class="text-muted">({{ education.start_year }} - {{ education.completion_year }})</small>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if education.grade_gpa %}
+                                    <span class="badge bg-success-subtle text-success">{{ education.grade_gpa }}</span>
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if education.is_verified %}
+                                    <span class="badge bg-success">
+                                        <i class="ri-shield-check-line me-1"></i>Verified
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-warning">
+                                        <i class="ri-time-line me-1"></i>Pending
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            <i class="ri-more-2-line"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <a class="dropdown-item" href="{% url 'employee:education_detail' education.pk %}">
+                                                    <i class="ri-eye-line me-2"></i>View Details
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="{% url 'employee:education_update' education.pk %}">
+                                                    <i class="ri-edit-line me-2"></i>Edit
+                                                </a>
+                                            </li>
+                                            {% if not education.is_verified %}
+                                            <li>
+                                                <form method="post" action="{% url 'employee:verify_education' education.pk %}" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="dropdown-item text-success">
+                                                        <i class="ri-shield-check-line me-2"></i>Verify
+                                                    </button>
+                                                </form>
+                                            </li>
+                                            {% endif %}
+                                            {% if education.certificate_file %}
+                                            <li>
+                                                <a class="dropdown-item" href="{{ education.certificate_file.url }}" target="_blank">
+                                                    <i class="ri-download-line me-2"></i>Download Certificate
+                                                </a>
+                                            </li>
+                                            {% endif %}
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if is_paginated %}
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <p class="text-muted">
+                            Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ paginator.count }} entries
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <nav aria-label="Education pagination">
+                            <ul class="pagination justify-content-end mb-0">
+                                {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}{% if request.GET.education_level %}education_level={{ request.GET.education_level }}&{% endif %}{% if request.GET.is_verified %}is_verified={{ request.GET.is_verified }}&{% endif %}page={{ page_obj.previous_page_number }}">
+                                        <i class="ri-arrow-left-line"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+
+                                {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}{% if request.GET.education_level %}education_level={{ request.GET.education_level }}&{% endif %}{% if request.GET.is_verified %}is_verified={{ request.GET.is_verified }}&{% endif %}page={{ num }}">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                                {% endfor %}
+
+                                {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if request.GET.search %}search={{ request.GET.search }}&{% endif %}{% if request.GET.education_level %}education_level={{ request.GET.education_level }}&{% endif %}{% if request.GET.is_verified %}is_verified={{ request.GET.is_verified }}&{% endif %}page={{ page_obj.next_page_number }}">
+                                        <i class="ri-arrow-right-line"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-5">
+                    <div class="avatar-xl mx-auto mb-4">
+                        <div class="avatar-title bg-light text-muted rounded-circle">
+                            <i class="ri-graduation-cap-line fs-36"></i>
+                        </div>
+                    </div>
+                    <h5 class="mb-3">No Education Records Found</h5>
+                    <p class="text-muted mb-4">
+                        {% if request.GET.search or request.GET.education_level or request.GET.is_verified %}
+                            No education records match your current filters. Try adjusting your search criteria.
+                        {% else %}
+                            Start by adding education records for employees.
+                        {% endif %}
+                    </p>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <a href="{% url 'employee:education_create' %}" class="btn btn-primary text-nowrap">
+                            <i class="ri-add-line me-1"></i>Add Education
+                        </a>
+                        {% if request.GET.search or request.GET.education_level or request.GET.is_verified %}
+                        <a href="{% url 'employee:education_list' %}" class="btn btn-outline-secondary text-nowrap">
+                            <i class="ri-refresh-line me-1"></i>Clear Filters
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="/static/assets/libs/datatables.net/js/jquery.dataTables.min.js"></script>
+<script src="/static/assets/libs/datatables.net-bs5/js/dataTables.bootstrap5.min.js"></script>
+<script src="/static/assets/libs/datatables.net-responsive/js/dataTables.responsive.min.js"></script>
+<script src="/static/assets/libs/datatables.net-responsive-bs5/js/responsive.bootstrap5.min.js"></script>
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('educationTable')) {
+        new DataTable('#educationTable', {
+            responsive: true,
+            pageLength: 25,
+            order: [[4, 'desc']],
+            columnDefs: [
+                { orderable: false, targets: [7] }
+            ]
+        });
+    }
+});
+</script>
+{% endblock %}
+

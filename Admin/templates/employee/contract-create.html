@@ -1,0 +1,702 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+{% load file_filters %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Contract Management" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Human Resources" title=page_title %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light border-0">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0 me-3">
+                                    <div class="avatar-lg">
+                                        <span class="avatar-title rounded-circle bg-primary-subtle text-primary fs-24">
+                                            <i class="ri-file-text-line"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h4 class="mb-1 fw-bold">{{ page_title }}</h4>
+                                    <p class="text-muted mb-0">
+                                        {% if contract %}
+                                            <span class="badge bg-primary text-white me-2">{{ contract.contract_number }}</span>
+                                            Update contract details
+                                        {% else %}
+                                            Create a new employment contract
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="d-flex gap-2 justify-content-end">
+                                <button type="submit" class="btn btn-primary text-nowrap">
+                                    <i class="ri-save-line me-1"></i>
+                                    {% if contract %}Update Contract{% else %}Create Contract{% endif %}
+                                </button>
+                                <a href="{% if contract %}{% url 'employee:contract_detail' contract.pk %}{% else %}{% url 'employee:contract_list' %}{% endif %}" class="btn btn-outline-secondary text-nowrap">
+                                    <i class="ri-arrow-left-line me-1"></i>Cancel
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-user-line me-2 text-primary"></i>Employee & Basic Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Employee <span class="text-danger">*</span></label>
+                            <select class="form-select" name="employee" required {% if contract %}disabled{% endif %}>
+                                <option value="">Select Employee</option>
+                                {% for emp in employees %}
+                                <option value="{{ emp.id }}" {% if contract and contract.employee.id == emp.id %}selected{% endif %}>
+                                    {{ emp.get_full_name }} ({{ emp.employee_code }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if contract %}
+                            <input type="hidden" name="employee" value="{{ contract.employee.id }}">
+                            <small class="text-muted">Employee cannot be changed after contract creation</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Contract Type <span class="text-danger">*</span></label>
+                            <select class="form-select" name="contract_type" required>
+                                <option value="">Select Contract Type</option>
+                                {% for value, display in contract_types %}
+                                <option value="{{ value }}" {% if contract and contract.contract_type == value %}selected{% endif %}>{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Job Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="job_title" value="{% if contract %}{{ contract.job_title }}{% endif %}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Department <span class="text-danger">*</span></label>
+                            <select class="form-select" name="department" required>
+                                <option value="">Select Department</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept.id }}" {% if contract and contract.department.id == dept.id %}selected{% endif %}>{{ dept.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Reporting Manager</label>
+                            <select class="form-select" name="reporting_manager">
+                                <option value="">Select Manager</option>
+                                {% for mgr in managers %}
+                                <option value="{{ mgr.id }}" {% if contract and contract.reporting_manager and contract.reporting_manager.id == mgr.id %}selected{% endif %}>{{ mgr.get_full_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Contract Status</label>
+                            <select class="form-select" name="status">
+                                {% for value, display in contract_statuses %}
+                                <option value="{{ value }}" {% if contract and contract.status == value %}selected{% elif not contract and value == 'DRAFT' %}selected{% endif %}>{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-calendar-line me-2 text-primary"></i>Contract Duration
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Start Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" name="start_date" value="{% if contract %}{{ contract.start_date|date:'Y-m-d' }}{% endif %}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">End Date</label>
+                            <input type="date" class="form-control" name="end_date" value="{% if contract and contract.end_date %}{{ contract.end_date|date:'Y-m-d' }}{% endif %}">
+                            <small class="text-muted">Leave empty for ongoing contracts</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Signed Date</label>
+                            <input type="date" class="form-control" name="signed_date" value="{% if contract and contract.signed_date %}{{ contract.signed_date|date:'Y-m-d' }}{% endif %}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Probation Period (Months)</label>
+                            <input type="number" class="form-control" name="probation_period_months" value="{% if contract %}{{ contract.probation_period_months }}{% else %}0{% endif %}" min="0" max="24">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Notice Period (Days) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" name="notice_period_days" value="{% if contract %}{{ contract.notice_period_days }}{% else %}30{% endif %}" min="0" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Working Hours per Day <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" name="working_hours" value="{% if contract %}{{ contract.working_hours }}{% else %}9.75{% endif %}" step="0.25" min="1" max="24" required>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-money-dollar-line me-2 text-primary"></i>Salary & Compensation
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Basic Salary <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" name="basic_salary" value="{% if contract %}{{ contract.basic_salary }}{% endif %}" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Salary Breakdown</label>
+                            <div id="salary-breakdown">
+                                {% if contract and contract.salary_breakdown %}
+                                    {% for key, value in contract.salary_breakdown.items %}
+                                    <div class="row g-2 mb-2 salary-item">
+                                        <div class="col-md-5">
+                                            <input type="text" class="form-control" name="breakdown_key[]" value="{{ key }}" placeholder="Component name">
+                                        </div>
+                                        <div class="col-md-5">
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" class="form-control" name="breakdown_value[]" value="{{ value }}" step="0.01" min="0" placeholder="Amount">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <button type="button" class="btn btn-outline-danger btn-sm remove-salary-item">
+                                                <i class="ri-delete-bin-line"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="add-salary-item">
+                                <i class="ri-add-line me-1"></i>Add Component
+                            </button>
+                            <small class="text-muted d-block mt-1">Optional: Break down salary into components (allowances, bonuses, etc.)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-file-list-line me-2 text-primary"></i>Contract Terms & Conditions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Terms & Conditions <span class="text-danger">*</span></label>
+                            <textarea class="form-control" name="terms_and_conditions" rows="6" required>{% if contract %}{{ contract.terms_and_conditions }}{% endif %}</textarea>
+                            <small class="text-muted">Detailed terms and conditions of employment</small>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Benefits</label>
+                            <textarea class="form-control" name="benefits" rows="4">{% if contract %}{{ contract.benefits }}{% endif %}</textarea>
+                            <small class="text-muted">Employee benefits and perks (optional)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-attachment-line me-2 text-primary"></i>Contract Document
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Upload Contract File</label>
+                            <input type="file" class="form-control" name="contract_file" accept=".pdf,.doc,.docx">
+                            {% if contract and contract.contract_file %}
+                            <div class="mt-2">
+                                <div class="d-flex align-items-center p-2 border rounded bg-light">
+                                    <div class="flex-shrink-0 me-2">
+                                        <i class="ri-file-pdf-line text-danger"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <small class="text-muted">Current file: {{ contract.contract_file.name|basename }}</small>
+                                    </div>
+                                    <div class="flex-shrink-0">
+                                        <a href="{{ contract.contract_file.url }}" class="btn btn-outline-primary btn-sm" target="_blank">
+                                            <i class="ri-eye-line me-1"></i>View
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            <small class="text-muted">Supported formats: PDF, DOC, DOCX (Max: 10MB)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-information-line me-2 text-primary"></i>Contract Guidelines
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info border-0">
+                        <h6 class="alert-heading">
+                            <i class="ri-lightbulb-line me-2"></i>Important Notes
+                        </h6>
+                        <ul class="mb-0 small">
+                            <li>Fields marked with <span class="text-danger">*</span> are required</li>
+                            <li>Employee cannot be changed after contract creation</li>
+                            <li>End date is optional for permanent contracts</li>
+                            <li>Contract will be saved as draft by default</li>
+                            <li>Activate contract only when ready to enforce</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            {% if contract %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-shield-check-line me-2 text-primary"></i>Current Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="avatar-sm">
+                                {% if contract.status == 'ACTIVE' %}
+                                    <div class="avatar-title bg-success-subtle text-success rounded-circle">
+                                        <i class="ri-check-line"></i>
+                                    </div>
+                                {% elif contract.status == 'DRAFT' %}
+                                    <div class="avatar-title bg-warning-subtle text-warning rounded-circle">
+                                        <i class="ri-draft-line"></i>
+                                    </div>
+                                {% else %}
+                                    <div class="avatar-title bg-secondary-subtle text-secondary rounded-circle">
+                                        <i class="ri-file-line"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">Contract Status</h6>
+                            <p class="text-muted mb-0 small">{{ contract.get_status_display }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="avatar-sm">
+                                <div class="avatar-title bg-primary-subtle text-primary rounded-circle">
+                                    <i class="ri-calendar-line"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">Created Date</h6>
+                            <p class="text-muted mb-0 small">{{ contract.created_at|date:"M d, Y H:i" }}</p>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="avatar-sm">
+                                <div class="avatar-title bg-info-subtle text-info rounded-circle">
+                                    <i class="ri-time-line"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">Last Updated</h6>
+                            <p class="text-muted mb-0 small">{{ contract.updated_at|date:"M d, Y H:i" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-calculator-line me-2 text-primary"></i>Salary Calculator
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label small">Basic Salary</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">$</span>
+                            <input type="text" class="form-control" id="calc-basic" readonly>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">Working Hours/Day</label>
+                        <input type="text" class="form-control form-control-sm" id="calc-hours" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">Monthly Estimate</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">$</span>
+                            <input type="text" class="form-control" id="calc-monthly" readonly>
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label small">Hourly Rate</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">$</span>
+                            <input type="text" class="form-control" id="calc-hourly" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-settings-line me-2 text-primary"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        {% if contract %}
+                        <a href="{% url 'employee:contract_detail' contract.pk %}" class="btn btn-outline-primary btn-sm">
+                            <i class="ri-eye-line me-1"></i>View Contract
+                        </a>
+                        <a href="{% url 'employee:employee_detail' contract.employee.employee_profile.pk %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="ri-user-line me-1"></i>View Employee
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'employee:contract_list' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="ri-list-check me-1"></i>All Contracts
+                        </a>
+                        <button type="button" class="btn btn-outline-info btn-sm" onclick="clearForm()">
+                            <i class="ri-refresh-line me-1"></i>Reset Form
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">Ready to save contract?</h6>
+                            <p class="text-muted mb-0 small">Make sure all required fields are filled correctly before saving.</p>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="{% if contract %}{% url 'employee:contract_detail' contract.pk %}{% else %}{% url 'employee:contract_list' %}{% endif %}" class="btn btn-outline-secondary">
+                                <i class="ri-close-line me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="ri-save-line me-1"></i>
+                                {% if contract %}Update Contract{% else %}Create Contract{% endif %}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% if messages %}
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+    {% for message in messages %}
+    <div class="toast align-items-center text-white bg-{{ message.tags }} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+        <div class="d-flex">
+            <div class="toast-body">
+                {% if message.tags == 'success' %}
+                    <i class="ri-check-line me-2"></i>
+                {% elif message.tags == 'error' %}
+                    <i class="ri-error-warning-line me-2"></i>
+                {% elif message.tags == 'warning' %}
+                    <i class="ri-alert-line me-2"></i>
+                {% else %}
+                    <i class="ri-information-line me-2"></i>
+                {% endif %}
+                {{ message }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if form.errors %}
+<div class="position-fixed top-0 start-50 translate-middle-x p-3" style="z-index: 1050">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <h6 class="alert-heading">
+            <i class="ri-error-warning-line me-2"></i>Form Validation Errors
+        </h6>
+        <ul class="mb-0">
+            {% for field, errors in form.errors.items %}
+                {% for error in errors %}
+                <li>{{ field|title }}: {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block script %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="/static/assets/libs/air-datepicker/air-datepicker.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toastElList = [].slice.call(document.querySelectorAll('.toast'));
+    const toastList = toastElList.map(function(toastEl) {
+        return new bootstrap.Toast(toastEl);
+    });
+    toastList.forEach(toast => toast.show());
+
+    const choicesElements = document.querySelectorAll('.form-select');
+    choicesElements.forEach(element => {
+        new Choices(element, {
+            searchEnabled: true,
+            removeItemButton: false,
+            shouldSort: false
+        });
+    });
+
+    const salaryBreakdownContainer = document.getElementById('salary-breakdown');
+    const addSalaryItemBtn = document.getElementById('add-salary-item');
+
+    addSalaryItemBtn.addEventListener('click', function() {
+        const newItem = document.createElement('div');
+        newItem.className = 'row g-2 mb-2 salary-item';
+        newItem.innerHTML = `
+            <div class="col-md-5">
+                <input type="text" class="form-control" name="breakdown_key[]" placeholder="Component name">
+            </div>
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input type="number" class="form-control" name="breakdown_value[]" step="0.01" min="0" placeholder="Amount">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-outline-danger btn-sm remove-salary-item">
+                    <i class="ri-delete-bin-line"></i>
+                </button>
+            </div>
+        `;
+        salaryBreakdownContainer.appendChild(newItem);
+        updateRemoveButtons();
+    });
+
+    function updateRemoveButtons() {
+        const removeButtons = document.querySelectorAll('.remove-salary-item');
+        removeButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                this.closest('.salary-item').remove();
+                updateSalaryCalculator();
+            });
+        });
+    }
+
+    updateRemoveButtons();
+
+    const basicSalaryInput = document.querySelector('input[name="basic_salary"]');
+    const workingHoursInput = document.querySelector('input[name="working_hours"]');
+    const calcBasic = document.getElementById('calc-basic');
+    const calcHours = document.getElementById('calc-hours');
+    const calcMonthly = document.getElementById('calc-monthly');
+    const calcHourly = document.getElementById('calc-hourly');
+
+    function updateSalaryCalculator() {
+        const basicSalary = parseFloat(basicSalaryInput.value) || 0;
+        const workingHours = parseFloat(workingHoursInput.value) || 9.75;
+        
+        calcBasic.value = basicSalary.toFixed(2);
+        calcHours.value = workingHours;
+        
+        const monthlyEstimate = basicSalary;
+        const hourlyRate = basicSalary / (workingHours * 22);
+        
+        calcMonthly.value = monthlyEstimate.toFixed(2);
+        calcHourly.value = hourlyRate.toFixed(2);
+    }
+
+    basicSalaryInput.addEventListener('input', updateSalaryCalculator);
+    workingHoursInput.addEventListener('input', updateSalaryCalculator);
+    
+    updateSalaryCalculator();
+
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const requiredFields = form.querySelectorAll('[required]');
+        let isValid = true;
+        
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+
+        const startDate = document.querySelector('input[name="start_date"]').value;
+        const endDate = document.querySelector('input[name="end_date"]').value;
+        
+        if (startDate && endDate && new Date(endDate) <= new Date(startDate)) {
+            alert('End date must be after start date.');
+            e.preventDefault();
+            return;
+        }
+
+        const signedDate = document.querySelector('input[name="signed_date"]').value;
+        if (signedDate && new Date(signedDate) > new Date()) {
+            alert('Signed date cannot be in the future.');
+            e.preventDefault();
+            return;
+        }
+        
+        if (!isValid) {
+            e.preventDefault();
+            alert('Please fill in all required fields.');
+        }
+    });
+
+    const contractTypeSelect = document.querySelector('select[name="contract_type"]');
+    const endDateInput = document.querySelector('input[name="end_date"]');
+    const probationInput = document.querySelector('input[name="probation_period_months"]');
+
+    contractTypeSelect.addEventListener('change', function() {
+        const contractType = this.value;
+        
+        if (contractType === 'PERMANENT') {
+            endDateInput.removeAttribute('required');
+            endDateInput.closest('.col-md-6').querySelector('small').textContent = 'Leave empty for permanent contracts';
+        } else if (contractType === 'FIXED_TERM') {
+            endDateInput.setAttribute('required', 'required');
+            endDateInput.closest('.col-md-6').querySelector('small').textContent = 'End date is required for fixed-term contracts';
+        } else if (contractType === 'PROBATION') {
+            probationInput.value = Math.max(probationInput.value, 3);
+            probationInput.setAttribute('min', '1');
+        } else if (contractType === 'INTERNSHIP') {
+            endDateInput.setAttribute('required', 'required');
+            probationInput.value = 0;
+            probationInput.setAttribute('max', '0');
+        }
+    });
+
+    const fileInput = document.querySelector('input[name="contract_file"]');
+    fileInput.addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            const maxSize = 10 * 1024 * 1024;
+            if (file.size > maxSize) {
+                alert('File size must be less than 10MB.');
+                this.value = '';
+                return;
+            }
+            
+            const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+            if (!allowedTypes.includes(file.type)) {
+                alert('Only PDF, DOC, and DOCX files are allowed.');
+                this.value = '';
+                return;
+            }
+        }
+    });
+});
+
+function clearForm() {
+    if (confirm('Are you sure you want to reset the form? All unsaved changes will be lost.')) {
+        document.querySelector('form').reset();
+        document.getElementById('salary-breakdown').innerHTML = '';
+        document.getElementById('calc-basic').value = '';
+        document.getElementById('calc-hours').value = '';
+        document.getElementById('calc-monthly').value = '';
+        document.getElementById('calc-hourly').value = '';
+        
+        const invalidFields = document.querySelectorAll('.is-invalid');
+        invalidFields.forEach(field => field.classList.remove('is-invalid'));
+    }
+}
+</script>
+
+<style>
+.salary-item {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.form-control.is-invalid {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+.form-select.is-invalid {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+.choices.is-invalid .choices__inner {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+</style>
+
+{% endblock %}
+
+

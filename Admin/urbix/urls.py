@@ -24,14 +24,12 @@ from django.conf.urls.static import static
 from urbix.views import home_view, dynamic_view
 
 urlpatterns = [
-
-    path("", home_view, name="home"),
+    path("", lambda request: redirect("accounts:login"), name="home"),
     path("<str:page>", dynamic_view, name="get"),
     path("accounts/", include("accounts.urls")),
     path("employees/", include("employees.urls")),
     path("attendance/", include("attendance.urls")),
     path("payroll/", include("payroll.urls")),
-    
     path("admin/", admin.site.urls),
 ]
 

@@ -23,19 +23,18 @@ def validate_password_field(password):
         raise ValidationError(errors)
     return password
 
-
 class CustomLoginForm(AuthenticationForm):
     username = forms.CharField(
-        max_length=20,
+        max_length=150,  
         widget=forms.TextInput(
             attrs={
                 "class": "form-control",
-                "placeholder": "Employee Code",
+                "placeholder": "Username, Email, or Employee Code",
                 "autofocus": True,
                 "autocomplete": "username",
             }
         ),
-        label="Employee Code",
+        label="Login ID", 
     )
     password = forms.CharField(
         widget=forms.PasswordInput(
@@ -64,7 +63,14 @@ class CustomLoginForm(AuthenticationForm):
 
         if username and password:
             try:
-                user = User.objects.get(employee_code=username)
+                # Try to find user by username, email, or employee_code
+                from django.db.models import Q
+
+                user = User.objects.get(
+                    Q(username__iexact=username)
+                    | Q(email__iexact=username)
+                    | Q(employee_code__iexact=username)
+                )
 
                 if user.is_account_locked():
                     raise ValidationError(
@@ -83,15 +89,15 @@ class CustomLoginForm(AuthenticationForm):
                         code="invalid_status",
                     )
 
+                # Use the multi-field authentication backend
                 self.user_cache = authenticate(
-                    self.request, employee_code=username, password=password  
-            
+                    self.request, username=username, password=password
                 )
 
                 if self.user_cache is None:
                     user.increment_failed_login()
                     raise ValidationError(
-                        "Invalid employee code or password.", code="invalid_login"
+                        "Invalid login credentials.", code="invalid_login"
                     )
                 else:
                     user.reset_failed_login()
@@ -99,15 +105,13 @@ class CustomLoginForm(AuthenticationForm):
 
             except User.DoesNotExist:
                 raise ValidationError(
-                    "Invalid employee code or password.", code="invalid_login"
+                    "Invalid login credentials.", code="invalid_login"
                 )
 
         return self.cleaned_data
 
     def get_user(self):
         return self.user_cache
-
-
 class EmployeeRegistrationForm(forms.ModelForm):
     password1 = forms.CharField(
         label="Password",
@@ -133,6 +137,15 @@ class EmployeeRegistrationForm(forms.ModelForm):
             "phone_number",
             "date_of_birth",
             "gender",
+            "address_line1",
+            "address_line2",
+            "city",
+            "state",
+            "postal_code",
+            "country",
+            "emergency_contact_name",
+            "emergency_contact_phone",
+            "emergency_contact_relationship",
             "department",
             "role",
             "job_title",
@@ -141,16 +154,28 @@ class EmployeeRegistrationForm(forms.ModelForm):
         ]
         widgets = {
             "first_name": forms.TextInput(
-                attrs={"class": "form-control", "placeholder": "First Name"}
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "First Name",
+                    "required": True,
+                }
             ),
             "last_name": forms.TextInput(
-                attrs={"class": "form-control", "placeholder": "Last Name"}
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Last Name",
+                    "required": True,
+                }
             ),
             "middle_name": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Middle Name (Optional)"}
             ),
             "email": forms.EmailInput(
-                attrs={"class": "form-control", "placeholder": "Email Address"}
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Email Address",
+                    "required": True,
+                }
             ),
             "phone_number": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Phone Number"}
@@ -159,8 +184,43 @@ class EmployeeRegistrationForm(forms.ModelForm):
                 attrs={"class": "form-control", "type": "date"}
             ),
             "gender": forms.Select(attrs={"class": "form-select"}),
-            "department": forms.Select(attrs={"class": "form-select"}),
-            "role": forms.Select(attrs={"class": "form-select"}),
+            "address_line1": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "Address Line 1"}
+            ),
+            "address_line2": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Address Line 2 (Optional)",
+                }
+            ),
+            "city": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "City"}
+            ),
+            "state": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "State/Province"}
+            ),
+            "postal_code": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "Postal Code"}
+            ),
+            "country": forms.TextInput(
+                attrs={"class": "form-control", "value": "Sri Lanka"}
+            ),
+            "emergency_contact_name": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "Emergency Contact Name"}
+            ),
+            "emergency_contact_phone": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Emergency Contact Phone",
+                }
+            ),
+            "emergency_contact_relationship": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "Relationship"}
+            ),
+            "department": forms.Select(
+                attrs={"class": "form-select", "required": True}
+            ),
+            "role": forms.Select(attrs={"class": "form-select", "required": True}),
             "job_title": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Job Title"}
             ),
@@ -171,16 +231,24 @@ class EmployeeRegistrationForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self.created_by = kwargs.pop("created_by", None)
         super().__init__(*args, **kwargs)
         self.fields["department"].queryset = Department.active.all()
         self.fields["role"].queryset = Role.active.all()
-        self.fields["manager"].queryset = User.active.all()
+        self.fields["manager"].queryset = CustomUser.active.all()
         self.fields["manager"].empty_label = "Select Manager (Optional)"
+
+        # Make required fields mandatory
+        self.fields["first_name"].required = True
+        self.fields["last_name"].required = True
+        self.fields["email"].required = True
+        self.fields["department"].required = True
+        self.fields["role"].required = True
 
     def clean_email(self):
         email = self.cleaned_data.get("email")
         if email:
-            if User.objects.filter(email=email).exists():
+            if CustomUser.objects.filter(email=email).exists():
                 raise ValidationError("Email address already exists.")
         return email
 
@@ -237,21 +305,30 @@ class EmployeeRegistrationForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         manager = cleaned_data.get("manager")
-        employee_code = cleaned_data.get("employee_code")
 
-        if manager and manager.employee_code == employee_code:
+        # Remove employee_code validation since it's auto-generated
+        if manager and self.instance and manager == self.instance:
             raise ValidationError("Employee cannot be their own manager.")
 
         return cleaned_data
-    
+
     def save(self, commit=True):
         user = super().save(commit=False)
         user.set_password(self.cleaned_data["password1"])
         user.must_change_password = True
         user.password_changed_at = timezone.now()
+        user.is_verified = False
+        user.status = "ACTIVE"
+
+        if self.created_by:
+            user.created_by = self.created_by
+
         if commit:
             user.save()
+
         return user
+
+
 class EmployeeUpdateForm(forms.ModelForm):
     class Meta:
         model = CustomUser
@@ -311,7 +388,7 @@ class EmployeeUpdateForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["department"].queryset = Department.active.all()
         self.fields["role"].queryset = Role.active.all()
-        self.fields["manager"].queryset = User.active.exclude(
+        self.fields["manager"].queryset = CustomUser.active.exclude(
             id=self.instance.id if self.instance else None
         )
         self.fields["manager"].empty_label = "Select Manager (Optional)"
@@ -319,7 +396,11 @@ class EmployeeUpdateForm(forms.ModelForm):
     def clean_email(self):
         email = self.cleaned_data.get("email")
         if email and self.instance:
-            if User.objects.filter(email=email).exclude(id=self.instance.id).exists():
+            if (
+                CustomUser.objects.filter(email=email)
+                .exclude(id=self.instance.id)
+                .exists()
+            ):
                 raise ValidationError("Email address already exists.")
         return email
 
@@ -330,14 +411,13 @@ class EmployeeUpdateForm(forms.ModelForm):
             if not phone_regex.match(phone):
                 raise ValidationError("Enter a valid phone number.")
         return phone
-
-
 class CustomPasswordChangeForm(PasswordChangeForm):
     old_password = forms.CharField(
         label="Current Password",
         widget=forms.PasswordInput(
             attrs={"class": "form-control", "placeholder": "Current Password"}
         ),
+        required=False,  
     )
     new_password1 = forms.CharField(
         label="New Password",
@@ -353,21 +433,61 @@ class CustomPasswordChangeForm(PasswordChangeForm):
         ),
     )
 
+    def __init__(self, user, force_change=False, *args, **kwargs):
+        self.force_change = force_change
+        super().__init__(user, *args, **kwargs)
+
+        if self.force_change:
+            self.fields["old_password"].required = False
+            self.fields["old_password"].widget = forms.HiddenInput()
+        else:
+            self.fields["old_password"].required = True
+
+    def clean_old_password(self):
+        old_password = self.cleaned_data.get("old_password")
+
+        if not self.force_change:
+            if not old_password:
+                raise forms.ValidationError("This field is required.")
+            if not self.user.check_password(old_password):
+                raise forms.ValidationError(
+                    "Your old password was entered incorrectly."
+                )
+
+        return old_password
+
     def clean_new_password1(self):
         password1 = self.cleaned_data.get("new_password1")
+
         if password1:
             return validate_password_field(password1)
         return password1
 
+    def clean_new_password2(self):
+        password1 = self.cleaned_data.get("new_password1")
+        password2 = self.cleaned_data.get("new_password2")
+
+        if password1 and password2:
+            if password1 != password2:
+                raise forms.ValidationError("The two password fields didn't match.")
+        return password2
+
     def save(self, commit=True):
-        user = super().save(commit=False)
-        user.must_change_password = False
-        user.password_changed_at = timezone.now()
-        if commit:
-            user.save()
-        return user
-
-
+        if self.force_change:
+            password = self.cleaned_data["new_password1"]
+            self.user.set_password(password)
+            self.user.must_change_password = False
+            self.user.password_changed_at = timezone.now()
+            if commit:
+                self.user.save()
+            return self.user
+        else:
+            user = super().save(commit=False)
+            user.must_change_password = False
+            user.password_changed_at = timezone.now()
+            if commit:
+                user.save()
+            return user
 class CustomPasswordResetForm(PasswordResetForm):
     email = forms.EmailField(
         label="Email Address",

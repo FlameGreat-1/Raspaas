@@ -1,3 +1,5 @@
+import pandas as pd
+import io
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate, get_user_model
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -12,6 +14,7 @@ from django.views.generic import (
     DeleteView,
     TemplateView,
 )
+from django.views import View
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
@@ -23,6 +26,7 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
+import hashlib
 from django.contrib.auth.views import (
     PasswordChangeView,
     PasswordResetView,
@@ -41,6 +45,9 @@ from .models import (
     PasswordResetToken,
     APIKey,
 )
+from employees.models import EmployeeProfile
+
+from .analytics import UnifiedAnalytics
 from .forms import (
     CustomLoginForm,
     EmployeeRegistrationForm,
@@ -79,9 +86,8 @@ from .permissions import EmployeeAccessMixin
 
 User = get_user_model()
 
-
 class CustomLoginView(TemplateView):
-    template_name = "auth-signin.html"
+    template_name = "accounts/auth-signin.html"
     form_class = CustomLoginForm
 
     def dispatch(self, request, *args, **kwargs):
@@ -108,7 +114,7 @@ class CustomLoginView(TemplateView):
                 )
                 return redirect("accounts:force_password_change")
 
-            login(request, user)
+            login(request, user, backend='accounts.manager.MultiFieldAuthBackend')
 
             user_session = create_user_session(user, request)
 
@@ -160,7 +166,6 @@ def logout_view(request):
     messages.success(request, "You have been logged out successfully.")
     return redirect("accounts:login")
 
-
 @login_required
 def dashboard_view(request):
     dashboard_data = get_user_dashboard_data(request.user)
@@ -171,6 +176,7 @@ def dashboard_view(request):
         "dashboard_data": dashboard_data,
         "navigation_menu": navigation_menu,
         "user_permissions": UserUtilities.get_user_permissions_list(request.user),
+        **UnifiedAnalytics.get_complete_dashboard_data(),
     }
 
     if request.user.is_superuser or (
@@ -182,10 +188,8 @@ def dashboard_view(request):
         template_name = "index.html"
 
     return render(request, template_name, context)
-
-
 class ForcePasswordChangeView(TemplateView):
-    template_name = "auth-reset-password.html"
+    template_name = "accounts/auth-reset-password.html"
     form_class = CustomPasswordChangeForm
 
     def dispatch(self, request, *args, **kwargs):
@@ -197,7 +201,7 @@ class ForcePasswordChangeView(TemplateView):
         context = super().get_context_data(**kwargs)
         user_id = self.request.session.get("temp_user_id")
         user = get_object_or_404(User, id=user_id)
-        context["form"] = self.form_class(user=user)
+        context["form"] = self.form_class(user=user, force_change=True)
         context["page_title"] = "Change Password"
         context["force_change"] = True
         return context
@@ -205,13 +209,13 @@ class ForcePasswordChangeView(TemplateView):
     def post(self, request, *args, **kwargs):
         user_id = request.session.get("temp_user_id")
         user = get_object_or_404(User, id=user_id)
-        form = self.form_class(user=user, data=request.POST)
+        form = self.form_class(user=user, force_change=True, data=request.POST)
 
         if form.is_valid():
             form.save()
             del request.session["temp_user_id"]
 
-            login(request, user)
+            login(request, user, backend='accounts.manager.MultiFieldAuthBackend')
             create_user_session(user, request)
 
             log_user_activity(
@@ -227,7 +231,6 @@ class ForcePasswordChangeView(TemplateView):
         context = self.get_context_data()
         context["form"] = form
         return render(request, self.template_name, context)
-
 
 class CustomPasswordResetView(PasswordResetView):
     template_name = "auth-forgot-password.html"
@@ -267,7 +270,6 @@ def password_reset_done_view(request):
         },
     )
 
-
 class CustomPasswordResetConfirmView(PasswordResetConfirmView):
     template_name = "auth-reset-password.html"
     form_class = CustomSetPasswordForm
@@ -305,17 +307,16 @@ class CustomPasswordResetConfirmView(PasswordResetConfirmView):
 def password_reset_complete_view(request):
     return render(
         request,
-        "auth-signin.html",
+        "accounts/auth-signin.html",
         {
             "page_title": "Password Reset Complete",
             "success_message": "Your password has been reset successfully. You can now log in.",
         },
     )
 
-
 class EmployeeListView(LoginRequiredMixin, ListView):
-    model = CustomUser
-    template_name = "apps-school-students.html"
+    model = EmployeeProfile  # Changed from CustomUser
+    template_name = "employee/employee-list.html"
     context_object_name = "employees"
     paginate_by = 25
 
@@ -329,9 +330,9 @@ class EmployeeListView(LoginRequiredMixin, ListView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = User.objects.select_related("department", "role", "manager").filter(
-            is_active=True
-        )
+        queryset = EmployeeProfile.objects.select_related(
+            "user", "user__department", "user__role", "user__manager"
+        ).filter(is_active=True, user__is_active=True)
 
         if not self.request.user.is_superuser:
             access_mixin = EmployeeAccessMixin()
@@ -339,41 +340,35 @@ class EmployeeListView(LoginRequiredMixin, ListView):
                 self.request.user
             )
             queryset = queryset.filter(
-                id__in=accessible_employees.values_list("id", flat=True)
+                user__id__in=accessible_employees.values_list("id", flat=True)
             )
 
-        search_form = UserSearchForm(self.request.GET)
-        if search_form.is_valid():
-            query = search_form.cleaned_data.get("search_query")
-            department = search_form.cleaned_data.get("department")
-            role = search_form.cleaned_data.get("role")
-            status = search_form.cleaned_data.get("status")
+        search_query = self.request.GET.get('search')
+        department = self.request.GET.get('department')
+        employment_status = self.request.GET.get('employment_status')
 
-            if query:
-                queryset = queryset.filter(
-                    Q(first_name__icontains=query)
-                    | Q(last_name__icontains=query)
-                    | Q(employee_code__icontains=query)
-                    | Q(email__icontains=query)
-                    | Q(job_title__icontains=query)
-                )
+        if search_query:
+            queryset = queryset.filter(
+                Q(user__first_name__icontains=search_query)
+                | Q(user__last_name__icontains=search_query)
+                | Q(user__employee_code__icontains=search_query)
+                | Q(user__email__icontains=search_query)
+                | Q(user__job_title__icontains=search_query)
+                | Q(user__department__name__icontains=search_query)
+                | Q(user__role__display_name__icontains=search_query)
+            )
 
-            if department:
-                queryset = queryset.filter(department=department)
+        if department:
+            queryset = queryset.filter(user__department_id=department)
 
-            if role:
-                queryset = queryset.filter(role=role)
+        if employment_status:
+            queryset = queryset.filter(employment_status=employment_status)
 
-            if status:
-                queryset = queryset.filter(status=status)
-
-        return queryset.order_by("employee_code")
+        return queryset.order_by("user__employee_code")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["page_title"] = "Employee Directory"
-        context["search_form"] = UserSearchForm(self.request.GET)
-        context["advanced_filter_form"] = AdvancedUserFilterForm(self.request.GET)
         context["can_add_employee"] = UserUtilities.check_user_permission(
             self.request.user, "manage_employees"
         )
@@ -382,47 +377,59 @@ class EmployeeListView(LoginRequiredMixin, ListView):
         )
         context["total_employees"] = self.get_queryset().count()
         context["departments"] = Department.active.all()
-        context["roles"] = Role.active.all()
+        context["employment_statuses"] = EmployeeProfile.EMPLOYMENT_STATUS_CHOICES
         return context
 
-
 class EmployeeDetailView(LoginRequiredMixin, DetailView):
-    model = CustomUser
-    template_name = "apps-school-parents.html"
+    model = EmployeeProfile  
+    template_name = "employee/employee-detail.html"
     context_object_name = "employee"
     pk_url_kwarg = "employee_id"
 
     def dispatch(self, request, *args, **kwargs):
-        employee = self.get_object()
-        if not request.user.can_manage_user(employee) and employee != request.user:
+        employee_profile = self.get_object()
+        employee_user = employee_profile.user
+        if not request.user.can_manage_user(employee_user) and employee_user != request.user:
             if not UserUtilities.check_user_permission(
                 request.user, "view_department_employees"
             ):
                 raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
+    def get_queryset(self):
+        return EmployeeProfile.objects.select_related(
+            "user", "user__department", "user__role", "user__manager"
+        ).filter(is_active=True, user__is_active=True)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        employee = self.object
-        context["page_title"] = f"Employee Details - {employee.get_display_name()}"
-        context["can_edit"] = self.request.user.can_manage_user(employee)
+        employee_profile = self.object
+        employee_user = employee_profile.user
+        
+        context["page_title"] = f"Employee Details - {employee_user.get_full_name()}"
+        context["can_edit"] = self.request.user.can_manage_user(employee_user)
         context["can_delete"] = UserUtilities.check_user_permission(
             self.request.user, "manage_employees"
         )
-        context["subordinates"] = employee.get_subordinates()
-        context["recent_activities"] = AuditLog.objects.filter(user=employee).order_by(
+        context["subordinates"] = employee_user.get_subordinates()
+        context["recent_activities"] = AuditLog.objects.filter(user=employee_user).order_by(
             "-timestamp"
         )[:10]
         context["active_sessions"] = UserSession.objects.filter(
-            user=employee, is_active=True
+            user=employee_user, is_active=True
         )
+
+        context["education_records"] = employee_user.education_records.filter(is_active=True)
+        context["contracts"] = employee_user.contracts.filter(is_active=True).order_by('-start_date')
+        context["employment_statuses"] = EmployeeProfile.EMPLOYMENT_STATUS_CHOICES
+        context["grade_levels"] = EmployeeProfile.GRADE_LEVELS
+        context["marital_statuses"] = EmployeeProfile.MARITAL_STATUS_CHOICES
+        
         return context
-
-
 class EmployeeCreateView(LoginRequiredMixin, CreateView):
     model = CustomUser
     form_class = EmployeeRegistrationForm
-    template_name = "apps-school-admission-form.html"
+    template_name = "accounts/employee_registration.html"
 
     def dispatch(self, request, *args, **kwargs):
         if not UserUtilities.check_user_permission(request.user, "manage_employees"):
@@ -473,19 +480,22 @@ class EmployeeCreateView(LoginRequiredMixin, CreateView):
                 f"Employee {employee.get_display_name()} created successfully. Welcome email sent.",
             )
             return redirect("accounts:employee_detail", employee_id=employee.id)
-
-
 class EmployeeUpdateView(LoginRequiredMixin, UpdateView):
-    model = CustomUser
-    form_class = EmployeeUpdateForm
-    template_name = "apps-school-admission-form.html"
+    model = EmployeeProfile  
+    form_class = EmployeeUpdateForm  
+    template_name = "employee/employee-update.html"
     pk_url_kwarg = "employee_id"
 
     def dispatch(self, request, *args, **kwargs):
-        employee = self.get_object()
-        if not request.user.can_manage_user(employee):
+        employee_profile = self.get_object()
+        if not request.user.can_manage_user(employee_profile.user):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return EmployeeProfile.objects.select_related(
+            "user", "user__department", "user__role", "user__manager"
+        ).filter(is_active=True, user__is_active=True)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -494,42 +504,39 @@ class EmployeeUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["page_title"] = f"Edit Employee - {self.object.get_display_name()}"
+        context["page_title"] = f"Edit Employee - {self.object.user.get_full_name()}"
         context["form_title"] = "Update Employee Information"
         context["is_update"] = True
+        context["departments"] = Department.active.all()
+        context["roles"] = Role.active.all()
+        context["employment_statuses"] = EmployeeProfile.EMPLOYMENT_STATUS_CHOICES
+        context["grade_levels"] = EmployeeProfile.GRADE_LEVELS
+        context["marital_statuses"] = EmployeeProfile.MARITAL_STATUS_CHOICES
         return context
 
     def form_valid(self, form):
         with transaction.atomic():
-            old_employee = CustomUser.objects.get(pk=self.object.pk)
-            employee = form.save()
-
-            changes = {}
-            for field in form.changed_data:
-                old_value = getattr(old_employee, field, None)
-                new_value = getattr(employee, field, None)
-                changes[field] = {
-                    "old": str(old_value) if old_value else None,
-                    "new": str(new_value) if new_value else None,
-                }
+            old_employee_profile = EmployeeProfile.objects.select_related("user").get(
+                pk=self.object.pk
+            )
+            employee_profile = form.save()
 
             log_user_activity(
                 user=self.request.user,
                 action="UPDATE",
-                description=f"Updated employee: {employee.get_display_name()}",
+                description=f"Updated employee: {employee_profile.user.get_full_name()}",
                 request=self.request,
                 additional_data={
-                    "employee_code": employee.employee_code,
-                    "employee_id": employee.id,
-                    "changes": changes,
+                    "employee_code": employee_profile.user.employee_code,
+                    "employee_id": employee_profile.user.id,
                 },
             )
 
             messages.success(
                 self.request,
-                f"Employee {employee.get_display_name()} updated successfully.",
+                f"Employee {employee_profile.user.get_full_name()} updated successfully.",
             )
-            return redirect("accounts:employee_detail", employee_id=employee.id)
+            return redirect("accounts:employee_detail", employee_id=employee_profile.pk)
 
 
 @login_required
@@ -611,7 +618,6 @@ def employee_search_ajax(request):
 
     return JsonResponse({"results": results})
 
-
 @login_required
 def employee_export_view(request):
     if not UserUtilities.check_user_permission(request.user, "manage_employees"):
@@ -646,7 +652,6 @@ def employee_export_view(request):
     )
 
     return response
-
 class BulkEmployeeUploadView(LoginRequiredMixin, TemplateView):
     template_name = 'ui-form-file-uploads.html'
     form_class = BulkEmployeeUploadForm
@@ -715,9 +720,6 @@ class BulkEmployeeUploadView(LoginRequiredMixin, TemplateView):
 def employee_template_download(request):
     if not UserUtilities.check_user_permission(request.user, 'manage_employees'):
         raise PermissionDenied
-    
-    import pandas as pd
-    import io
     
     template_data = [{
         'employee_code': 'EMP001',
@@ -926,8 +928,6 @@ def employee_import_status(request, task_id):
         return JsonResponse({'error': 'Celery not available'}, status=500)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
-
 class DepartmentListView(LoginRequiredMixin, ListView):
     model = Department
     template_name = "apps-school-courses.html"
@@ -971,7 +971,6 @@ class DepartmentListView(LoginRequiredMixin, ListView):
             department.employee_count = department.get_all_employees().count()
 
         return context
-
 
 class DepartmentDetailView(LoginRequiredMixin, DetailView):
     model = Department
@@ -1037,7 +1036,6 @@ class DepartmentCreateView(LoginRequiredMixin, CreateView):
                 self.request, f'Department "{department.name}" created successfully.'
             )
             return redirect("accounts:department_detail", department_id=department.id)
-
 
 class DepartmentUpdateView(LoginRequiredMixin, UpdateView):
     model = Department
@@ -1201,7 +1199,6 @@ class RoleListView(LoginRequiredMixin, ListView):
 
         return context
 
-
 class RoleDetailView(LoginRequiredMixin, DetailView):
     model = Role
     template_name = "apps-teacher.html"
@@ -1224,8 +1221,6 @@ class RoleDetailView(LoginRequiredMixin, DetailView):
         context["user_count"] = context["users"].count()
         context["permissions"] = role.permissions.all()
         return context
-
-
 class RoleCreateView(LoginRequiredMixin, CreateView):
     model = Role
     form_class = RoleForm
@@ -1462,10 +1457,14 @@ class CustomPasswordChangeView(LoginRequiredMixin, PasswordChangeView):
 
 @login_required
 def password_change_done_view(request):
-    return render(request, 'auth-signin.html', {
-        'page_title': 'Password Changed',
-        'success_message': 'Your password has been changed successfully.'
-    })
+    return render(
+        request,
+        "accounts/auth-signin.html",
+        {
+            "page_title": "Password Changed",
+            "success_message": "Your password has been changed successfully.",
+        },
+    )
 
 @login_required
 def user_sessions_view(request):
@@ -1713,231 +1712,527 @@ def user_activity_log_view(request, user_id=None):
 
     return render(request, 'ui-tables-datatables.html', context)
 
-
-class SystemConfigurationListView(LoginRequiredMixin, ListView):
-    model = SystemConfiguration
-    template_name = "ui-tables-datatables.html"
-    context_object_name = "configurations"
-    paginate_by = 50
-
+class SystemConfigurationView(LoginRequiredMixin, View):
+    template_name = "accounts/system_config.html"
+    
     def dispatch(self, request, *args, **kwargs):
-        if not UserUtilities.check_user_permission(
-            request.user, "manage_system_settings"
-        ):
+        if not UserUtilities.check_user_permission(request.user, "manage_system_settings"):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
+    
+    def get(self, request, *args, **kwargs):
+        action = kwargs.get('action', 'list')
+        config_id = kwargs.get('config_id')
+        
+        if action == 'list':
+            return self.list_view(request)
+        elif action == 'detail' and config_id:
+            return self.detail_view(request, config_id)
+        elif action == 'create':
+            return self.create_view(request)
+        elif action == 'edit' and config_id:
+            return self.edit_view(request, config_id)
+        elif action == 'statistics':
+            return self.statistics_view(request)
+        elif action == 'maintenance':
+            return self.maintenance_view(request)
+        elif action == 'bulk':
+            return self.bulk_view(request)
+        elif action == 'export':
+            return self.export_view(request)
+        elif action == 'import':
+            return self.import_view(request)
+        else:
+            return self.list_view(request)
+    
+    def post(self, request, *args, **kwargs):
+        action = kwargs.get('action', 'list')
+        config_id = kwargs.get('config_id')
+        
+        if action == 'create':
+            return self.create_post(request)
+        elif action == 'edit' and config_id:
+            return self.edit_post(request, config_id)
+        elif action == 'delete' and config_id:
+            return self.delete_post(request, config_id)
+        elif action == 'maintenance':
+            return self.maintenance_post(request)
+        elif action == 'bulk':
+            return self.bulk_post(request)
+        elif action == 'import':
+            return self.import_post(request)
+        elif action == 'reset_defaults':
+            return self.reset_defaults_post(request)
+        else:
+            return self.list_view(request)
+    
+    def list_view(self, request):
 
-    def get_queryset(self):
+        if not SystemConfiguration.objects.exists():
+            created_count = SystemConfiguration.initialize_default_settings()
+            messages.success(request, f'Initialized {created_count} default system configurations.')
+        
         queryset = SystemConfiguration.objects.filter(is_active=True)
-
-        setting_type = self.request.GET.get("type")
+        
+        setting_type = request.GET.get('type')
         if setting_type:
             queryset = queryset.filter(setting_type=setting_type)
-
-        search_query = self.request.GET.get("search")
+        
+        search_query = request.GET.get('search')
         if search_query:
             queryset = queryset.filter(
-                Q(key__icontains=search_query) | Q(description__icontains=search_query)
+                Q(key__icontains=search_query) | 
+                Q(description__icontains=search_query) |
+                Q(value__icontains=search_query)
             )
-
-        return queryset.order_by("setting_type", "key")
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["page_title"] = "System Configuration"
-        context["setting_types"] = SystemConfiguration.SETTING_TYPES
-        context["selected_type"] = self.request.GET.get("type", "")
-        context["search_query"] = self.request.GET.get("search", "")
-        context["can_add_setting"] = True
-        context["can_export"] = True
-        return context
-
-
-class SystemConfigurationDetailView(LoginRequiredMixin, DetailView):
-    model = SystemConfiguration
-    template_name = "ui-form-elements.html"
-    context_object_name = "configuration"
-    pk_url_kwarg = "config_id"
-
-    def dispatch(self, request, *args, **kwargs):
-        if not UserUtilities.check_user_permission(
-            request.user, "manage_system_settings"
-        ):
-            raise PermissionDenied
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["page_title"] = f"Configuration - {self.object.key}"
-        context["can_edit"] = True
-        return context
-
-
-class SystemConfigurationCreateView(LoginRequiredMixin, CreateView):
-    model = SystemConfiguration
-    form_class = SystemConfigurationForm
-    template_name = "ui-form-elements.html"
-
-    def dispatch(self, request, *args, **kwargs):
-        if not UserUtilities.check_user_permission(
-            request.user, "manage_system_settings"
-        ):
-            raise PermissionDenied
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["page_title"] = "Add System Configuration"
-        context["form_title"] = "Configuration Details"
-        return context
-
-    def form_valid(self, form):
+        
+        configurations = queryset.order_by('setting_type', 'key')
+        
+        grouped_configs = {}
+        for config in configurations:
+            if config.setting_type not in grouped_configs:
+                grouped_configs[config.setting_type] = []
+            grouped_configs[config.setting_type].append(config)
+        
+        context = {
+            'page_title': 'System Configuration',
+            'configurations': configurations,
+            'grouped_configs': grouped_configs,
+            'setting_types': SystemConfiguration.SETTING_TYPES,
+            'selected_type': setting_type or '',
+            'search_query': search_query or '',
+            'total_configs': configurations.count(),
+            'can_add_setting': True,
+            'can_export': True,
+            'can_bulk_edit': True,
+            'action': 'list'
+        }
+        
+        return render(request, self.template_name, context)
+    
+    def detail_view(self, request, config_id):
+        configuration = get_object_or_404(SystemConfiguration, id=config_id, is_active=True)
+        
+        related_configs = SystemConfiguration.objects.filter(
+            setting_type=configuration.setting_type,
+            is_active=True
+        ).exclude(id=config_id)[:5]
+        
+        audit_logs = AuditLog.objects.filter(
+            model_name='SystemConfiguration',
+            object_id=str(config_id)
+        ).order_by('-timestamp')[:10]
+        
+        context = {
+            'page_title': f'Configuration - {configuration.key}',
+            'configuration': configuration,
+            'related_configs': related_configs,
+            'audit_logs': audit_logs,
+            'can_edit': True,
+            'can_delete': True,
+            'action': 'detail'
+        }
+        
+        return render(request, self.template_name, context)
+    
+    def create_view(self, request):
+        form = SystemConfigurationForm()
+        
+        context = {
+            'page_title': 'Add System Configuration',
+            'form_title': 'Configuration Details',
+            'form': form,
+            'setting_types': SystemConfiguration.SETTING_TYPES,
+            'action': 'create'
+        }
+        
+        return render(request, self.template_name, context)
+    
+    def create_post(self, request):
+        form = SystemConfigurationForm(request.POST)
+        
+        if form.is_valid():
+            with transaction.atomic():
+                config = form.save(commit=False)
+                config.updated_by = request.user
+                config.save()
+                
+                log_user_activity(
+                    user=request.user,
+                    action="CREATE",
+                    description=f"Created system configuration: {config.key}",
+                    request=request,
+                    additional_data={
+                        'config_key': config.key,
+                        'config_value': config.value,
+                        'config_type': config.setting_type,
+                    }
+                )
+                
+                messages.success(request, f'Configuration "{config.key}" created successfully.')
+                return redirect('accounts:system_config', action='detail', config_id=config.id)
+        
+        context = {
+            'page_title': 'Add System Configuration',
+            'form_title': 'Configuration Details',
+            'form': form,
+            'setting_types': SystemConfiguration.SETTING_TYPES,
+            'action': 'create'
+        }
+        
+        return render(request, self.template_name, context)
+    
+    def edit_view(self, request, config_id):
+        configuration = get_object_or_404(SystemConfiguration, id=config_id, is_active=True)
+        form = SystemConfigurationForm(instance=configuration)
+        
+        context = {
+            'page_title': f'Edit Configuration - {configuration.key}',
+            'form_title': 'Update Configuration',
+            'form': form,
+            'configuration': configuration,
+            'setting_types': SystemConfiguration.SETTING_TYPES,
+            'is_update': True,
+            'action': 'edit'
+        }
+        
+        return render(request, self.template_name, context)
+    
+    def edit_post(self, request, config_id):
+        configuration = get_object_or_404(SystemConfiguration, id=config_id, is_active=True)
+        form = SystemConfigurationForm(request.POST, instance=configuration)
+        
+        if form.is_valid():
+            with transaction.atomic():
+                old_value = configuration.value
+                config = form.save(commit=False)
+                config.updated_by = request.user
+                config.save()
+                
+                log_user_activity(
+                    user=request.user,
+                    action="UPDATE",
+                    description=f"Updated system configuration: {config.key}",
+                    request=request,
+                    additional_data={
+                        'config_key': config.key,
+                        'old_value': old_value,
+                        'new_value': config.value,
+                        'config_type': config.setting_type,
+                    }
+                )
+                
+                messages.success(request, f'Configuration "{config.key}" updated successfully.')
+                return redirect('accounts:system_config', action='detail', config_id=config.id)
+        
+        context = {
+            'page_title': f'Edit Configuration - {configuration.key}',
+            'form_title': 'Update Configuration',
+            'form': form,
+            'configuration': configuration,
+            'setting_types': SystemConfiguration.SETTING_TYPES,
+            'is_update': True,
+            'action': 'edit'
+        }
+        
+        return render(request, self.template_name, context)
+    
+    def delete_post(self, request, config_id):
+        configuration = get_object_or_404(SystemConfiguration, id=config_id, is_active=True)
+        
         with transaction.atomic():
-            config = form.save(commit=False)
-            config.updated_by = self.request.user
-            config.save()
-
+            old_key = configuration.key
+            configuration.is_active = False
+            configuration.save()
+            
             log_user_activity(
-                user=self.request.user,
-                action="CREATE",
-                description=f"Created system configuration: {config.key}",
-                request=self.request,
+                user=request.user,
+                action="DELETE",
+                description=f"Deleted system configuration: {old_key}",
+                request=request,
                 additional_data={
-                    "config_key": config.key,
-                    "config_value": config.value,
-                    "config_type": config.setting_type,
-                },
+                    'config_key': old_key,
+                    'config_id': config_id,
+                }
             )
-
-            messages.success(
-                self.request, f'Configuration "{config.key}" created successfully.'
-            )
-            return redirect("accounts:system_config_detail", config_id=config.id)
-
-
-class SystemConfigurationUpdateView(LoginRequiredMixin, UpdateView):
-    model = SystemConfiguration
-    form_class = SystemConfigurationForm
-    template_name = "ui-form-elements.html"
-    pk_url_kwarg = "config_id"
-
-    def dispatch(self, request, *args, **kwargs):
-        if not UserUtilities.check_user_permission(
-            request.user, "manage_system_settings"
-        ):
+            
+            messages.success(request, f'Configuration "{old_key}" deleted successfully.')
+        
+        return redirect('accounts:system_config')
+    
+    def statistics_view(self, request):
+        if not UserUtilities.check_user_permission(request.user, "view_all_reports"):
             raise PermissionDenied
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["page_title"] = f"Edit Configuration - {self.object.key}"
-        context["form_title"] = "Update Configuration"
-        context["is_update"] = True
-        return context
-
-    def form_valid(self, form):
-        with transaction.atomic():
-            old_config = SystemConfiguration.objects.get(pk=self.object.pk)
-            config = form.save(commit=False)
-            config.updated_by = self.request.user
-            config.save()
-
-            log_user_activity(
-                user=self.request.user,
-                action="UPDATE",
-                description=f"Updated system configuration: {config.key}",
-                request=self.request,
-                additional_data={
-                    "config_key": config.key,
-                    "old_value": old_config.value,
-                    "new_value": config.value,
-                    "config_type": config.setting_type,
-                },
-            )
-
-            messages.success(
-                self.request, f'Configuration "{config.key}" updated successfully.'
-            )
-            return redirect("accounts:system_config_detail", config_id=config.id)
-
-
-@login_required
-def system_statistics_view(request):
-    if not UserUtilities.check_user_permission(request.user, "view_all_reports"):
-        raise PermissionDenied
-
-    stats = SystemUtilities.get_system_statistics()
-
-    context = {
-        "page_title": "System Statistics",
-        "stats": stats,
-        "recent_activities": AuditLog.objects.order_by("-timestamp")[:20],
-        "active_sessions": UserSession.objects.filter(is_active=True).count(),
-        "password_expiry_users": SystemUtilities.get_password_expiry_users().count(),
-    }
-
-    return render(request, "dashboard-analytics.html", context)
-
-
-@login_required
-def system_maintenance_view(request):
-    if not UserUtilities.check_user_permission(request.user, "manage_system_settings"):
-        raise PermissionDenied
-
-    if request.method == "POST":
-        action = request.POST.get("action")
-
-        if action == "cleanup_sessions":
+        
+        stats = SystemUtilities.get_system_statistics()
+        
+        config_stats = {
+            'total_configs': SystemConfiguration.objects.filter(is_active=True).count(),
+            'by_type': {},
+            'recently_updated': SystemConfiguration.objects.filter(
+                is_active=True,
+                updated_at__gte=timezone.now() - timedelta(days=7)
+            ).count()
+        }
+        
+        for setting_type, display_name in SystemConfiguration.SETTING_TYPES:
+            config_stats['by_type'][display_name] = SystemConfiguration.objects.filter(
+                setting_type=setting_type,
+                is_active=True
+            ).count()
+        
+        context = {
+            'page_title': 'System Statistics',
+            'stats': stats,
+            'config_stats': config_stats,
+            'recent_activities': AuditLog.objects.filter(
+                model_name='SystemConfiguration'
+            ).order_by('-timestamp')[:20],
+            'active_sessions': UserSession.objects.filter(is_active=True).count(),
+            'password_expiry_users': SystemUtilities.get_password_expiry_users().count(),
+            'action': 'statistics'
+        }
+        
+        return render(request, self.template_name, context)
+    
+    def maintenance_view(self, request):
+        context = {
+            'page_title': 'System Maintenance',
+            'expired_sessions_count': UserSession.objects.filter(
+                is_active=True,
+                last_activity__lt=timezone.now() - timedelta(minutes=30)
+            ).count(),
+            'expired_tokens_count': PasswordResetToken.objects.filter(
+                expires_at__lt=timezone.now(),
+                is_used=False
+            ).count(),
+            'old_logs_count': AuditLog.objects.filter(
+                timestamp__lt=timezone.now() - timedelta(days=365)
+            ).count(),
+            'password_expiry_users_count': SystemUtilities.get_password_expiry_users().count(),
+            'total_configs': SystemConfiguration.objects.filter(is_active=True).count(),
+            'action': 'maintenance'
+        }
+        
+        return render(request, self.template_name, context)
+    
+    def maintenance_post(self, request):
+        action = request.POST.get('action')
+        
+        if action == 'cleanup_sessions':
             count = UserSession.cleanup_expired_sessions()
             messages.success(request, f"Cleaned up {count} expired sessions.")
-
-        elif action == "cleanup_tokens":
+        
+        elif action == 'cleanup_tokens':
             count = SystemUtilities.cleanup_expired_tokens()
             messages.success(request, f"Cleaned up {count} expired tokens.")
-
-        elif action == "cleanup_logs":
-            days = int(request.POST.get("days", 365))
+        
+        elif action == 'cleanup_logs':
+            days = int(request.POST.get('days', 365))
             count = AuditLog.cleanup_old_logs(days)
             messages.success(request, f"Cleaned up {count} old audit logs.")
-
-        elif action == "send_password_notifications":
+        
+        elif action == 'send_password_notifications':
             count = SystemUtilities.send_password_expiry_notifications()
-            messages.success(
-                request, f"Sent password expiry notifications to {count} users."
-            )
-
-        elif action == "test_email":
+            messages.success(request, f"Sent password expiry notifications to {count} users.")
+        
+        elif action == 'test_email':
             if SystemUtilities.test_email_connection():
                 messages.success(request, "Email connection test successful.")
             else:
                 messages.error(request, "Email connection test failed.")
-
+        
         log_user_activity(
             user=request.user,
             action="SYSTEM_MAINTENANCE",
             description=f"Performed system maintenance action: {action}",
             request=request,
-            additional_data={"action": action},
+            additional_data={'action': action}
         )
-
-        return redirect("accounts:system_maintenance")
-
-    context = {
-        "page_title": "System Maintenance",
-        "expired_sessions_count": UserSession.objects.filter(
-            is_active=True, last_activity__lt=timezone.now() - timedelta(minutes=30)
-        ).count(),
-        "expired_tokens_count": PasswordResetToken.objects.filter(
-            expires_at__lt=timezone.now(), is_used=False
-        ).count(),
-        "old_logs_count": AuditLog.objects.filter(
-            timestamp__lt=timezone.now() - timedelta(days=365)
-        ).count(),
-        "password_expiry_users_count": SystemUtilities.get_password_expiry_users().count(),
-    }
-
-    return render(request, "ui-form-elements.html", context)
-
+        
+        return redirect('accounts:system_config', action='maintenance')
+    
+    def bulk_view(self, request):
+        setting_type = request.GET.get('type')
+        configurations = SystemConfiguration.objects.filter(is_active=True)
+        
+        if setting_type:
+            configurations = configurations.filter(setting_type=setting_type)
+        
+        context = {
+            'page_title': 'Bulk Configuration Management',
+            'configurations': configurations.order_by('setting_type', 'key'),
+            'setting_types': SystemConfiguration.SETTING_TYPES,
+            'selected_type': setting_type or '',
+            'action': 'bulk'
+        }
+        
+        return render(request, self.template_name, context)
+    
+    def bulk_post(self, request):
+        action = request.POST.get('bulk_action')
+        config_ids = request.POST.getlist('config_ids')
+        
+        if not config_ids:
+            messages.error(request, "No configurations selected.")
+            return redirect('accounts:system_config', action='bulk')
+        
+        with transaction.atomic():
+            if action == 'delete':
+                count = SystemConfiguration.objects.filter(
+                    id__in=config_ids,
+                    is_active=True
+                ).update(is_active=False)
+                
+                log_user_activity(
+                    user=request.user,
+                    action="BULK_DELETE",
+                    description=f"Bulk deleted {count} system configurations",
+                    request=request,
+                    additional_data={'config_ids': config_ids}
+                )
+                
+                messages.success(request, f"Deleted {count} configurations.")
+            
+            elif action == 'update_type':
+                new_type = request.POST.get('new_setting_type')
+                if new_type:
+                    count = SystemConfiguration.objects.filter(
+                        id__in=config_ids,
+                        is_active=True
+                    ).update(setting_type=new_type, updated_by=request.user)
+                    
+                    log_user_activity(
+                        user=request.user,
+                        action="BULK_UPDATE",
+                        description=f"Bulk updated setting type for {count} configurations",
+                        request=request,
+                        additional_data={
+                            'config_ids': config_ids,
+                            'new_type': new_type
+                        }
+                    )
+                    
+                    messages.success(request, f"Updated {count} configurations.")
+        
+        return redirect('accounts:system_config', action='bulk')
+    
+    def export_view(self, request):
+        setting_type = request.GET.get('type')
+        configurations = SystemConfiguration.objects.filter(is_active=True)
+        
+        if setting_type:
+            configurations = configurations.filter(setting_type=setting_type)
+        
+        export_data = []
+        for config in configurations:
+            export_data.append({
+                'key': config.key,
+                'value': config.value,
+                'setting_type': config.setting_type,
+                'description': config.description,
+                'is_encrypted': config.is_encrypted
+            })
+        
+        response = JsonResponse({
+            'configurations': export_data,
+            'export_date': timezone.now().isoformat(),
+            'total_count': len(export_data)
+        })
+        
+        response['Content-Disposition'] = f'attachment; filename="system_config_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.json"'
+        
+        log_user_activity(
+            user=request.user,
+            action="EXPORT",
+            description=f"Exported {len(export_data)} system configurations",
+            request=request,
+            additional_data={'setting_type': setting_type}
+        )
+        
+        return response
+    
+    def import_view(self, request):
+        context = {
+            'page_title': 'Import System Configuration',
+            'action': 'import'
+        }
+        
+        return render(request, self.template_name, context)
+    
+    def import_post(self, request):
+        if 'config_file' not in request.FILES:
+            messages.error(request, "No file selected.")
+            return redirect('accounts:system_config', action='import')
+        
+        try:
+            config_file = request.FILES['config_file']
+            data = json.loads(config_file.read().decode('utf-8'))
+            
+            if 'configurations' not in data:
+                messages.error(request, "Invalid file format.")
+                return redirect('accounts:system_config', action='import')
+            
+            created_count = 0
+            updated_count = 0
+            
+            with transaction.atomic():
+                for config_data in data['configurations']:
+                    config, created = SystemConfiguration.objects.update_or_create(
+                        key=config_data['key'],
+                        defaults={
+                            'value': config_data['value'],
+                            'setting_type': config_data['setting_type'],
+                            'description': config_data.get('description', ''),
+                            'is_encrypted': config_data.get('is_encrypted', False),
+                            'updated_by': request.user,
+                            'is_active': True
+                        }
+                    )
+                    
+                    if created:
+                        created_count += 1
+                    else:
+                        updated_count += 1
+                
+                log_user_activity(
+                    user=request.user,
+                    action="IMPORT",
+                    description=f"Imported configurations: {created_count} created, {updated_count} updated",
+                    request=request,
+                    additional_data={
+                        'created_count': created_count,
+                        'updated_count': updated_count
+                    }
+                )
+            
+            messages.success(
+                request,
+                f"Import completed: {created_count} created, {updated_count} updated."
+            )
+            
+        except json.JSONDecodeError:
+            messages.error(request, "Invalid JSON file.")
+        except Exception as e:
+            messages.error(request, f"Import failed: {str(e)}")
+        
+        return redirect('accounts:system_config')
+    
+    def reset_defaults_post(self, request):
+        with transaction.atomic():
+            count = SystemConfiguration.initialize_default_settings()
+            
+            log_user_activity(
+                user=request.user,
+                action="RESET_DEFAULTS",
+                description=f"Reset system configurations to defaults: {count} settings initialized",
+                request=request,
+                additional_data={'initialized_count': count}
+            )
+            
+            messages.success(request, f"Reset to defaults completed: {count} settings initialized.")
+        
+        return redirect('accounts:system_config')
 
 @login_required
 def audit_log_view(request):
@@ -2365,7 +2660,7 @@ def advanced_search_view(request):
         ),
     }
 
-    return render(request, "apps-school-students.html", context)
+    return render(request, "employee/employee-list.html", context)
 
 
 @login_required

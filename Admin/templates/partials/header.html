@@ -55,7 +55,7 @@
                                         <i class="bi bi-clock-fill"></i>
                                     </div>
                                     <div>
-                                        <a href="{% url 'accounts:system_maintenance' %}" class="stretched-link">
+                                        <a href="{% url 'accounts:system_config' action='maintenance' %}" class="stretched-link">
                                             <h6 class="mb-1 text-muted"><strong class="fw-semibold text-body">Password Expiry Alert</strong></h6>
                                         </a>
                                         <p class="text-muted mb-0 fs-12 mb-2">Friday, 11:29 AM</p>
@@ -137,7 +137,7 @@
                                 </ul>
                                 <div class="p-5 d-flex justify-content-end gap-3">
                                     <a href="{% url 'accounts:employee_list' %}"><button class="btn btn-light" type="button">View All Employees</button></a>
-                                    <a class="btn btn-primary" href="{% url 'accounts:system_statistics' %}">System Reports</a>
+                                    <a class="btn btn-primary" href="{% url 'accounts:system_config' action='statistics' %}">System Reports</a>
                                 </div>
                             </div>
                         </ul>

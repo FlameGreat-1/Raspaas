@@ -60,7 +60,7 @@
                     </div>
                     <div class="d-flex flex-wrap gap-2 align-items-center">
                         <div class="dropdown">
-                            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" onclick="this.nextElementSibling.classList.toggle('show')">
                                 <i class="ri-filter-3-line me-1"></i>
                                 {% if selected_type %}
                                     {{ selected_type|title }}
@@ -107,7 +107,7 @@
                         {% endif %}
                         
                         <div class="dropdown">
-                            <button class="btn btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                            <button class="btn btn-outline-secondary" type="button" data-bs-toggle="dropdown" onclick="this.nextElementSibling.classList.toggle('show')">
                                 <i class="ri-more-line"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
@@ -129,7 +129,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="card-body">
                 {% if configurations %}
                 <div class="row mb-3">
@@ -152,7 +152,30 @@
                         </div>
                     </div>
                 </div>
-
+            
+                <script>
+                document.getElementById('card-view').addEventListener('change', function() {
+                    if (this.checked) {
+                        document.getElementById('card-view-content').style.display = 'block';
+                        document.getElementById('list-view-content').style.display = 'none';
+                    }
+                });
+            
+                document.getElementById('list-view').addEventListener('change', function() {
+                    if (this.checked) {
+                        document.getElementById('card-view-content').style.display = 'none';
+                        document.getElementById('list-view-content').style.display = 'block';
+                    }
+                });
+            
+                document.addEventListener('DOMContentLoaded', function() {
+                    var dropdownElementList = [].slice.call(document.querySelectorAll('[data-bs-toggle="dropdown"]'));
+                    var dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
+                        return new bootstrap.Dropdown(dropdownToggleEl);
+                    });
+                });
+                </script>
+            
                 <div id="card-view-content">
                     {% for setting_type, configs in grouped_configs.items %}
                     <div class="mb-4">
@@ -193,7 +216,7 @@
                                             </div>
                                         </div>
                                         
-                                        <h6 class="card-title mb-2">{{ config.key }}</h6>
+                                        <h6 class="card-title mb-2">{{ config.get_display_name }}</h6>
                                         
                                         <div class="config-value mb-2">
                                             {% if config.value|length > 50 %}
@@ -245,7 +268,7 @@
                                 {% for config in configurations %}
                                 <tr>
                                     <td>
-                                        <strong>{{ config.key }}</strong>
+                                        <strong>{{ config.get_display_name }}</strong>
                                     </td>
                                     <td>
                                         <code class="small">
@@ -1185,7 +1208,7 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="fw-medium">{{ config.key }}</div>
+                                        <div class="fw-medium">{{ config.get_display_name }}</div>
                                         {% if config.description %}
                                         <div class="text-muted small">{{ config.description|truncatechars:50 }}</div>
                                         {% endif %}
@@ -1443,11 +1466,14 @@
 
 {% endblock %}
 
-{% block script %}
-<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+{% block extra_js %}
+<script src="{% static 'assets/libs/choices.js/public/assets/scripts/choices.min.js' %}"></script>
+<script src="{% static 'assets/libs/dragula/dragula.min.js' %}"></script>
+<script src="{% static 'assets/js/app/kanban.init.js' %}"></script>
+<script src="{% static 'assets/js/app.js' %}"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Choices.js for select elements
     const selects = document.querySelectorAll('.form-select:not([multiple])');
     selects.forEach(select => {
         if (!select.hasAttribute('data-choices-init')) {
@@ -1459,13 +1485,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // View mode toggle
     const cardViewBtn = document.getElementById('card-view');
     const listViewBtn = document.getElementById('list-view');
     const cardViewContent = document.getElementById('card-view-content');
     const listViewContent = document.getElementById('list-view-content');
 
-    if (cardViewBtn && listViewBtn) {
+    if (cardViewBtn && listViewBtn && cardViewContent && listViewContent) {
         cardViewBtn.addEventListener('change', function() {
             if (this.checked) {
                 cardViewContent.style.display = 'block';
@@ -1481,7 +1506,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Bulk operations
     const selectAllCheckbox = document.getElementById('select-all-checkbox');
     const configCheckboxes = document.querySelectorAll('.config-checkbox');
     const bulkSubmitBtn = document.getElementById('bulk-submit-btn');
@@ -1521,7 +1545,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Form validation
     const forms = document.querySelectorAll('.needs-validation');
     forms.forEach(form => {
         form.addEventListener('submit', function(event) {
@@ -1533,7 +1556,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Reset confirmation
     const resetConfirmation = document.getElementById('reset-confirmation');
     const resetSubmitBtn = document.getElementById('reset-submit-btn');
 
@@ -1543,7 +1565,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // File upload validation
     const fileInput = document.getElementById('config_file');
     if (fileInput) {
         fileInput.addEventListener('change', function() {
@@ -1564,17 +1585,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Initialize tooltips
     const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     tooltips.forEach(tooltip => {
         new bootstrap.Tooltip(tooltip);
     });
 });
 
-// Global functions
 function deleteConfig(configId, configName) {
     document.getElementById('delete-config-name').textContent = configName;
-    document.getElementById('delete-form').action = `{% url 'accounts:system_config' action='delete' config_id=0 %}`.replace('0', configId);
+    document.getElementById('delete-form').action = `/accounts/system-config/delete/${configId}/`;
     new bootstrap.Modal(document.getElementById('deleteConfirmModal')).show();
 }
 
@@ -1607,7 +1626,6 @@ function updateBulkSubmitButton() {
     }
 }
 
-// Auto-refresh for statistics page
 {% if action == 'statistics' %}
 setInterval(function() {
     if (document.visibilityState === 'visible') {
@@ -1621,7 +1639,6 @@ setInterval(function() {
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
             
-            // Update statistics cards
             const statsCards = document.querySelectorAll('.card-body h4');
             const newStatsCards = doc.querySelectorAll('.card-body h4');
             
@@ -1633,12 +1650,7 @@ setInterval(function() {
         })
         .catch(error => console.log('Auto-refresh failed:', error));
     }
-}, 30000); // Refresh every 30 seconds
+}, 30000);
 {% endif %}
 </script>
 {% endblock %}
-
-
-
-
-

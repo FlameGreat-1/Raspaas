@@ -668,6 +668,11 @@ class SystemConfiguration(models.Model):
     def __str__(self):
         return f"{self.key}: {self.value[:50]}"
 
+    def get_display_name(self):
+        """Convert key to user-friendly display name"""
+        
+        return self.key.replace("_", " ").title()
+
     def save(self, *args, **kwargs):
         self.key = self.key.upper()
         super().save(*args, **kwargs)
@@ -762,23 +767,6 @@ class SystemConfiguration(models.Model):
             "LEAVE_APPROVAL_REQUIRED": ("true", "LEAVE", "Leave approval required"),
             "MEDICAL_CERTIFICATE_REQUIRED_DAYS": ("3", "LEAVE", "Medical certificate required days"),
             "MIN_LEAVE_NOTICE_DAYS": ("1", "LEAVE", "Minimum leave notice days"),
-        }
-
-        created_count = 0
-        for key, (value, setting_type, description) in default_settings.items():
-            setting, created = cls.objects.get_or_create(
-                key=key,
-                defaults={
-                    "value": value,
-                    "setting_type": setting_type,
-                    "description": description,
-                    "is_active": True,
-                },
-            )
-            if created:
-                created_count += 1
-
-        device_settings = {
             "DEVICE_SYNC_INTERVAL_MINUTES": ("5", "DEVICE", "Device synchronization interval"),
             "DEVICE_CONNECTION_TIMEOUT_SECONDS": ("30", "DEVICE", "Device connection timeout"),
             "MAX_DEVICE_RETRY_ATTEMPTS": ("3", "DEVICE", "Maximum device retry attempts"),
@@ -795,6 +783,14 @@ class SystemConfiguration(models.Model):
             "LATE_NOTIFICATION_THRESHOLD_MINUTES": ("15", "NOTIFICATION", "Late notification threshold"),
             "MISSING_CHECKOUT_NOTIFICATION_TIME": ("20:00:00", "NOTIFICATION", "Missing checkout notification time"),
             "OVERTIME_NOTIFICATION_THRESHOLD_MINUTES": ("30", "NOTIFICATION", "Overtime notification threshold"),
+            "EMAIL_NOTIFICATIONS_ENABLED": ("true", "NOTIFICATION", "Enable email notifications"),
+            "COMPANY_NAME": ("HR Payroll System", "SYSTEM", "Company name displayed in the system"),
+            "COMPANY_EMAIL": ("", "SYSTEM", "Company contact email address"),
+            "COMPANY_PHONE": ("", "SYSTEM", "Company contact phone number"),
+            "COMPANY_ADDRESS": ("", "SYSTEM", "Company physical address"),
+            "SYSTEM_MAINTENANCE_MODE": ("false", "SYSTEM", "System maintenance mode flag"),
+            "AUDIT_LOG_RETENTION_DAYS": ("365", "SYSTEM", "Audit log retention period in days"),
+            "MAX_CONCURRENT_SESSIONS": ("3", "SYSTEM", "Maximum concurrent sessions per user"),
             "MAX_REPORT_RANGE_DAYS": ("365", "SYSTEM", "Maximum report range days"),
             "REPORT_GENERATION_TIMEOUT_MINUTES": ("30", "SYSTEM", "Report generation timeout"),
             "AUTO_CLEANUP_OLD_REPORTS": ("true", "SYSTEM", "Auto cleanup old reports"),
@@ -810,16 +806,26 @@ class SystemConfiguration(models.Model):
             "ATTENDANCE_CORRECTION_APPROVAL_REQUIRED": ("true", "VALIDATION", "Attendance correction approval required"),
             "MAX_CORRECTION_DAYS_BACK": ("7", "VALIDATION", "Maximum correction days back"),
             "ALLOW_SELF_CORRECTION": ("false", "VALIDATION", "Allow self correction"),
+            "MAX_EMPLOYEE_AGE": ("65", "VALIDATION", "Maximum employee age limit"),
+            "MIN_EMPLOYEE_AGE": ("18", "VALIDATION", "Minimum employee age requirement"),
+            "MAX_UPLOAD_SIZE_MB": ("10", "VALIDATION", "Maximum file upload size in MB"),
+            "ALLOWED_FILE_TYPES": ("pdf,doc,docx,jpg,jpeg,png,xlsx,xls", "VALIDATION", "Allowed file upload types"),
             "MAX_LOGIN_ATTEMPTS": ("5", "SECURITY", "Maximum login attempts"),
             "ACCOUNT_LOCKOUT_DURATION": ("30", "SECURITY", "Account lockout duration in minutes"),
-            "SESSION_TIMEOUT_MINUTES": ("30", "SECURITY", "Session timeout in minutes"),
+            "SESSION_TIMEOUT": ("30", "SECURITY", "Session timeout in minutes"),
             "PASSWORD_EXPIRY_DAYS": ("90", "SECURITY", "Password expiry days"),
-            "REQUIRE_PASSWORD_CHANGE": ("true", "SECURITY", "Require password change"),
+            "PASSWORD_EXPIRY_WARNING_DAYS": ("7", "SECURITY", "Days before password expiry to show warning"),
+            "SECURITY_ALERT_THRESHOLD": ("10", "SECURITY", "Security events threshold for alerts"),
             "MIN_PASSWORD_LENGTH": ("8", "SECURITY", "Minimum password length"),
             "REQUIRE_STRONG_PASSWORD": ("true", "SECURITY", "Require strong password"),
+            "OVERTIME_RATE": ("1.50", "PAYROLL", "Overtime pay rate multiplier"),
+            "LATE_PENALTY_RATE": ("0.00", "PAYROLL", "Late arrival penalty rate per hour"),
+            "WORKING_DAYS_PER_WEEK": ("5", "PAYROLL", "Standard working days per week"),
+            "WORKING_HOURS_PER_DAY": ("8.00", "PAYROLL", "Standard working hours per day"),
         }
 
-        for key, (value, setting_type, description) in device_settings.items():
+        created_count = 0
+        for key, (value, setting_type, description) in default_settings.items():
             setting, created = cls.objects.get_or_create(
                 key=key,
                 defaults={
@@ -833,6 +839,7 @@ class SystemConfiguration(models.Model):
                 created_count += 1
 
         return created_count
+
 
 class PasswordResetToken(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
