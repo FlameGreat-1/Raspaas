@@ -9,13 +9,13 @@ from django.contrib.auth import authenticate, get_user_model
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.core.validators import RegexValidator, EmailValidator
+from decimal import Decimal
 from .models import Department, Role, AuditLog, SystemConfiguration, CustomUser
 from .utils import validate_password_strength
 import re
 from datetime import datetime, timedelta
 
 User = get_user_model()
-
 
 def validate_password_field(password):
     is_valid, errors = validate_password_strength(password)
@@ -112,6 +112,7 @@ class CustomLoginForm(AuthenticationForm):
 
     def get_user(self):
         return self.user_cache
+
 class EmployeeRegistrationForm(forms.ModelForm):
     password1 = forms.CharField(
         label="Password",
@@ -125,6 +126,19 @@ class EmployeeRegistrationForm(forms.ModelForm):
         widget=forms.PasswordInput(
             attrs={"class": "form-control", "placeholder": "Confirm password"}
         ),
+    )
+    basic_salary = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        initial=50000.00,
+        widget=forms.NumberInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Basic Salary (LKR)",
+                "step": "0.01"
+            }
+        ),
+        help_text="Employee's basic monthly salary in LKR"
     )
 
     class Meta:
@@ -151,6 +165,7 @@ class EmployeeRegistrationForm(forms.ModelForm):
             "job_title",
             "hire_date",
             "manager",
+            "basic_salary",
         ]
         widgets = {
             "first_name": forms.TextInput(
@@ -228,6 +243,13 @@ class EmployeeRegistrationForm(forms.ModelForm):
                 attrs={"class": "form-control", "type": "date"}
             ),
             "manager": forms.Select(attrs={"class": "form-select"}),
+            "basic_salary": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Basic Salary (LKR)",
+                    "step": "0.01"
+                }
+            ),
         }
 
     def __init__(self, *args, **kwargs):
@@ -238,12 +260,12 @@ class EmployeeRegistrationForm(forms.ModelForm):
         self.fields["manager"].queryset = CustomUser.active.all()
         self.fields["manager"].empty_label = "Select Manager (Optional)"
 
-        # Make required fields mandatory
         self.fields["first_name"].required = True
         self.fields["last_name"].required = True
         self.fields["email"].required = True
         self.fields["department"].required = True
         self.fields["role"].required = True
+        self.fields["basic_salary"].required = True
 
     def clean_email(self):
         email = self.cleaned_data.get("email")
@@ -289,15 +311,27 @@ class EmployeeRegistrationForm(forms.ModelForm):
                 raise ValidationError("Hire date cannot be in the future.")
         return hire_date
 
+    def clean_basic_salary(self):
+        salary = self.cleaned_data.get("basic_salary")
+        if salary:
+            if salary <= 0:
+                raise ValidationError("Basic salary must be greater than zero.")
+            if salary > 10000000:
+                raise ValidationError("Basic salary seems too high. Please verify.")
+        return salary
+    
     def clean_password1(self):
         password1 = self.cleaned_data.get("password1")
         if password1:
-            return validate_password_field(password1)
+            validate_password_strength(password1)  
+            return password1  
         return password1
+
 
     def clean_password2(self):
         password1 = self.cleaned_data.get("password1")
         password2 = self.cleaned_data.get("password2")
+
         if password1 and password2 and password1 != password2:
             raise ValidationError("Passwords do not match.")
         return password2
@@ -306,7 +340,6 @@ class EmployeeRegistrationForm(forms.ModelForm):
         cleaned_data = super().clean()
         manager = cleaned_data.get("manager")
 
-        # Remove employee_code validation since it's auto-generated
         if manager and self.instance and manager == self.instance:
             raise ValidationError("Employee cannot be their own manager.")
 
@@ -330,6 +363,19 @@ class EmployeeRegistrationForm(forms.ModelForm):
 
 
 class EmployeeUpdateForm(forms.ModelForm):
+    basic_salary = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        widget=forms.NumberInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Basic Salary (LKR)",
+                "step": "0.01",
+            }
+        ),
+        help_text="Employee's basic monthly salary in LKR",
+    )
+
     class Meta:
         model = CustomUser
         fields = [
@@ -352,8 +398,10 @@ class EmployeeUpdateForm(forms.ModelForm):
             "department",
             "role",
             "job_title",
+            "hire_date",
             "manager",
             "status",
+            "basic_salary",
         ]
         widgets = {
             "first_name": forms.TextInput(attrs={"class": "form-control"}),
@@ -379,8 +427,18 @@ class EmployeeUpdateForm(forms.ModelForm):
             "department": forms.Select(attrs={"class": "form-select"}),
             "role": forms.Select(attrs={"class": "form-select"}),
             "job_title": forms.TextInput(attrs={"class": "form-control"}),
+            "hire_date": forms.DateInput(
+                attrs={"class": "form-control", "type": "date"}
+            ),
             "manager": forms.Select(attrs={"class": "form-select"}),
             "status": forms.Select(attrs={"class": "form-select"}),
+            "basic_salary": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Basic Salary (LKR)",
+                    "step": "0.01",
+                }
+            ),
         }
 
     def __init__(self, *args, **kwargs):
@@ -392,6 +450,11 @@ class EmployeeUpdateForm(forms.ModelForm):
             id=self.instance.id if self.instance else None
         )
         self.fields["manager"].empty_label = "Select Manager (Optional)"
+
+        if self.instance and hasattr(self.instance, "employee_profile"):
+            self.fields["basic_salary"].initial = (
+                self.instance.employee_profile.basic_salary
+            )
 
     def clean_email(self):
         email = self.cleaned_data.get("email")
@@ -411,6 +474,64 @@ class EmployeeUpdateForm(forms.ModelForm):
             if not phone_regex.match(phone):
                 raise ValidationError("Enter a valid phone number.")
         return phone
+
+    def clean_date_of_birth(self):
+        dob = self.cleaned_data.get("date_of_birth")
+        if dob:
+            today = timezone.now().date()
+            age = (
+                today.year
+                - dob.year
+                - ((today.month, today.day) < (dob.month, dob.day))
+            )
+            try:
+                min_age = int(SystemConfiguration.get_setting("MIN_EMPLOYEE_AGE", "18"))
+                max_age = int(SystemConfiguration.get_setting("MAX_EMPLOYEE_AGE", "65"))
+            except:
+                min_age = 18
+                max_age = 65
+
+            if age < min_age:
+                raise ValidationError(f"Employee must be at least {min_age} years old.")
+            if age > max_age:
+                raise ValidationError("Please verify the date of birth.")
+        return dob
+
+    def clean_hire_date(self):
+        hire_date = self.cleaned_data.get("hire_date")
+        if hire_date:
+            if hire_date > timezone.now().date():
+                raise ValidationError("Hire date cannot be in the future.")
+        return hire_date
+
+    def clean_basic_salary(self):
+        salary = self.cleaned_data.get("basic_salary")
+        if salary:
+            if salary <= 0:
+                raise ValidationError("Basic salary must be greater than zero.")
+            if salary > 10000000:
+                raise ValidationError("Basic salary seems too high. Please verify.")
+        return salary
+
+    def clean(self):
+        cleaned_data = super().clean()
+        manager = cleaned_data.get("manager")
+
+        if manager and self.instance and manager == self.instance:
+            raise ValidationError("Employee cannot be their own manager.")
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        user = super().save(commit=commit)
+
+        if commit and hasattr(user, "employee_profile"):
+            basic_salary = self.cleaned_data.get("basic_salary")
+            if basic_salary:
+                user.employee_profile.basic_salary = basic_salary
+                user.employee_profile.save(update_fields=["basic_salary"])
+
+        return user
 class CustomPasswordChangeForm(PasswordChangeForm):
     old_password = forms.CharField(
         label="Current Password",

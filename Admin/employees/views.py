@@ -28,9 +28,11 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 from accounts.models import CustomUser, Department, Role, SystemConfiguration
+from accounts.utils import log_user_activity
 from .models import EmployeeProfile, Education, Contract
 from .forms import (
     EmployeeProfileForm,
+    EmployeeUpdateForm,
     EducationForm,
     ContractForm,
     BulkEmployeeImportForm,
@@ -216,29 +218,77 @@ class EmployeeCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     def get_success_url(self):
         return reverse("employee:employee_detail", kwargs={"pk": self.object.pk})
 
-
 class EmployeeUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
-    model = EmployeeProfile
-    form_class = EmployeeProfileForm
-    template_name = "employee/employee-create.html"
+    model = CustomUser
+    form_class = EmployeeUpdateForm
+    template_name = "employee/employee-update.html"
+    pk_url_kwarg = "pk"
+    context_object_name = "object"
 
     def test_func(self):
         return is_hr_staff(self.request.user)
 
-    def get_object(self):
-        return get_object_or_404(EmployeeProfile.active, pk=self.kwargs["pk"])
+    def get_object(self, queryset=None):
+        employee_profile = get_object_or_404(EmployeeProfile.active, pk=self.kwargs["pk"])
+        return employee_profile.user
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = f"Edit Employee - {self.object.get_full_name()}"
+        context["form_title"] = "Update Employee Information"
+        context["is_update"] = True
+        context["departments"] = Department.active.all()
+        context["roles"] = Role.active.all()
+        context["managers"] = CustomUser.active.exclude(id=self.object.id)
+        return context
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["instance"] = self.object
+        return kwargs
 
     def form_valid(self, form):
-        messages.success(self.request, "Employee profile updated successfully.")
-        return super().form_valid(form)
+        with transaction.atomic():
+            employee = form.save(commit=False)
+            employee.updated_by = self.request.user
+            employee.save()
+
+            employee_profile = employee.employee_profile
+            employee_profile.basic_salary = form.cleaned_data.get('basic_salary')
+            employee_profile.updated_by = self.request.user
+            employee_profile.save()
+
+            log_user_activity(
+                user=self.request.user,
+                action="UPDATE",
+                description=f"Updated employee: {employee.get_display_name()}",
+                request=self.request,
+                additional_data={
+                    "employee_code": employee.employee_code,
+                    "employee_id": employee.id,
+                    "profile_id": employee_profile.id,
+                },
+            )
+
+            messages.success(
+                self.request,
+                f"Employee {employee.get_display_name()} updated successfully.",
+            )
+            return redirect("employee:employee_detail", pk=employee_profile.pk)
+
+    def form_invalid(self, form):
+        messages.error(
+            self.request,
+            "Please correct the errors below and try again."
+        )
+        return super().form_invalid(form)
 
     def get_success_url(self):
-        return reverse("employee:employee_detail", kwargs={"pk": self.object.pk})
-
+        return reverse("employee:employee_detail", kwargs={"pk": self.object.employee_profile.pk})
 
 class DepartmentListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = Department
-    template_name = "apps-school-courses.html"
+    template_name = "employee/department-list.html" 
     context_object_name = "departments"
     paginate_by = 20
 
@@ -261,7 +311,7 @@ class DepartmentListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
 
 class DepartmentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     model = Department
-    template_name = "apps-school-courses.html"
+    template_name = "employee/department-detail.html" 
     context_object_name = "department"
 
     def test_func(self):
@@ -290,7 +340,7 @@ class DepartmentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
 
 class RoleListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = Role
-    template_name = "apps-teacher.html"
+    template_name = "employee/role-list.html"
     context_object_name = "roles"
     paginate_by = 20
 
@@ -310,7 +360,7 @@ class RoleListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
 
 class RoleDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     model = Role
-    template_name = "apps-teacher.html"
+    template_name = "employee/role-detail.html"
     context_object_name = "role"
 
     def test_func(self):
@@ -342,9 +392,8 @@ class ContractListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         return is_hr_staff(self.request.user)
 
     def get_queryset(self):
-        queryset = Contract.active.select_related("employee", "department", "reporting_manager").order_by("-start_date")
+        queryset = Contract.objects.select_related("employee", "department", "reporting_manager").order_by("-start_date")  # ← FIXED
 
-        # Handle search
         search = self.request.GET.get("search")
         if search:
             queryset = queryset.filter(
@@ -355,7 +404,6 @@ class ContractListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
                 Q(job_title__icontains=search)
             )
 
-        # Handle filters
         status = self.request.GET.get("status")
         contract_type = self.request.GET.get("contract_type")
         department = self.request.GET.get("department")
@@ -377,7 +425,6 @@ class ContractListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         context["expiring_contracts"] = ContractUtils.get_expiring_contracts(30).count()
         return context
 
-
 class ContractDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     model = Contract
     template_name = "employee/contract-detail.html"
@@ -385,10 +432,10 @@ class ContractDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
 
     def test_func(self):
         return is_hr_staff(self.request.user)
-
+    
     def get_object(self):
         return get_object_or_404(
-            Contract.active.select_related(
+            Contract.objects.select_related(
                 "employee", "department", "reporting_manager", "created_by", "terminated_by"
             ),
             pk=self.kwargs["pk"],
@@ -403,11 +450,10 @@ class ContractDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
         context["is_expired"] = contract.is_expired
         context["can_edit"] = is_hr_staff(self.request.user)
         context["can_delete"] = is_hr_staff(self.request.user)
-    
+
         context["recent_activities"] = []
 
         return context
-
 
 class ContractCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = Contract
@@ -420,24 +466,35 @@ class ContractCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["page_title"] = "Create New Contract"
-        context["employees"] = CustomUser.active.filter(
-            employee_profile__isnull=False
-        ).select_related("employee_profile").order_by("first_name", "last_name")
+        context["employees"] = (
+            CustomUser.active.filter(employee_profile__isnull=False)
+            .select_related("employee_profile")
+            .order_by("first_name", "last_name")
+        )
         context["departments"] = Department.active.all().order_by("name")
-        context["managers"] = CustomUser.active.filter(
-            role__name__in=["MANAGER", "HR_MANAGER", "ADMIN"]
-        ).order_by("first_name", "last_name")
-        context["contract_types"] = Contract.CONTRACT_TYPES
-        context["contract_statuses"] = Contract.CONTRACT_STATUS
+
+        context["managers"] = CustomUser.active.all().order_by(
+            "first_name", "last_name"
+        )
+
+        context["contract_types"] = (
+            Contract.CONTRACT_TYPES
+        )  
+        context["contract_statuses"] = (
+            Contract.CONTRACT_STATUS
+        )  
+
         return context
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
-        
-        # Handle salary breakdown
-        breakdown_keys = self.request.POST.getlist('breakdown_key[]')
-        breakdown_values = self.request.POST.getlist('breakdown_value[]')
-        
+
+        if not form.instance.contract_number:
+            form.instance.contract_number = self.generate_contract_number()
+
+        breakdown_keys = self.request.POST.getlist("breakdown_key[]")
+        breakdown_values = self.request.POST.getlist("breakdown_value[]")
+
         salary_breakdown = {}
         for key, value in zip(breakdown_keys, breakdown_values):
             if key.strip() and value.strip():
@@ -445,16 +502,23 @@ class ContractCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
                     salary_breakdown[key.strip()] = float(value)
                 except ValueError:
                     pass
-        
+
         if salary_breakdown:
             form.instance.salary_breakdown = salary_breakdown
 
         messages.success(self.request, "Contract created successfully.")
         return super().form_valid(form)
 
+    def generate_contract_number(self):
+        """Generate unique contract number"""
+        import datetime
+
+        year = datetime.datetime.now().year
+        count = Contract.objects.filter(created_at__year=year).count() + 1
+        return f"CON-{year}-{count:04d}"
+
     def get_success_url(self):
         return reverse("employee:contract_detail", kwargs={"pk": self.object.pk})
-
 
 class ContractUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Contract
@@ -463,9 +527,9 @@ class ContractUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 
     def test_func(self):
         return is_hr_staff(self.request.user)
-
+    
     def get_object(self):
-        return get_object_or_404(Contract.active, pk=self.kwargs["pk"])
+        return get_object_or_404(Contract.objects, pk=self.kwargs["pk"])  
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -604,7 +668,7 @@ class EducationListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         return is_hr_staff(self.request.user)
 
     def get_queryset(self):
-        queryset = Education.active.select_related(
+        queryset = Education.objects.select_related(
             "employee", "employee__department", "verified_by"
         ).order_by("-completion_year", "employee__first_name")
 

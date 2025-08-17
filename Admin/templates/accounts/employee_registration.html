@@ -403,6 +403,21 @@
                                 </div>
                             {% endif %}
                         </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.basic_salary.id_for_label }}" class="form-label">
+                                Basic Salary <span class="text-danger">*</span>
+                            </label>
+                            {{ form.basic_salary }}
+                            {% if form.basic_salary.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.basic_salary.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Monthly salary in LKR</div>
+                        </div>                        
                         
                         <div class="col-md-6">
                             <label for="{{ form.hire_date.id_for_label }}" class="form-label">

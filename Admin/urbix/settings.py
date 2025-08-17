@@ -218,24 +218,31 @@ CSRF_TRUSTED_ORIGINS = [
     config("CSRF_TRUSTED_ORIGIN", default="http://localhost:8000"),
 ]
 
-# Cache Configuration (HR system)
-if config("REDIS_URL", default=None):
-    CACHES = {
-        "default": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": config("REDIS_URL"),
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            },
-        }
+# Cache Configuration (HR system) - COMMENTED OUT FOR TESTING
+# if config("REDIS_URL", default=None):
+#     CACHES = {
+#         "default": {
+#             "BACKEND": "django_redis.cache.RedisCache",
+#             "LOCATION": config("REDIS_URL"),
+#             "OPTIONS": {
+#                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
+#             },
+#         }
+#     }
+# else:
+#     CACHES = {
+#         "default": {
+#             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+#             "LOCATION": "unique-snowflake",
+#         }
+#     }
+
+# Temporary dummy cache to avoid Redis connection issues
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.dummy.DummyCache",
     }
-else:
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "unique-snowflake",
-        }
-    }
+}
 
 # Logging Configuration (HR system)
 LOGGING = {

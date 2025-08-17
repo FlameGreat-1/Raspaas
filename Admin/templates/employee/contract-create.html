@@ -101,6 +101,11 @@
                             </select>
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label">Contract Number</label>
+                            <input type="text" class="form-control" name="contract_number" value="{% if contract %}{{ contract.contract_number }}{% endif %}" placeholder="Auto-generated if empty">
+                            <small class="text-muted">Leave empty for auto-generation</small>
+                        </div>                        
+                        <div class="col-md-6">
                             <label class="form-label">Job Title <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="job_title" value="{% if contract %}{{ contract.job_title }}{% endif %}" required>
                         </div>
@@ -481,7 +486,13 @@
         <ul class="mb-0">
             {% for field, errors in form.errors.items %}
                 {% for error in errors %}
-                <li>{{ field|title }}: {{ error }}</li>
+                <li>
+                    {% if field == '__all__' %}
+                        {{ error }}
+                    {% else %}
+                        {{ field|title }}: {{ error }}
+                    {% endif %}
+                </li>
                 {% endfor %}
             {% endfor %}
         </ul>

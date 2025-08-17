@@ -139,23 +139,46 @@ def handle_attendance_correction(sender, instance, created, **kwargs):
 
 
 def create_initial_attendance_records(employee):
-    today = get_current_date()
-    start_date = max(employee.hire_date or today, today - timedelta(days=30))
+    try:
 
-    current_date = start_date
-    while current_date <= today:
-        if current_date.weekday() < 5:
-            attendance, created = Attendance.objects.get_or_create(
-                employee=employee,
-                date=current_date,
-                defaults={
-                    "status": "ABSENT",
-                    "is_manual_entry": True,
-                    "notes": "Auto-created record",
-                },
+        if (
+            not hasattr(employee, "contracts")
+            or not employee.contracts.filter(status="ACTIVE").exists()
+        ):
+            print(
+                f"Skipping attendance creation for {employee.get_full_name()} - no active contract found"
             )
-        current_date += timedelta(days=1)
+            return
 
+        today = get_current_date()
+        start_date = max(employee.hire_date or today, today - timedelta(days=30))
+
+        current_date = start_date
+        while current_date <= today:
+            if current_date.weekday() < 5:
+                try:
+                    attendance, created = Attendance.objects.get_or_create(
+                        employee=employee,
+                        date=current_date,
+                        defaults={
+                            "status": "ABSENT",
+                            "is_manual_entry": True,
+                            "notes": "Auto-created record",
+                        },
+                    )
+                except Exception as e:
+                    print(
+                        f"Error creating attendance record for {employee.get_full_name()} on {current_date}: {e}"
+                    )
+                    continue
+            current_date += timedelta(days=1)
+
+    except Exception as e:
+        print(
+            f"Error in create_initial_attendance_records for {employee.get_full_name()}: {e}"
+        )
+    
+        pass
 
 def create_initial_leave_balances(employee):
     current_year = get_current_date().year
@@ -416,11 +439,17 @@ def handle_leave_type_creation(sender, instance, created, **kwargs):
         create_leave_balances_for_all_employees(instance)
 
 
+from django.db import transaction
+
+
 @receiver(post_save, sender=Contract)
 def handle_contract_update(sender, instance, created, **kwargs):
     if instance.status == "ACTIVE":
-        ensure_employee_attendance_records(instance.employee)
-        update_employee_shift_from_contract(instance)
+
+        transaction.on_commit(
+            lambda: ensure_employee_attendance_records(instance.employee)
+        )
+        transaction.on_commit(lambda: update_employee_shift_from_contract(instance))
 
 
 @receiver(pre_delete, sender=CustomUser)

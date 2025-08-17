@@ -233,7 +233,7 @@ class ForcePasswordChangeView(TemplateView):
         return render(request, self.template_name, context)
 
 class CustomPasswordResetView(PasswordResetView):
-    template_name = "auth-forgot-password.html"
+    template_name = "accounts/auth-forgot-password.html"
     form_class = CustomPasswordResetForm
     email_template_name = "accounts/emails/password_reset.html"
     success_url = reverse_lazy("accounts:password_reset_done")
@@ -271,7 +271,7 @@ def password_reset_done_view(request):
     )
 
 class CustomPasswordResetConfirmView(PasswordResetConfirmView):
-    template_name = "auth-reset-password.html"
+    template_name = "accounts/auth-reset-password.html"
     form_class = CustomSetPasswordForm
     success_url = reverse_lazy("accounts:password_reset_complete")
 
@@ -426,6 +426,7 @@ class EmployeeDetailView(LoginRequiredMixin, DetailView):
         context["marital_statuses"] = EmployeeProfile.MARITAL_STATUS_CHOICES
         
         return context
+
 class EmployeeCreateView(LoginRequiredMixin, CreateView):
     model = CustomUser
     form_class = EmployeeRegistrationForm
@@ -462,6 +463,15 @@ class EmployeeCreateView(LoginRequiredMixin, CreateView):
             employee.password_changed_at = timezone.now()
             employee.save()
 
+            employee_profile = EmployeeProfile.objects.create(
+                user=employee,
+                basic_salary=form.cleaned_data.get('basic_salary'),
+                employment_status='PROBATION',
+                probation_end_date=timezone.now().date() + timedelta(days=90),  
+                grade_level='ENTRY',
+                created_by=self.request.user
+            )
+
             send_welcome_email(employee, temp_password, self.request)
 
             log_user_activity(
@@ -472,6 +482,7 @@ class EmployeeCreateView(LoginRequiredMixin, CreateView):
                 additional_data={
                     "employee_code": employee.employee_code,
                     "employee_id": employee.id,
+                    "profile_id": employee_profile.id,
                 },
             )
 
@@ -479,64 +490,87 @@ class EmployeeCreateView(LoginRequiredMixin, CreateView):
                 self.request,
                 f"Employee {employee.get_display_name()} created successfully. Welcome email sent.",
             )
-            return redirect("accounts:employee_detail", employee_id=employee.id)
+            return redirect("accounts:employee_detail", employee_id=employee_profile.id)
+
 class EmployeeUpdateView(LoginRequiredMixin, UpdateView):
-    model = EmployeeProfile  
-    form_class = EmployeeUpdateForm  
+    model = CustomUser
+    form_class = EmployeeUpdateForm
     template_name = "employee/employee-update.html"
     pk_url_kwarg = "employee_id"
 
     def dispatch(self, request, *args, **kwargs):
-        employee_profile = self.get_object()
-        if not request.user.can_manage_user(employee_profile.user):
+        employee = self.get_object()
+        if not request.user.can_manage_user(employee):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
+    def get_object(self):
+        employee_profile_id = self.kwargs.get("employee_id")
+        try:
+            employee_profile = EmployeeProfile.objects.select_related("user").get(
+                pk=employee_profile_id
+            )
+            return employee_profile.user
+        except EmployeeProfile.DoesNotExist:
+            raise Http404("Employee not found")
+
     def get_queryset(self):
-        return EmployeeProfile.objects.select_related(
-            "user", "user__department", "user__role", "user__manager"
-        ).filter(is_active=True, user__is_active=True)
+        return CustomUser.objects.select_related(
+            "department", "role", "manager", "employee_profile"
+        ).filter(is_active=True, employee_profile__is_active=True)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs["current_user"] = self.request.user
+        
         return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["page_title"] = f"Edit Employee - {self.object.user.get_full_name()}"
+        context["page_title"] = f"Edit Employee - {self.object.get_full_name()}"
         context["form_title"] = "Update Employee Information"
         context["is_update"] = True
         context["departments"] = Department.active.all()
         context["roles"] = Role.active.all()
-        context["employment_statuses"] = EmployeeProfile.EMPLOYMENT_STATUS_CHOICES
-        context["grade_levels"] = EmployeeProfile.GRADE_LEVELS
-        context["marital_statuses"] = EmployeeProfile.MARITAL_STATUS_CHOICES
+        context["managers"] = CustomUser.active.exclude(id=self.object.id)
+        # REMOVE: These aren't used in our updated template
+        # context["employment_statuses"] = EmployeeProfile.EMPLOYMENT_STATUS_CHOICES
+        # context["grade_levels"] = EmployeeProfile.GRADE_LEVELS
+        # context["marital_statuses"] = EmployeeProfile.MARITAL_STATUS_CHOICES
         return context
 
     def form_valid(self, form):
         with transaction.atomic():
-            old_employee_profile = EmployeeProfile.objects.select_related("user").get(
+            old_employee = CustomUser.objects.select_related("employee_profile").get(
                 pk=self.object.pk
             )
-            employee_profile = form.save()
+            employee = form.save(commit=False)
+            employee.updated_by = self.request.user  
+            employee.save()
+
+            employee_profile = employee.employee_profile
+            employee_profile.basic_salary = form.cleaned_data.get('basic_salary')
+            employee_profile.updated_by = self.request.user
+            employee_profile.save()
 
             log_user_activity(
                 user=self.request.user,
                 action="UPDATE",
-                description=f"Updated employee: {employee_profile.user.get_full_name()}",
+                description=f"Updated employee: {employee.get_full_name()}",
                 request=self.request,
                 additional_data={
-                    "employee_code": employee_profile.user.employee_code,
-                    "employee_id": employee_profile.user.id,
+                    "employee_code": employee.employee_code,
+                    "employee_id": employee.id,
+                    "profile_id": employee.employee_profile.id,
                 },
             )
 
             messages.success(
                 self.request,
-                f"Employee {employee_profile.user.get_full_name()} updated successfully.",
+                f"Employee {employee.get_full_name()} updated successfully.",
             )
-            return redirect("accounts:employee_detail", employee_id=employee_profile.pk)
+            return redirect(
+                "accounts:employee_detail", employee_id=employee.employee_profile.pk
+            )
 
 
 @login_required
@@ -1433,7 +1467,7 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView):
 
 class CustomPasswordChangeView(LoginRequiredMixin, PasswordChangeView):
     form_class = CustomPasswordChangeForm
-    template_name = 'auth-reset-password.html'
+    template_name = 'accounts/auth-reset-password.html'
     success_url = reverse_lazy('accounts:password_change_done')
 
     def get_context_data(self, **kwargs):

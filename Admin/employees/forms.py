@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.contrib.admin.widgets import AdminDateWidget, AdminTimeWidget
 from django.contrib.auth import get_user_model
-from accounts.models import CustomUser, Department
+from accounts.models import CustomUser, Department, Role
 from .models import EmployeeProfile, Education, Contract
 from decimal import Decimal
 import datetime
@@ -198,6 +198,104 @@ class EmployeeProfileForm(forms.ModelForm):
         return cleaned_data
 
 
+class EmployeeUpdateForm(forms.ModelForm):
+    basic_salary = forms.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        widget=forms.NumberInput(
+            attrs={"class": "form-control", "step": "0.01", "min": "0"}
+        ),
+        help_text="Monthly salary amount",
+    )
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            "first_name",
+            "middle_name",
+            "last_name",
+            "email",
+            "phone_number",
+            "date_of_birth",
+            "gender",
+            "address_line1",
+            "address_line2",
+            "city",
+            "state",
+            "postal_code",
+            "country",
+            "emergency_contact_name",
+            "emergency_contact_phone",
+            "emergency_contact_relationship",
+            "department",
+            "role",
+            "job_title",
+            "hire_date",
+            "manager",
+        ]
+        widgets = {
+            "first_name": forms.TextInput(attrs={"class": "form-control"}),
+            "middle_name": forms.TextInput(attrs={"class": "form-control"}),
+            "last_name": forms.TextInput(attrs={"class": "form-control"}),
+            "email": forms.EmailInput(attrs={"class": "form-control"}),
+            "phone_number": forms.TextInput(attrs={"class": "form-control"}),
+            "date_of_birth": forms.DateInput(
+                attrs={"class": "form-control", "type": "date"}
+            ),
+            "gender": forms.Select(attrs={"class": "form-select"}),
+            "address_line1": forms.TextInput(attrs={"class": "form-control"}),
+            "address_line2": forms.TextInput(attrs={"class": "form-control"}),
+            "city": forms.TextInput(attrs={"class": "form-control"}),
+            "state": forms.TextInput(attrs={"class": "form-control"}),
+            "postal_code": forms.TextInput(attrs={"class": "form-control"}),
+            "country": forms.TextInput(attrs={"class": "form-control"}),
+            "emergency_contact_name": forms.TextInput(attrs={"class": "form-control"}),
+            "emergency_contact_phone": forms.TextInput(attrs={"class": "form-control"}),
+            "emergency_contact_relationship": forms.TextInput(
+                attrs={"class": "form-control"}
+            ),
+            "department": forms.Select(attrs={"class": "form-select"}),
+            "role": forms.Select(attrs={"class": "form-select"}),
+            "job_title": forms.TextInput(attrs={"class": "form-control"}),
+            "hire_date": forms.DateInput(
+                attrs={"class": "form-control", "type": "date"}
+            ),
+            "manager": forms.Select(attrs={"class": "form-select"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["department"].queryset = Department.active.all()
+        self.fields["role"].queryset = Role.active.all()
+        if self.instance and self.instance.pk:
+            self.fields["manager"].queryset = CustomUser.active.exclude(
+                id=self.instance.id
+            )
+            if hasattr(self.instance, "employee_profile"):
+                self.fields["basic_salary"].initial = (
+                    self.instance.employee_profile.basic_salary
+                )
+
+    def clean_basic_salary(self):
+        salary = self.cleaned_data.get("basic_salary")
+        if salary:
+            if salary <= 0:
+                raise ValidationError("Basic salary must be greater than zero.")
+            if salary > 10000000:
+                raise ValidationError("Basic salary seems too high. Please verify.")
+        return salary
+
+    def clean_email(self):
+        email = self.cleaned_data.get("email")
+        if email:
+            existing = CustomUser.objects.filter(email=email).exclude(
+                id=self.instance.id if self.instance else None
+            )
+            if existing.exists():
+                raise ValidationError("A user with this email already exists.")
+        return email
+
+
 class EducationForm(forms.ModelForm):
 
     class Meta:
@@ -309,8 +407,6 @@ class EducationForm(forms.ModelForm):
                 )
 
         return cleaned_data
-
-
 class ContractForm(forms.ModelForm):
 
     class Meta:

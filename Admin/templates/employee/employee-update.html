@@ -21,6 +21,14 @@
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">
+        {% for error in form.non_field_errors %}
+            <div>{{ error }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
     <div class="row">
         <div class="col-12">
             <div class="card border-0 shadow-sm">
@@ -29,12 +37,12 @@
                         <div class="col-md-8">
                             <div class="d-flex align-items-center">
                                 <div class="flex-shrink-0 me-3">
-                                    {% if employee.user.profile_picture %}
-                                        <img src="{{ employee.user.profile_picture.url }}" alt="{{ employee.user.get_full_name }}" class="avatar-lg rounded-circle">
+                                    {% if object.profile_picture %}
+                                        <img src="{{ object.profile_picture.url }}" alt="{{ object.get_full_name }}" class="avatar-lg rounded-circle">
                                     {% else %}
                                         <div class="avatar-lg">
                                             <span class="avatar-title rounded-circle bg-primary-subtle text-primary fs-24">
-                                                {{ employee.user.first_name|first|upper }}{{ employee.user.last_name|first|upper }}
+                                                {{ object.first_name|first|upper }}{{ object.last_name|first|upper }}
                                             </span>
                                         </div>
                                     {% endif %}
@@ -42,8 +50,8 @@
                                 <div class="flex-grow-1">
                                     <h4 class="mb-1 fw-bold">Update Employee Information</h4>
                                     <p class="text-muted mb-0">
-                                        <span class="badge bg-primary text-white me-2">{{ employee.user.employee_code }}</span>
-                                        {{ employee.user.get_full_name }}
+                                        <span class="badge bg-primary text-white me-2">{{ object.employee_code }}</span>
+                                        {{ object.get_full_name }}
                                     </p>
                                 </div>
                             </div>
@@ -53,7 +61,7 @@
                                 <button type="submit" class="btn btn-primary">
                                     <i class="ri-save-line me-1"></i>Save Changes
                                 </button>
-                                <a href="{% url 'accounts:employee_detail' employee.pk %}" class="btn btn-outline-secondary">
+                                <a href="{% url 'accounts:employee_detail' object.employee_profile.pk %}" class="btn btn-outline-secondary">
                                     <i class="ri-arrow-left-line me-1"></i>Cancel
                                 </a>
                             </div>
@@ -74,56 +82,177 @@
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">First Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="first_name" value="{{ employee.user.first_name }}" required>
+                        <div class="col-md-4">
+                            <label for="{{ form.first_name.id_for_label }}" class="form-label">First Name <span class="text-danger">*</span></label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.first_name.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.middle_name.id_for_label }}" class="form-label">Middle Name</label>
+                            {{ form.middle_name }}
+                            {% if form.middle_name.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.middle_name.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.last_name.id_for_label }}" class="form-label">Last Name <span class="text-danger">*</span></label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.last_name.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Last Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="last_name" value="{{ employee.user.last_name }}" required>
+                            <label for="{{ form.email.id_for_label }}" class="form-label">Email Address <span class="text-danger">*</span></label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.email.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Email Address <span class="text-danger">*</span></label>
-                            <input type="email" class="form-control" name="email" value="{{ employee.user.email }}" required>
+                            <label for="{{ form.phone_number.id_for_label }}" class="form-label">Phone Number</label>
+                            {{ form.phone_number }}
+                            {% if form.phone_number.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.phone_number.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Phone Number</label>
-                            <input type="text" class="form-control" name="phone_number" value="{{ employee.user.phone_number|default:'' }}">
+                            <label for="{{ form.date_of_birth.id_for_label }}" class="form-label">Date of Birth</label>
+                            {{ form.date_of_birth }}
+                            {% if form.date_of_birth.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.date_of_birth.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Date of Birth</label>
-                            <input type="date" class="form-control" name="date_of_birth" value="{{ employee.user.date_of_birth|date:'Y-m-d' }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Gender</label>
-                            <select class="form-select" name="gender">
-                                <option value="">Select Gender</option>
-                                <option value="MALE" {% if employee.user.gender == 'MALE' %}selected{% endif %}>Male</option>
-                                <option value="FEMALE" {% if employee.user.gender == 'FEMALE' %}selected{% endif %}>Female</option>
-                                <option value="OTHER" {% if employee.user.gender == 'OTHER' %}selected{% endif %}>Other</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Marital Status</label>
-                            <select class="form-select" name="marital_status">
-                                <option value="">Select Status</option>
-                                {% for value, display in marital_statuses %}
-                                <option value="{{ value }}" {% if employee.marital_status == value %}selected{% endif %}>{{ display }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Number of Children</label>
-                            <input type="number" class="form-control" name="number_of_children" value="{{ employee.number_of_children }}" min="0">
-                        </div>
-                        <div class="col-md-12">
-                            <label class="form-label">Spouse Name</label>
-                            <input type="text" class="form-control" name="spouse_name" value="{{ employee.spouse_name|default:'' }}">
+                            <label for="{{ form.gender.id_for_label }}" class="form-label">Gender</label>
+                            {{ form.gender }}
+                            {% if form.gender.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.gender.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
             </div>
 
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-map-pin-line me-2 text-primary"></i>Address Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.address_line1.id_for_label }}" class="form-label">Address Line 1</label>
+                            {{ form.address_line1 }}
+                            {% if form.address_line1.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.address_line1.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.address_line2.id_for_label }}" class="form-label">Address Line 2</label>
+                            {{ form.address_line2 }}
+                            {% if form.address_line2.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.address_line2.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.city.id_for_label }}" class="form-label">City</label>
+                            {{ form.city }}
+                            {% if form.city.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.city.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.state.id_for_label }}" class="form-label">State</label>
+                            {{ form.state }}
+                            {% if form.state.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.state.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.postal_code.id_for_label }}" class="form-label">Postal Code</label>
+                            {{ form.postal_code }}
+                            {% if form.postal_code.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.postal_code.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-12">
+                            <label for="{{ form.country.id_for_label }}" class="form-label">Country</label>
+                            {{ form.country }}
+                            {% if form.country.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.country.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-phone-line me-2 text-primary"></i>Emergency Contact
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="{{ form.emergency_contact_name.id_for_label }}" class="form-label">Emergency Contact Name</label>
+                            {{ form.emergency_contact_name }}
+                            {% if form.emergency_contact_name.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.emergency_contact_name.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.emergency_contact_phone.id_for_label }}" class="form-label">Emergency Contact Phone</label>
+                            {{ form.emergency_contact_phone }}
+                            {% if form.emergency_contact_phone.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.emergency_contact_phone.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.emergency_contact_relationship.id_for_label }}" class="form-label">Relationship</label>
+                            {{ form.emergency_contact_relationship }}
+                            {% if form.emergency_contact_relationship.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.emergency_contact_relationship.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
@@ -133,104 +262,59 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">Department <span class="text-danger">*</span></label>
-                            <select class="form-select" name="department" required>
-                                <option value="">Select Department</option>
-                                {% for dept in departments %}
-                                <option value="{{ dept.id }}" {% if employee.user.department.id == dept.id %}selected{% endif %}>{{ dept.name }}</option>
-                                {% endfor %}
-                            </select>
+                            <label for="{{ form.department.id_for_label }}" class="form-label">Department <span class="text-danger">*</span></label>
+                            {{ form.department }}
+                            {% if form.department.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.department.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Role <span class="text-danger">*</span></label>
-                            <select class="form-select" name="role" required>
-                                <option value="">Select Role</option>
-                                {% for role in roles %}
-                                <option value="{{ role.id }}" {% if employee.user.role.id == role.id %}selected{% endif %}>{{ role.display_name }}</option>
-                                {% endfor %}
-                            </select>
+                            <label for="{{ form.role.id_for_label }}" class="form-label">Role <span class="text-danger">*</span></label>
+                            {{ form.role }}
+                            {% if form.role.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.role.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Job Title</label>
-                            <input type="text" class="form-control" name="job_title" value="{{ employee.user.job_title|default:'' }}">
+                            <label for="{{ form.job_title.id_for_label }}" class="form-label">Job Title</label>
+                            {{ form.job_title }}
+                            {% if form.job_title.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.job_title.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Grade Level</label>
-                            <select class="form-select" name="grade_level">
-                                <option value="">Select Grade Level</option>
-                                {% for value, display in grade_levels %}
-                                <option value="{{ value }}" {% if employee.grade_level == value %}selected{% endif %}>{{ display }}</option>
-                                {% endfor %}
-                            </select>
+                            <label for="{{ form.basic_salary.id_for_label }}" class="form-label">Basic Salary <span class="text-danger">*</span></label>
+                            {{ form.basic_salary }}
+                            {% if form.basic_salary.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.basic_salary.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Monthly salary in LKR</div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Employment Status <span class="text-danger">*</span></label>
-                            <select class="form-select" name="employment_status" required>
-                                <option value="">Select Status</option>
-                                {% for value, display in employment_statuses %}
-                                <option value="{{ value }}" {% if employee.employment_status == value %}selected{% endif %}>{{ display }}</option>
-                                {% endfor %}
-                            </select>
+                            <label for="{{ form.hire_date.id_for_label }}" class="form-label">Hire Date</label>
+                            {{ form.hire_date }}
+                            {% if form.hire_date.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.hire_date.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Basic Salary <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" class="form-control" name="basic_salary" value="{{ employee.basic_salary }}" step="0.01" min="0" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Hire Date</label>
-                            <input type="date" class="form-control" name="hire_date" value="{{ employee.user.hire_date|date:'Y-m-d' }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Manager</label>
-                            <select class="form-select" name="manager">
-                                <option value="">Select Manager</option>
-                                {% for mgr in managers %}
-                                <option value="{{ mgr.id }}" {% if employee.user.manager.id == mgr.id %}selected{% endif %}>{{ mgr.get_full_name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Probation End Date</label>
-                            <input type="date" class="form-control" name="probation_end_date" value="{{ employee.probation_end_date|date:'Y-m-d' }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Confirmation Date</label>
-                            <input type="date" class="form-control" name="confirmation_date" value="{{ employee.confirmation_date|date:'Y-m-d' }}">
-                        </div>
-                        <div class="col-md-12">
-                            <label class="form-label">Work Location</label>
-                            <input type="text" class="form-control" name="work_location" value="{{ employee.work_location|default:'' }}">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="ri-bank-line me-2 text-primary"></i>Banking Information
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Bank Name</label>
-                            <input type="text" class="form-control" name="bank_name" value="{{ employee.bank_name|default:'' }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Account Number</label>
-                            <input type="text" class="form-control" name="bank_account_number" value="{{ employee.bank_account_number|default:'' }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Bank Branch</label>
-                            <input type="text" class="form-control" name="bank_branch" value="{{ employee.bank_branch|default:'' }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Tax ID Number</label>
-                            <input type="text" class="form-control" name="tax_identification_number" value="{{ employee.tax_identification_number|default:'' }}">
+                            <label for="{{ form.manager.id_for_label }}" class="form-label">Manager</label>
+                            {{ form.manager }}
+                            {% if form.manager.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.manager.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -278,7 +362,7 @@
                         <div class="flex-grow-1">
                             <h6 class="mb-1">Account Status</h6>
                             <p class="text-muted mb-0 small">
-                                {% if employee.user.is_active %}
+                                {% if object.is_active %}
                                     <span class="badge bg-success-subtle text-success">Active</span>
                                 {% else %}
                                     <span class="badge bg-danger-subtle text-danger">Inactive</span>
@@ -298,12 +382,12 @@
                         <div class="flex-grow-1">
                             <h6 class="mb-1">Employment Status</h6>
                             <p class="text-muted mb-0 small">
-                                {% if employee.employment_status == 'PROBATION' %}
-                                    <span class="badge bg-warning-subtle text-warning">{{ employee.get_employment_status_display }}</span>
-                                {% elif employee.employment_status == 'CONFIRMED' %}
-                                    <span class="badge bg-success-subtle text-success">{{ employee.get_employment_status_display }}</span>
+                                {% if object.employee_profile.employment_status == 'PROBATION' %}
+                                    <span class="badge bg-warning-subtle text-warning">{{ object.employee_profile.get_employment_status_display }}</span>
+                                {% elif object.employee_profile.employment_status == 'CONFIRMED' %}
+                                    <span class="badge bg-success-subtle text-success">{{ object.employee_profile.get_employment_status_display }}</span>
                                 {% else %}
-                                    <span class="badge bg-info-subtle text-info">{{ employee.get_employment_status_display }}</span>
+                                    <span class="badge bg-info-subtle text-info">{{ object.employee_profile.get_employment_status_display }}</span>
                                 {% endif %}
                             </p>
                         </div>
@@ -319,7 +403,7 @@
                         </div>
                         <div class="flex-grow-1">
                             <h6 class="mb-1">Years of Service</h6>
-                            <p class="text-muted mb-0 small">{{ employee.years_of_service|floatformat:1 }} years</p>
+                            <p class="text-muted mb-0 small">{{ object.employee_profile.years_of_service|floatformat:1 }} years</p>
                         </div>
                     </div>
 
@@ -333,45 +417,9 @@
                         </div>
                         <div class="flex-grow-1">
                             <h6 class="mb-1">Last Updated</h6>
-                            <p class="text-muted mb-0 small">{{ employee.updated_at|date:"M d, Y H:i" }}</p>
+                            <p class="text-muted mb-0 small">{{ object.employee_profile.updated_at|date:"M d, Y H:i" }}</p>
                         </div>
                     </div>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="ri-history-line me-2 text-primary"></i>Recent Changes
-                    </h5>
-                </div>
-                <div class="card-body">
-                    {% if recent_activities %}
-                        {% for activity in recent_activities|slice:":5" %}
-                        <div class="d-flex mb-3">
-                            <div class="flex-shrink-0 me-3">
-                                <div class="avatar-xs">
-                                    <div class="avatar-title bg-light text-muted rounded-circle">
-                                        <i class="ri-edit-line"></i>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="flex-grow-1">
-                                <p class="mb-1 fw-medium small">{{ activity.action }}</p>
-                                <p class="text-muted mb-0 small">{{ activity.description|truncatechars:50 }}</p>
-                                <small class="text-muted">{{ activity.timestamp|timesince }} ago</small>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="text-center py-3">
-                            <div class="avatar-md mx-auto mb-3">
-                                <div class="avatar-title bg-light text-muted rounded-circle">
-                                    <i class="ri-history-line fs-20"></i>
-                                </div>
-                            </div>
-                            <p class="text-muted mb-0 small">No recent changes</p>
-                        </div>
-                    {% endif %}
                 </div>
             </div>
 
@@ -383,14 +431,9 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <a href="{% url 'accounts:employee_detail' employee.pk %}" class="btn btn-outline-primary btn-sm">
+                        <a href="{% url 'accounts:employee_detail' object.employee_profile.pk %}" class="btn btn-outline-primary btn-sm">
                             <i class="ri-eye-line me-1"></i>View Details
                         </a>
-                        {% if can_delete %}
-                        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                            <i class="ri-delete-bin-line me-1"></i>Deactivate Employee
-                        </button>
-                        {% endif %}
                         <a href="{% url 'accounts:employee_list' %}" class="btn btn-outline-secondary btn-sm">
                             <i class="ri-list-check me-1"></i>All Employees
                         </a>
@@ -410,7 +453,7 @@
                             <p class="text-muted mb-0 small">Make sure all required fields are filled correctly before saving.</p>
                         </div>
                         <div class="d-flex gap-2">
-                            <a href="{% url 'accounts:employee_detail' employee.pk %}" class="btn btn-outline-secondary">
+                            <a href="{% url 'accounts:employee_detail' object.employee_profile.pk %}" class="btn btn-outline-secondary">
                                 <i class="ri-close-line me-1"></i>Cancel
                             </a>
                             <button type="submit" class="btn btn-primary">
@@ -423,37 +466,6 @@
         </div>
     </div>
 </form>
-
-{% if can_delete %}
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteModalLabel">Deactivate Employee</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="text-center">
-                    <div class="avatar-lg mx-auto mb-3">
-                        <div class="avatar-title bg-danger-subtle text-danger rounded-circle">
-                            <i class="ri-alert-line fs-24"></i>
-                        </div>
-                    </div>
-                    <h5 class="mb-3">Are you sure?</h5>
-                    <p class="text-muted mb-0">This will deactivate <strong>{{ employee.user.get_full_name }}</strong> and erase their data from Operon. This action can be reversed later.</p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form method="post" action="{% url 'accounts:employee_deactivate' employee.pk %}" class="d-inline">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">Deactivate Employee</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
 
 {% if messages %}
 <div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
@@ -483,36 +495,58 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     toastList.forEach(toast => toast.show());
 
-    const choicesElements = document.querySelectorAll('.form-select');
-    choicesElements.forEach(element => {
-        new Choices(element, {
+    const departmentField = document.getElementById('{{ form.department.id_for_label }}');
+    const roleField = document.getElementById('{{ form.role.id_for_label }}');
+    const managerField = document.getElementById('{{ form.manager.id_for_label }}');
+    
+    if (departmentField) {
+        new Choices(departmentField, {
             searchEnabled: true,
-            removeItemButton: false,
-            shouldSort: false
+            placeholder: true,
+            placeholderValue: 'Select Department'
+        });
+    }
+    
+    if (roleField) {
+        new Choices(roleField, {
+            searchEnabled: true,
+            placeholder: true,
+            placeholderValue: 'Select Role'
+        });
+    }
+    
+    if (managerField) {
+        new Choices(managerField, {
+            searchEnabled: true,
+            placeholder: true,
+            placeholderValue: 'Select Manager'
+        });
+    }
+
+    const dateFields = document.querySelectorAll('input[type="date"]');
+    dateFields.forEach(field => {
+        if (field.classList.contains('air-datepicker')) return;
+        
+        new AirDatepicker(field, {
+            locale: {
+                days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+                daysShort: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+                daysMin: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
+                months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+                monthsShort: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+            },
+            dateFormat: 'yyyy-MM-dd',
+            autoClose: true
         });
     });
 
     const form = document.querySelector('form');
     form.addEventListener('submit', function(e) {
-        const requiredFields = form.querySelectorAll('[required]');
-        let isValid = true;
-        
-        requiredFields.forEach(field => {
-            if (!field.value.trim()) {
-                field.classList.add('is-invalid');
-                isValid = false;
-            } else {
-                field.classList.remove('is-invalid');
-            }
-        });
-        
-        if (!isValid) {
-            e.preventDefault();
-            alert('Please fill in all required fields.');
-        }
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="ri-loader-4-line me-1 spinner-border spinner-border-sm"></i>Processing...';
     });
 });
 </script>
 {% endblock %}
-
 
