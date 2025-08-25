@@ -1,0 +1,690 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Attendance Devices" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Attendance" title="Devices" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">Attendance Devices</h4>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDeviceModal">
+                        <i class="ri-add-line align-bottom me-1"></i> Add Device
+                    </button>
+                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#syncDevicesModal">
+                        <i class="ri-refresh-line align-bottom me-1"></i> Sync Devices
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <div class="input-group">
+                            <input type="text" class="form-control" placeholder="Search..." id="searchInput" value="{{ search_query }}">
+                            <button class="btn btn-primary" type="button" id="searchButton">
+                                <i class="ri-search-line"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <select class="form-select" id="statusFilter">
+                            <option value="">All Status</option>
+                            {% for status_value, status_label in status_choices %}
+                            <option value="{{ status_value }}" {% if status_filter == status_value %}selected{% endif %}>{{ status_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <select class="form-select" id="deviceTypeFilter">
+                            <option value="">All Device Types</option>
+                            {% for type_value, type_label in device_type_choices %}
+                            <option value="{{ type_value }}" {% if device_type_filter == type_value %}selected{% endif %}>{{ type_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <button type="button" class="btn btn-light w-100" id="clearFilters">
+                            <i class="ri-filter-off-line align-bottom me-1"></i> Clear Filters
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Device ID</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Type</th>
+                                <th scope="col">IP Address</th>
+                                <th scope="col">Location</th>
+                                <th scope="col">Department</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Last Sync</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if page_obj %}
+                                {% for device in page_obj %}
+                                <tr>
+                                    <td class="fw-semibold">{{ device.device_id }}</td>
+                                    <td>
+                                        <a href="{% url 'attendance:device_detail' id=device.id %}" class="fw-semibold text-primary">
+                                            {{ device.device_name }}
+                                        </a>
+                                    </td>
+                                    <td>{{ device.get_device_type_display }}</td>
+                                    <td>{{ device.ip_address }}:{{ device.port }}</td>
+                                    <td>{{ device.location }}</td>
+                                    <td>{{ device.department.name|default:"--" }}</td>
+                                    <td>
+                                        {% if device.status == "ACTIVE" %}
+                                            <span class="badge bg-success rounded-pill">Active</span>
+                                        {% elif device.status == "INACTIVE" %}
+                                            <span class="badge bg-warning rounded-pill">Inactive</span>
+                                        {% elif device.status == "MAINTENANCE" %}
+                                            <span class="badge bg-info rounded-pill">Maintenance</span>
+                                        {% elif device.status == "ERROR" %}
+                                            <span class="badge bg-danger rounded-pill">Error</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if device.last_sync_time %}
+                                            <span data-bs-toggle="tooltip" title="{{ device.last_sync_time|date:'Y-m-d H:i:s' }}">
+                                                {{ device.last_sync_time|timesince }} ago
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">Never</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="dropdown">
+                                            <a href="#" class="btn btn-sm btn-icon btn-light" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="ri-more-2-fill"></i>
+                                            </a>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li>
+                                                    <a class="dropdown-item" href="{% url 'attendance:device_detail' id=device.id %}">
+                                                        <i class="ri-eye-line align-bottom me-2 text-muted"></i> View Details
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item edit-device-btn" href="#" 
+                                                       data-bs-toggle="modal" data-bs-target="#editDeviceModal" 
+                                                       data-id="{{ device.id }}"
+                                                       data-device-id="{{ device.device_id }}"
+                                                       data-name="{{ device.device_name }}"
+                                                       data-type="{{ device.device_type }}"
+                                                       data-ip="{{ device.ip_address }}"
+                                                       data-port="{{ device.port }}"
+                                                       data-location="{{ device.location }}"
+                                                       data-department="{{ device.department.id|default:'' }}"
+                                                       data-status="{{ device.status }}"
+                                                       data-active="{{ device.is_active|yesno:'true,false' }}">
+                                                        <i class="ri-pencil-line align-bottom me-2 text-muted"></i> Edit
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item sync-device-btn" href="#" data-id="{{ device.id }}" data-name="{{ device.device_name }}">
+                                                        <i class="ri-refresh-line align-bottom me-2 text-muted"></i> Sync Data
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item test-connection-btn" href="#" data-id="{{ device.id }}" data-name="{{ device.device_name }}">
+                                                        <i class="ri-link-m align-bottom me-2 text-muted"></i> Test Connection
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a class="dropdown-item {% if not device.is_active %}text-success{% else %}text-danger{% endif %} toggle-status-btn" 
+                                                       href="#" data-id="{{ device.id }}" data-active="{{ device.is_active|yesno:'true,false' }}">
+                                                        {% if not device.is_active %}
+                                                        <i class="ri-checkbox-circle-line align-bottom me-2 text-success"></i> Activate
+                                                        {% else %}
+                                                        <i class="ri-close-circle-line align-bottom me-2 text-danger"></i> Deactivate
+                                                        {% endif %}
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="9" class="text-center py-4">
+                                        <div class="d-flex flex-column align-items-center">
+                                            <i class="ri-device-line fs-1 text-muted mb-2"></i>
+                                            <h5 class="mb-1">No devices found</h5>
+                                            <p class="text-muted mb-3">No attendance devices have been added yet or match your filter criteria.</p>
+                                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDeviceModal">
+                                                <i class="ri-add-line align-bottom me-1"></i> Add Device
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                {% if page_obj.has_other_pages %}
+                <div class="d-flex justify-content-end mt-3">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if device_type_filter %}&device_type={{ device_type_filter }}{% endif %}" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if device_type_filter %}&device_type={{ device_type_filter }}{% endif %}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if device_type_filter %}&device_type={{ device_type_filter }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if device_type_filter %}&device_type={{ device_type_filter }}{% endif %}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if device_type_filter %}&device_type={{ device_type_filter }}{% endif %}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Add Device Modal -->
+<div class="modal fade" id="addDeviceModal" tabindex="-1" aria-labelledby="addDeviceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addDeviceModalLabel">Add New Attendance Device</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'attendance:device_list' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="device_id" class="form-label">Device ID <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="device_id" name="device_id" required>
+                            <small class="text-muted">Unique identifier for the device</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="device_name" class="form-label">Device Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="device_name" name="device_name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="device_type" class="form-label">Device Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="device_type" name="device_type" required>
+                                {% for type_value, type_label in device_type_choices %}
+                                <option value="{{ type_value }}">{{ type_label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="department" class="form-label">Department</label>
+                            <select class="form-select" id="department" name="department">
+                                <option value="">Select Department</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="ip_address" class="form-label">IP Address <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="ip_address" name="ip_address" placeholder="192.168.1.100" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="port" class="form-label">Port <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="port" name="port" value="4370" min="1" max="65535" required>
+                        </div>
+                        <div class="col-md-12">
+                            <label for="location" class="form-label">Location <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="location" name="location" required>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="test_connection_new" name="test_connection" checked>
+                                <label class="form-check-label" for="test_connection_new">
+                                    Test connection after saving
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Device</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Device Modal -->
+<div class="modal fade" id="editDeviceModal" tabindex="-1" aria-labelledby="editDeviceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editDeviceModalLabel">Edit Attendance Device</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'attendance:device_list' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="device_id" id="edit_device_id">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="edit_device_id_field" class="form-label">Device ID <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit_device_id_field" name="device_id_field" readonly>
+                            <small class="text-muted">Device ID cannot be changed</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_device_name" class="form-label">Device Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit_device_name" name="device_name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_device_type" class="form-label">Device Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="edit_device_type" name="device_type" required>
+                                {% for type_value, type_label in device_type_choices %}
+                                <option value="{{ type_value }}">{{ type_label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_department" class="form-label">Department</label>
+                            <select class="form-select" id="edit_department" name="department">
+                                <option value="">Select Department</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_ip_address" class="form-label">IP Address <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit_ip_address" name="ip_address" placeholder="192.168.1.100" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_port" class="form-label">Port <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="edit_port" name="port" min="1" max="65535" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_location" class="form-label">Location <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit_location" name="location" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_status" class="form-label">Status <span class="text-danger">*</span></label>
+                            <select class="form-select" id="edit_status" name="status" required>
+                                {% for status_value, status_label in status_choices %}
+                                <option value="{{ status_value }}">{{ status_label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="edit_is_active" name="is_active">
+                                <label class="form-check-label" for="edit_is_active">
+                                    Active
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="test_connection_edit" name="test_connection">
+                                <label class="form-check-label" for="test_connection_edit">
+                                    Test connection after saving
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Device</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Sync Devices Modal -->
+<div class="modal fade" id="syncDevicesModal" tabindex="-1" aria-labelledby="syncDevicesModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="syncDevicesModalLabel">Sync Attendance Devices</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="syncDevicesForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="sync_all" name="sync_all">
+                            <label class="form-check-label fw-semibold" for="sync_all">
+                                Sync All Active Devices
+                            </label>
+                        </div>
+                        <small class="text-muted d-block mb-3">Select this option to sync all active devices, or select specific devices below.</small>
+                    </div>
+                    <div id="devices_selection" class="mb-3">
+                        <label class="form-label">Select Devices to Sync</label>
+                        <div class="device-list" style="max-height: 250px; overflow-y: auto;">
+                            {% for device in page_obj %}
+                            <div class="form-check mb-2">
+                                <input class="form-check-input device-checkbox" type="checkbox" id="device_{{ device.id }}" name="devices" value="{{ device.id }}">
+                                <label class="form-check-label" for="device_{{ device.id }}">
+                                    {{ device.device_name }} ({{ device.device_id }})
+                                    {% if device.status == "ACTIVE" %}
+                                        <span class="badge bg-success rounded-pill">Active</span>
+                                    {% elif device.status == "INACTIVE" %}
+                                        <span class="badge bg-warning rounded-pill">Inactive</span>
+                                    {% elif device.status == "MAINTENANCE" %}
+                                        <span class="badge bg-info rounded-pill">Maintenance</span>
+                                    {% elif device.status == "ERROR" %}
+                                        <span class="badge bg-danger rounded-pill">Error</span>
+                                    {% endif %}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="sync_employees" name="sync_employees">
+                            <label class="form-check-label" for="sync_employees">
+                                Also sync employee data to devices
+                            </label>
+                        </div>
+                        <small class="text-muted">This will update employee information on the selected devices</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success" id="startSyncBtn">
+                        <i class="ri-refresh-line align-bottom me-1"></i> Start Sync
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Sync Device Confirmation Modal -->
+<div class="modal fade" id="syncConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sync Device Data</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to sync data from <span id="syncDeviceName" class="fw-semibold"></span>?</p>
+                <p class="text-muted mb-0">This will retrieve all attendance logs from the device.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'attendance:device_list' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="sync">
+                    <input type="hidden" name="device_id" id="syncDeviceId">
+                    <button type="submit" class="btn btn-success">
+                        <i class="ri-refresh-line align-bottom me-1"></i> Sync Now
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Test Connection Confirmation Modal -->
+<div class="modal fade" id="testConnectionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Test Device Connection</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to test connection to <span id="testDeviceName" class="fw-semibold"></span>?</p>
+                <p class="text-muted mb-0">This will attempt to establish a connection to the device.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'attendance:device_list' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="test_connection">
+                    <input type="hidden" name="device_id" id="testDeviceId">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="ri-link-m align-bottom me-1"></i> Test Now
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Filter handling
+        const searchInput = document.getElementById('searchInput');
+        const searchButton = document.getElementById('searchButton');
+        const statusFilter = document.getElementById('statusFilter');
+        const deviceTypeFilter = document.getElementById('deviceTypeFilter');
+        const clearFiltersBtn = document.getElementById('clearFilters');
+        
+        function applyFilters() {
+            const searchValue = searchInput.value.trim();
+            const statusValue = statusFilter.value;
+            const deviceTypeValue = deviceTypeFilter.value;
+            
+            let url = new URL(window.location.href);
+            url.searchParams.delete('page');
+            
+            if (searchValue) {
+                url.searchParams.set('search', searchValue);
+            } else {
+                url.searchParams.delete('search');
+            }
+            
+            if (statusValue) {
+                url.searchParams.set('status', statusValue);
+            } else {
+                url.searchParams.delete('status');
+            }
+            
+            if (deviceTypeValue) {
+                url.searchParams.set('device_type', deviceTypeValue);
+            } else {
+                url.searchParams.delete('device_type');
+            }
+            
+            window.location.href = url.toString();
+        }
+        
+        searchButton.addEventListener('click', applyFilters);
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                applyFilters();
+            }
+        });
+        
+        statusFilter.addEventListener('change', applyFilters);
+        deviceTypeFilter.addEventListener('change', applyFilters);
+        
+        clearFiltersBtn.addEventListener('click', function() {
+            window.location.href = '{% url "attendance:device_list" %}';
+        });
+        
+        // Edit device modal
+        const editDeviceModal = document.getElementById('editDeviceModal');
+        if (editDeviceModal) {
+            editDeviceModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const id = button.getAttribute('data-id');
+                const deviceId = button.getAttribute('data-device-id');
+                const name = button.getAttribute('data-name');
+                const type = button.getAttribute('data-type');
+                const ip = button.getAttribute('data-ip');
+                const port = button.getAttribute('data-port');
+                const location = button.getAttribute('data-location');
+                const department = button.getAttribute('data-department');
+                const status = button.getAttribute('data-status');
+                const active = button.getAttribute('data-active') === 'true';
+                
+                document.getElementById('edit_device_id').value = id;
+                document.getElementById('edit_device_id_field').value = deviceId;
+                document.getElementById('edit_device_name').value = name;
+                document.getElementById('edit_device_type').value = type;
+                document.getElementById('edit_ip_address').value = ip;
+                document.getElementById('edit_port').value = port;
+                document.getElementById('edit_location').value = location;
+                document.getElementById('edit_department').value = department;
+                document.getElementById('edit_status').value = status;
+                document.getElementById('edit_is_active').checked = active;
+            });
+        }
+        
+        // Sync device confirmation
+        const syncBtns = document.querySelectorAll('.sync-device-btn');
+        syncBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const id = this.getAttribute('data-id');
+                const name = this.getAttribute('data-name');
+                
+                document.getElementById('syncDeviceId').value = id;
+                document.getElementById('syncDeviceName').textContent = name;
+                
+                new bootstrap.Modal(document.getElementById('syncConfirmModal')).show();
+            });
+        });
+        
+        // Test connection confirmation
+        const testConnectionBtns = document.querySelectorAll('.test-connection-btn');
+        testConnectionBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const id = this.getAttribute('data-id');
+                const name = this.getAttribute('data-name');
+                
+                document.getElementById('testDeviceId').value = id;
+                document.getElementById('testDeviceName').textContent = name;
+                
+                new bootstrap.Modal(document.getElementById('testConnectionModal')).show();
+            });
+        });
+        
+        // Sync devices form
+        const syncAllCheckbox = document.getElementById('sync_all');
+        const devicesSelection = document.getElementById('devices_selection');
+        const deviceCheckboxes = document.querySelectorAll('.device-checkbox');
+        const syncDevicesForm = document.getElementById('syncDevicesForm');
+        
+        syncAllCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                devicesSelection.style.opacity = '0.5';
+                deviceCheckboxes.forEach(cb => {
+                    cb.disabled = true;
+                });
+            } else {
+                devicesSelection.style.opacity = '1';
+                deviceCheckboxes.forEach(cb => {
+                    cb.disabled = false;
+                });
+            }
+        });
+        
+        syncDevicesForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const syncAll = syncAllCheckbox.checked;
+            const syncEmployees = document.getElementById('sync_employees').checked;
+            
+            if (!syncAll) {
+                const selectedDevices = Array.from(deviceCheckboxes)
+                    .filter(cb => cb.checked)
+                    .map(cb => cb.value);
+                
+                if (selectedDevices.length === 0) {
+                    alert('Please select at least one device to sync or choose "Sync All Active Devices"');
+                    return;
+                }
+            }
+            
+            // Here you would normally submit the form via AJAX
+            // For now, we'll just redirect to a URL that would handle this server-side
+            let url = new URL('{% url "attendance:device_list" %}');
+            url.searchParams.set('sync', 'true');
+            
+            if (syncAll) {
+                url.searchParams.set('sync_all', 'true');
+            } else {
+                const selectedDevices = Array.from(deviceCheckboxes)
+                    .filter(cb => cb.checked)
+                    .map(cb => cb.value);
+                url.searchParams.set('devices', selectedDevices.join(','));
+            }
+            
+            if (syncEmployees) {
+                url.searchParams.set('sync_employees', 'true');
+            }
+            
+            window.location.href = url.toString();
+        });
+        
+        // Initialize tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}
+
+
+
+
+
