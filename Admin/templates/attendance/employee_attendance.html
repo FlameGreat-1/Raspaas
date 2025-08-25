@@ -1,0 +1,792 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Employee Attendance History" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" type="text/css" href="{% static 'assets/libs/datatables/datatables.min.css' %}">
+<link rel="stylesheet" type="text/css" href="{% static 'assets/libs/select2/select2.min.css' %}">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Attendance Management" title="Employee Attendance History" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <a href="{% url 'attendance:attendance_list' %}" class="btn btn-light me-2">
+                    <i class="bi bi-arrow-left"></i> Back to List
+                </a>
+                <h4 class="mb-0">Attendance History: {{ employee.get_full_name }}</h4>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAttendanceModal">
+                    <i class="bi bi-plus-circle me-1"></i> Add Attendance
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Employee Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-4">
+                    {% if employee.employee_profile.profile_picture %}
+                    <img src="{{ employee.employee_profile.profile_picture.url }}" alt="Profile" class="rounded-circle me-3" width="64" height="64">
+                    {% else %}
+                    <div class="avatar-lg me-3 bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center">
+                        <span class="fs-24">{{ employee.get_full_name|slice:":1" }}</span>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <h5 class="mb-1">{{ employee.get_full_name }}</h5>
+                        <p class="mb-0 text-muted">{{ employee.employee_code }}</p>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Department:</span>
+                        <span class="fw-medium">{{ employee.department.name|default:"Not Assigned" }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Position:</span>
+                        <span class="fw-medium">{{ employee.role.name|default:"Not Assigned" }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Email:</span>
+                        <span class="fw-medium">{{ employee.email }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Shift:</span>
+                        <span class="fw-medium">{{ employee.shift.name|default:"Default Shift" }}</span>
+                    </div>
+                </div>
+                
+                <div class="mb-0">
+                    <h6 class="mb-3">Attendance Summary</h6>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Present Days:</span>
+                            <span class="fw-medium text-success">{{ attendance_records.present_count }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Absent Days:</span>
+                            <span class="fw-medium text-danger">{{ attendance_records.absent_count }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Late Days:</span>
+                            <span class="fw-medium text-warning">{{ attendance_records.late_count }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Leave Days:</span>
+                            <span class="fw-medium text-primary">{{ attendance_records.leave_count }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Total Days:</span>
+                            <span class="fw-medium">{{ attendance_records.count }}</span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="form-label mb-1">Attendance Performance</label>
+                        <div class="progress" style="height: 8px;">
+                            {% if attendance_records.performance_percentage >= 90 %}
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ attendance_records.performance_percentage }}%"></div>
+                            {% elif attendance_records.performance_percentage >= 70 %}
+                            <div class="progress-bar bg-info" role="progressbar" style="width: {{ attendance_records.performance_percentage }}%"></div>
+                            {% elif attendance_records.performance_percentage >= 50 %}
+                            <div class="progress-bar bg-warning" role="progressbar" style="width: {{ attendance_records.performance_percentage }}%"></div>
+                            {% else %}
+                            <div class="progress-bar bg-danger" role="progressbar" style="width: {{ attendance_records.performance_percentage }}%"></div>
+                            {% endif %}
+                        </div>
+                        <div class="d-flex justify-content-between mt-1">
+                            <small>Performance</small>
+                            <small>{{ attendance_records.performance_percentage }}%</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Attendance Records</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-2">
+                        <label for="start_date" class="form-label">Start Date</label>
+                        <input type="date" id="start_date" class="form-control" value="{{ start_date }}">
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label for="end_date" class="form-label">End Date</label>
+                        <input type="date" id="end_date" class="form-control" value="{{ end_date }}">
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label for="status_filter" class="form-label">Status</label>
+                        <select id="status_filter" class="form-control select2">
+                            <option value="">All Status</option>
+                            {% for status_code, status_name in status_choices %}
+                            <option value="{{ status_code }}" {% if status_filter == status_code %}selected{% endif %}>{{ status_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <button id="apply-filters" class="btn btn-primary">
+                            <i class="bi bi-filter me-1"></i> Apply Filters
+                        </button>
+                        <button id="reset-filters" class="btn btn-light ms-1">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table id="attendance-table" class="table table-striped table-bordered dt-responsive nowrap">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>First In</th>
+                                <th>Last Out</th>
+                                <th>Work Time</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attendance in attendance_records %}
+                            <tr>
+                                <td>{{ attendance.date|date:"Y-m-d" }}</td>
+                                <td>
+                                    {% if attendance.first_in_time %}
+                                    <span class="{% if attendance.late_minutes > 0 %}text-danger{% else %}text-success{% endif %}">
+                                        {{ attendance.first_in_time|time:"H:i:s" }}
+                                        {% if attendance.late_minutes > 0 %}
+                                        <small class="d-block text-danger">(Late by {{ attendance.late_minutes }} min)</small>
+                                        {% endif %}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">--:--:--</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if attendance.last_out_time %}
+                                    <span class="{% if attendance.early_departure_minutes > 0 %}text-warning{% else %}text-success{% endif %}">
+                                        {{ attendance.last_out_time|time:"H:i:s" }}
+                                        {% if attendance.early_departure_minutes > 0 %}
+                                        <small class="d-block text-warning">(Early by {{ attendance.early_departure_minutes }} min)</small>
+                                        {% endif %}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-muted">--:--:--</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ attendance.formatted_work_time }}</td>
+                                <td>
+                                    {% if attendance.status == 'PRESENT' %}
+                                    <span class="badge bg-success-subtle text-success">Present</span>
+                                    {% elif attendance.status == 'ABSENT' %}
+                                    <span class="badge bg-danger-subtle text-danger">Absent</span>
+                                    {% elif attendance.status == 'LATE' %}
+                                    <span class="badge bg-warning-subtle text-warning">Late</span>
+                                    {% elif attendance.status == 'HALF_DAY' %}
+                                    <span class="badge bg-info-subtle text-info">Half Day</span>
+                                    {% elif attendance.status == 'LEAVE' %}
+                                    <span class="badge bg-primary-subtle text-primary">On Leave</span>
+                                    {% elif attendance.status == 'HOLIDAY' %}
+                                    <span class="badge bg-success-subtle text-success">Holiday</span>
+                                    {% elif attendance.status == 'INCOMPLETE' %}
+                                    <span class="badge bg-danger-subtle text-danger">Incomplete</span>
+                                    {% elif attendance.status == 'EARLY_DEPARTURE' %}
+                                    <span class="badge bg-warning-subtle text-warning">Early Departure</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary">{{ attendance.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="dropdown">
+                                        <a href="#" class="dropdown-toggle card-drop" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </a>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="{% url 'attendance:attendance_detail' id=attendance.id %}"><i class="bi bi-eye me-2"></i>View Details</a></li>
+                                            <li><a class="dropdown-item edit-attendance" href="#" data-id="{{ attendance.id }}"><i class="bi bi-pencil me-2"></i>Edit</a></li>
+                                            <li><a class="dropdown-item request-correction" href="#" data-id="{{ attendance.id }}"><i class="bi bi-arrow-clockwise me-2"></i>Request Correction</a></li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">No attendance records found for the selected date range.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Add Attendance Modal -->
+<div class="modal fade" id="addAttendanceModal" tabindex="-1" aria-labelledby="addAttendanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addAttendanceModalLabel">Add Attendance Record</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'attendance:attendance_list' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create">
+                <input type="hidden" name="employee" value="{{ employee.id }}">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="employee_name" class="form-label">Employee</label>
+                            <input type="text" id="employee_name" class="form-control" value="{{ employee.get_full_name }} ({{ employee.employee_code }})" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="date" class="form-label">Date</label>
+                            <input type="date" name="date" id="date" class="form-control" required max="{{ today|date:'Y-m-d' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="mb-3">Check-in/Check-out Times</h6>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="check_in_1" class="form-label">First Check-in</label>
+                            <input type="time" name="check_in_1" id="check_in_1" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="check_out_1" class="form-label">First Check-out</label>
+                            <input type="time" name="check_out_1" id="check_out_1" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="check_in_2" class="form-label">Second Check-in</label>
+                            <input type="time" name="check_in_2" id="check_in_2" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="check_out_2" class="form-label">Second Check-out</label>
+                            <input type="time" name="check_out_2" id="check_out_2" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="check_in_3" class="form-label">Third Check-in</label>
+                            <input type="time" name="check_in_3" id="check_in_3" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="check_out_3" class="form-label">Third Check-out</label>
+                            <input type="time" name="check_out_3" id="check_out_3" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="check_in_4" class="form-label">Fourth Check-in</label>
+                            <input type="time" name="check_in_4" id="check_in_4" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="check_out_4" class="form-label">Fourth Check-out</label>
+                            <input type="time" name="check_out_4" id="check_out_4" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="check_in_5" class="form-label">Fifth Check-in</label>
+                            <input type="time" name="check_in_5" id="check_in_5" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="check_out_5" class="form-label">Fifth Check-out</label>
+                            <input type="time" name="check_out_5" id="check_out_5" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="check_in_6" class="form-label">Sixth Check-in</label>
+                            <input type="time" name="check_in_6" id="check_in_6" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="check_out_6" class="form-label">Sixth Check-out</label>
+                            <input type="time" name="check_out_6" id="check_out_6" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea name="notes" id="notes" class="form-control" rows="3" placeholder="Additional notes..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Attendance</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Attendance Modal -->
+<div class="modal fade" id="editAttendanceModal" tabindex="-1" aria-labelledby="editAttendanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editAttendanceModalLabel">Edit Attendance Record</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'attendance:attendance_list' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="attendance_id" id="edit_attendance_id">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="edit_employee" class="form-label">Employee</label>
+                            <input type="text" id="edit_employee" class="form-control" value="{{ employee.get_full_name }} ({{ employee.employee_code }})" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_date" class="form-label">Date</label>
+                            <input type="date" id="edit_date" class="form-control" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="mb-3">Check-in/Check-out Times</h6>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="edit_check_in_1" class="form-label">First Check-in</label>
+                            <input type="time" name="check_in_1" id="edit_check_in_1" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_check_out_1" class="form-label">First Check-out</label>
+                            <input type="time" name="check_out_1" id="edit_check_out_1" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="edit_check_in_2" class="form-label">Second Check-in</label>
+                            <input type="time" name="check_in_2" id="edit_check_in_2" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_check_out_2" class="form-label">Second Check-out</label>
+                            <input type="time" name="check_out_2" id="edit_check_out_2" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="edit_check_in_3" class="form-label">Third Check-in</label>
+                            <input type="time" name="check_in_3" id="edit_check_in_3" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_check_out_3" class="form-label">Third Check-out</label>
+                            <input type="time" name="check_out_3" id="edit_check_out_3" class="form-control" step="1">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="edit_check_in_4" class="form-label">Fourth Check-in</label>
+                            <input type="time" name="check_in_4" id="edit_check_in_4" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_check_out_4" class="form-label">Fourth Check-out</label>
+                            <input type="time" name="check_out_4" id="edit_check_out_4" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="edit_check_in_5" class="form-label">Fifth Check-in</label>
+                            <input type="time" name="check_in_5" id="edit_check_in_5" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_check_out_5" class="form-label">Fifth Check-out</label>
+                            <input type="time" name="check_out_5" id="edit_check_out_5" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="edit_check_in_6" class="form-label">Sixth Check-in</label>
+                            <input type="time" name="check_in_6" id="edit_check_in_6" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_check_out_6" class="form-label">Sixth Check-out</label>
+                            <input type="time" name="check_out_6" id="edit_check_out_6" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label for="edit_notes" class="form-label">Notes</label>
+                            <textarea name="notes" id="edit_notes" class="form-control" rows="3" placeholder="Additional notes..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Attendance</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Correction Request Modal -->
+<div class="modal fade" id="correctionRequestModal" tabindex="-1" aria-labelledby="correctionRequestModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="correctionRequestModalLabel">Request Attendance Correction</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'attendance:correction_list' %}">
+                {% csrf_token %}
+                <input type="hidden" name="attendance" id="correction_attendance_id">
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="correction_employee" class="form-label">Employee</label>
+                            <input type="text" id="correction_employee" class="form-control" value="{{ employee.get_full_name }}" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="correction_date" class="form-label">Date</label>
+                            <input type="date" id="correction_date" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="correction_type" class="form-label">Correction Type</label>
+                            <select name="correction_type" id="correction_type" class="form-control" required>
+                                <option value="MISSING_PUNCH">Missing Punch</option>
+                                <option value="WRONG_TIME">Wrong Time</option>
+                                <option value="DEVICE_ERROR">Device Error</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="mb-3">Current Times</h6>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body py-2">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <small class="text-muted">First In:</small>
+                                            <p class="mb-1" id="current_check_in_1">--:--:--</p>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted">First Out:</small>
+                                            <p class="mb-1" id="current_check_out_1">--:--:--</p>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <small class="text-muted">Second In:</small>
+                                            <p class="mb-1" id="current_check_in_2">--:--:--</p>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted">Second Out:</small>
+                                            <p class="mb-1" id="current_check_out_2">--:--:--</p>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <small class="text-muted">Third In:</small>
+                                            <p class="mb-1" id="current_check_in_3">--:--:--</p>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted">Third Out:</small>
+                                            <p class="mb-1" id="current_check_out_3">--:--:--</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body py-2">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <small class="text-muted">Fourth In:</small>
+                                            <p class="mb-1" id="current_check_in_4">--:--:--</p>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted">Fourth Out:</small>
+                                            <p class="mb-1" id="current_check_out_4">--:--:--</p>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <small class="text-muted">Fifth In:</small>
+                                            <p class="mb-1" id="current_check_in_5">--:--:--</p>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted">Fifth Out:</small>
+                                            <p class="mb-1" id="current_check_out_5">--:--:--</p>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <small class="text-muted">Sixth In:</small>
+                                            <p class="mb-1" id="current_check_in_6">--:--:--</p>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted">Sixth Out:</small>
+                                            <p class="mb-1" id="current_check_out_6">--:--:--</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="mb-3">Corrected Times</h6>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="corrected_check_in_1" class="form-label">First Check-in</label>
+                            <input type="time" name="corrected_check_in_1" id="corrected_check_in_1" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="corrected_check_out_1" class="form-label">First Check-out</label>
+                            <input type="time" name="corrected_check_out_1" id="corrected_check_out_1" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="corrected_check_in_2" class="form-label">Second Check-in</label>
+                            <input type="time" name="corrected_check_in_2" id="corrected_check_in_2" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="corrected_check_out_2" class="form-label">Second Check-out</label>
+                            <input type="time" name="corrected_check_out_2" id="corrected_check_out_2" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="corrected_check_in_3" class="form-label">Third Check-in</label>
+                            <input type="time" name="corrected_check_in_3" id="corrected_check_in_3" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="corrected_check_out_3" class="form-label">Third Check-out</label>
+                            <input type="time" name="corrected_check_out_3" id="corrected_check_out_3" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="corrected_check_in_4" class="form-label">Fourth Check-in</label>
+                            <input type="time" name="corrected_check_in_4" id="corrected_check_in_4" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="corrected_check_out_4" class="form-label">Fourth Check-out</label>
+                            <input type="time" name="corrected_check_out_4" id="corrected_check_out_4" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="corrected_check_in_5" class="form-label">Fifth Check-in</label>
+                            <input type="time" name="corrected_check_in_5" id="corrected_check_in_5" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="corrected_check_out_5" class="form-label">Fifth Check-out</label>
+                            <input type="time" name="corrected_check_out_5" id="corrected_check_out_5" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="corrected_check_in_6" class="form-label">Sixth Check-in</label>
+                            <input type="time" name="corrected_check_in_6" id="corrected_check_in_6" class="form-control" step="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="corrected_check_out_6" class="form-label">Sixth Check-out</label>
+                            <input type="time" name="corrected_check_out_6" id="corrected_check_out_6" class="form-control" step="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label for="reason" class="form-label">Reason for Correction</label>
+                            <textarea name="reason" id="reason" class="form-control" rows="3" required placeholder="Explain why this correction is needed..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Submit Correction Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="{% static 'assets/libs/datatables/datatables.min.js' %}"></script>
+<script src="{% static 'assets/libs/select2/select2.min.js' %}"></script>
+
+<script>
+    $(document).ready(function() {
+        $('.select2').select2({
+            width: '100%'
+        });
+        
+        $('#attendance-table').DataTable({
+            paging: false,
+            searching: false,
+            info: false,
+            responsive: true,
+            columnDefs: [
+                { orderable: false, targets: [5] }
+            ]
+        });
+        
+        $('#apply-filters').click(function() {
+            var startDate = $('#start_date').val();
+            var endDate = $('#end_date').val();
+            var statusFilter = $('#status_filter').val();
+            
+            window.location.href = "{% url 'attendance:employee_attendance' employee_id=employee.id %}?start_date=" + startDate + 
+                                  "&end_date=" + endDate + 
+                                  "&status=" + statusFilter;
+        });
+        
+        $('#reset-filters').click(function() {
+            window.location.href = "{% url 'attendance:employee_attendance' employee_id=employee.id %}";
+        });
+        
+        $('.edit-attendance').click(function(e) {
+            e.preventDefault();
+            var attendanceId = $(this).data('id');
+            
+            $.ajax({
+                url: "{% url 'attendance:attendance_list' %}" + attendanceId + "/",
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    $('#edit_attendance_id').val(data.id);
+                    $('#edit_date').val(data.date);
+                    
+                    $('#edit_check_in_1').val(data.check_in_1);
+                    $('#edit_check_out_1').val(data.check_out_1);
+                    $('#edit_check_in_2').val(data.check_in_2);
+                    $('#edit_check_out_2').val(data.check_out_2);
+                    $('#edit_check_in_3').val(data.check_in_3);
+                    $('#edit_check_out_3').val(data.check_out_3);
+                    $('#edit_check_in_4').val(data.check_in_4);
+                    $('#edit_check_out_4').val(data.check_out_4);
+                    $('#edit_check_in_5').val(data.check_in_5);
+                    $('#edit_check_out_5').val(data.check_out_5);
+                    $('#edit_check_in_6').val(data.check_in_6);
+                    $('#edit_check_out_6').val(data.check_out_6);
+                    
+                    $('#edit_notes').val(data.notes);
+                    
+                    $('#editAttendanceModal').modal('show');
+                },
+                error: function(xhr, status, error) {
+                    alert('Error fetching attendance data: ' + error);
+                }
+            });
+        });
+        
+        $('.request-correction').click(function(e) {
+            e.preventDefault();
+            var attendanceId = $(this).data('id');
+            
+            $.ajax({
+                url: "{% url 'attendance:attendance_list' %}" + attendanceId + "/",
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    $('#correction_attendance_id').val(data.id);
+                    $('#correction_date').val(data.date);
+                    
+                    $('#current_check_in_1').text(data.check_in_1 || '--:--:--');
+                    $('#current_check_out_1').text(data.check_out_1 || '--:--:--');
+                    $('#current_check_in_2').text(data.check_in_2 || '--:--:--');
+                    $('#current_check_out_2').text(data.check_out_2 || '--:--:--');
+                    $('#current_check_in_3').text(data.check_in_3 || '--:--:--');
+                    $('#current_check_out_3').text(data.check_out_3 || '--:--:--');
+                    $('#current_check_in_4').text(data.check_in_4 || '--:--:--');
+                    $('#current_check_out_4').text(data.check_out_4 || '--:--:--');
+                    $('#current_check_in_5').text(data.check_in_5 || '--:--:--');
+                    $('#current_check_out_5').text(data.check_out_5 || '--:--:--');
+                    $('#current_check_in_6').text(data.check_in_6 || '--:--:--');
+                    $('#current_check_out_6').text(data.check_out_6 || '--:--:--');
+                    
+                    $('#corrected_check_in_1').val(data.check_in_1);
+                    $('#corrected_check_out_1').val(data.check_out_1);
+                    $('#corrected_check_in_2').val(data.check_in_2);
+                    $('#corrected_check_out_2').val(data.check_out_2);
+                    $('#corrected_check_in_3').val(data.check_in_3);
+                    $('#corrected_check_out_3').val(data.check_out_3);
+                    $('#corrected_check_in_4').val(data.check_in_4);
+                    $('#corrected_check_out_4').val(data.check_out_4);
+                    $('#corrected_check_in_5').val(data.check_in_5);
+                    $('#corrected_check_out_5').val(data.check_out_5);
+                    $('#corrected_check_in_6').val(data.check_in_6);
+                    $('#corrected_check_out_6').val(data.check_out_6);
+                    
+                    $('#correctionRequestModal').modal('show');
+                },
+                error: function(xhr, status, error) {
+                    alert('Error fetching attendance data: ' + error);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
+
+
+
+

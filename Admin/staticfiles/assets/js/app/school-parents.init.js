@@ -1,0 +1,1 @@
+document.addEventListener("DOMContentLoaded",(function(){document.getElementById("parentsGender")&&new Choices("#parentsGender",{placeholderValue:"Select Status",searchPlaceholderValue:"Search...",removeItemButton:!0,itemSelectText:"Press to select"})}));

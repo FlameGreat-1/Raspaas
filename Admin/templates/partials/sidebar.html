@@ -23,12 +23,12 @@
                     <ul class="pe-slide-menu collapse" id="collapseDashboards">
                         <li class="pe-slide-item">
                             <a href="index.html" class="pe-nav-link">
-                                E-Commerece
+                                Attendance
                             </a>
                         </li>
                         <li class="pe-slide-item">
                             <a href="dashboard-school.html" class="pe-nav-link">
-                                School
+                                Expenses
                             </a>
                         </li>
                         <li class="pe-slide-item">
@@ -38,7 +38,7 @@
                         </li>
                         <li class="pe-slide-item">
                             <a href="dashboard-media.html" class="pe-nav-link">
-                                Social Media
+                                Payroll
                             </a>
                         </li>
                     </ul>
@@ -53,6 +53,7 @@
                         <li class="pe-slide-item">
                             <a href="apps-calendar.html" class="pe-nav-link">
                                 Calendar
+
                             </a>
                         </li>
                         <li class="pe-slide-item">
@@ -62,6 +63,7 @@
                         </li>
                         <li class="pe-slide-item">
                             <a href="apps-email.html" class="pe-nav-link">
+                              
                                 Email
                             </a>
                         </li>
@@ -70,25 +72,26 @@
                                 System Configuration
                             </a>
                         </li>
+                        
                         <li class="pe-slide-item pe-has-sub">
                             <a href="#collapseECommerce" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseECommerce">
-                                <span class="pe-nav-sub-content">E-Commerce</span>
+                                <span class="pe-nav-sub-content">Attendance</span>
                                 <i class="ri-arrow-down-s-line pe-nav-arrow"></i>
                             </a>
                             <ul class="pe-slide-menu collapse" id="collapseECommerce">
                                 <li class="pe-slide-item">
-                                    <a href="apps-ecommerce-products.html" class="pe-nav-link">
-                                        Products
+                                    <a href="{% url 'attendance:attendance_list' %}" class="pe-nav-link">
+                                        Attendance List
                                     </a>
                                 </li>
                                 <li class="pe-slide-item">
                                     <a href="apps-ecommerce-products-list.html" class="pe-nav-link">
-                                        Product List
+                                        Product list
                                     </a>
                                 </li>
                                 <li class="pe-slide-item">
-                                    <a href="apps-ecommerce-products-details.html" class="pe-nav-link">
-                                        Product Details
+                                    <a href="apps-ecommerce-products-list.html" class="pe-nav-link">
+                                        Product Detail
                                     </a>
                                 </li>
                                 <li class="pe-slide-item">
@@ -195,6 +198,7 @@
                                 </li>                                
                                 <li class="pe-slide-item">
                                     <a href="apps-school-parents.html" class="pe-nav-link">
+                                    
                                         Parents
                                     </a>
                                 </li>
@@ -212,7 +216,7 @@
                         </li>
                     </ul>
                 </li>
-                <!-- Pages -->
+                
                 <li class="pe-menu-title">Pages</li>
                 <li class="pe-slide pe-has-sub">
                     <a href="#collapseAuth" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseAuth">
