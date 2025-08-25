@@ -1,5 +1,6 @@
 {% extends "partials/layouts/main.html" %}
 {% load static %}
+{% load attendance_filters %}
 
 {% include "partials/main.html" %}
 {% block meta %}
@@ -244,9 +245,7 @@
                                         <td>{{ attendance.out_1|time:"H:i:s"|default:"--:--:--" }}</td>
                                         <td>
                                             {% if attendance.in_1 and attendance.out_1 %}
-                                            {% with duration=attendance.out_1|timeuntil:attendance.in_1 %}
-                                            {{ duration }}
-                                            {% endwith %}
+                                            {{ attendance.out_1|time_diff:attendance.in_1 }}
                                             {% else %}
                                             --:--:--
                                             {% endif %}
@@ -260,9 +259,7 @@
                                         <td>{{ attendance.out_2|time:"H:i:s"|default:"--:--:--" }}</td>
                                         <td>
                                             {% if attendance.in_2 and attendance.out_2 %}
-                                            {% with duration=attendance.out_2|timeuntil:attendance.in_2 %}
-                                            {{ duration }}
-                                            {% endwith %}
+                                            {{ attendance.out_2|time_diff:attendance.in_2 }}
                                             {% else %}
                                             --:--:--
                                             {% endif %}
@@ -276,9 +273,7 @@
                                         <td>{{ attendance.out_3|time:"H:i:s"|default:"--:--:--" }}</td>
                                         <td>
                                             {% if attendance.in_3 and attendance.out_3 %}
-                                            {% with duration=attendance.out_3|timeuntil:attendance.in_3 %}
-                                            {{ duration }}
-                                            {% endwith %}
+                                            {{ attendance.out_3|time_diff:attendance.in_3 }}
                                             {% else %}
                                             --:--:--
                                             {% endif %}
@@ -291,9 +286,7 @@
                                         <td>{{ attendance.check_out_4|time:"H:i:s"|default:"--:--:--" }}</td>
                                         <td>
                                             {% if attendance.check_in_4 and attendance.check_out_4 %}
-                                            {% with duration=attendance.check_out_4|timeuntil:attendance.check_in_4 %}
-                                            {{ duration }}
-                                            {% endwith %}
+                                            {{ attendance.check_out_4|time_diff:attendance.check_in_4 }}
                                             {% else %}
                                             --:--:--
                                             {% endif %}
@@ -307,9 +300,7 @@
                                         <td>{{ attendance.check_out_5|time:"H:i:s"|default:"--:--:--" }}</td>
                                         <td>
                                             {% if attendance.check_in_5 and attendance.check_out_5 %}
-                                            {% with duration=attendance.check_out_5|timeuntil:attendance.check_in_5 %}
-                                            {{ duration }}
-                                            {% endwith %}
+                                            {{ attendance.check_out_5|time_diff:attendance.check_in_5 }}
                                             {% else %}
                                             --:--:--
                                             {% endif %}
@@ -323,9 +314,7 @@
                                         <td>{{ attendance.check_out_6|time:"H:i:s"|default:"--:--:--" }}</td>
                                         <td>
                                             {% if attendance.check_in_6 and attendance.check_out_6 %}
-                                            {% with duration=attendance.check_out_6|timeuntil:attendance.check_in_6 %}
-                                            {{ duration }}
-                                            {% endwith %}
+                                            {{ attendance.check_out_6|time_diff:attendance.check_in_6 }}
                                             {% else %}
                                             --:--:--
                                             {% endif %}

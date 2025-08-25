@@ -41,13 +41,13 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-    "whitenoise.runserver_nostatic",  # HR system static file handling
+    "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
     # Third party apps
-    "webpack_loader",  # URBIX webpack integration
-    "django_extensions",  # HR system
-    "django_celery_beat",  # HR system background tasks
-    # Local apps from HR system
+    "webpack_loader",  
+    "django_extensions",  
+    "django_celery_beat",
+    # Local apps 
     "accounts",
     "core",
     "employees",
@@ -57,7 +57,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # HR system static files
+    "whitenoise.middleware.WhiteNoiseMiddleware",  
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",

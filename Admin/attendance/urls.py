@@ -7,7 +7,7 @@ urlpatterns = [
     # Attendance URLs
     path('', views.AttendanceView.as_view(), name='attendance_list'),
     path('<uuid:id>/', views.AttendanceView.as_view(), name='attendance_detail'),
-    path('employee/<uuid:employee_id>/', views.AttendanceView.as_view(), name='employee_attendance'),
+    path('employee/<int:employee_id>/', views.AttendanceView.as_view(), name='employee_attendance'),
 
     # Logs URLs
     path('logs/', views.Logs.as_view(), name='logs_list'),
@@ -36,8 +36,8 @@ urlpatterns = [
     path('shifts/', views.Shifts.as_view(), name='shift_list'),
     path('shifts/<uuid:id>/', views.Shifts.as_view(), name='shift_detail'),
     path('employee_shifts/', views.Shifts.as_view(), name='employee_shift_list'),
-    path('employee/<uuid:employee_id>/shifts/', views.Shifts.as_view(), name='employee_shifts'),
-    path('employee/<uuid:employee_id>/shifts/<uuid:id>/', views.Shifts.as_view(), name='employee_shift_detail'),
+    path('employee/<int:employee_id>/shifts/', views.Shifts.as_view(), name='employee_shifts'),
+    path('employee/<int:employee_id>/shifts/<uuid:id>/', views.Shifts.as_view(), name='employee_shift_detail'),
     
     # Leave URLs
     path('leave/', views.Leave.as_view(), name='leave_request_list'),
@@ -46,6 +46,6 @@ urlpatterns = [
     path('leave/types/<uuid:type_id>/', views.Leave.as_view(), name='leave_type_detail'),
     path('leave/balances/', views.Leave.as_view(), name='leave_balance_list'),
     path('leave/balances/<uuid:balance_id>/', views.Leave.as_view(), name='leave_balance_detail'),
-    path('employee/<uuid:employee_id>/leave/', views.Leave.as_view(), name='employee_leave_requests'),
-    path('employee/<uuid:employee_id>/leave/balances/', views.Leave.as_view(), name='employee_leave_balances'),
+    path('employee/<int:employee_id>/leave/', views.Leave.as_view(), name='employee_leave_requests'),
+    path('employee/<int:employee_id>/leave/balances/', views.Leave.as_view(), name='employee_leave_balances'),
 ]

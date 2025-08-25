@@ -165,18 +165,23 @@
                                     <small class="d-block text-center mt-1">{{ attendance.performance_score }}%</small>
                                 </td>
                                 <td>
-                                    <div class="dropdown">
-                                        <a href="#" class="dropdown-toggle card-drop" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <i class="bi bi-three-dots-vertical"></i>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'attendance:attendance_detail' id=attendance.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="bi bi-eye"></i>
                                         </a>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            <li><a class="dropdown-item" href="{% url 'attendance:attendance_detail' id=attendance.id %}"><i class="bi bi-eye me-2"></i>View Details</a></li>
-                                            <li><a class="dropdown-item" href="{% url 'attendance:employee_attendance' employee_id=attendance.employee.id %}"><i class="bi bi-calendar-check me-2"></i>Employee History</a></li>
-                                            <li><a class="dropdown-item edit-attendance" href="#" data-id="{{ attendance.id }}"><i class="bi bi-pencil me-2"></i>Edit</a></li>
-                                            <li><a class="dropdown-item request-correction" href="#" data-id="{{ attendance.id }}"><i class="bi bi-arrow-clockwise me-2"></i>Request Correction</a></li>
-                                        </ul>
+                                        <a href="{% url 'attendance:employee_attendance' employee_id=attendance.employee.id %}" class="btn btn-sm btn-outline-info" title="Employee History">
+                                            <i class="bi bi-calendar-check"></i>
+                                        </a>
+                                        <a href="#" class="btn btn-sm btn-outline-warning edit-attendance" data-id="{{ attendance.id }}" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="#" class="btn btn-sm btn-outline-secondary request-correction" data-id="{{ attendance.id }}" title="Request Correction">
+                                            <i class="bi bi-arrow-clockwise"></i>
+                                        </a>
                                     </div>
-                                </td>
+                                </td>                                
+                                
+
                             </tr>
                             {% empty %}
                             <tr>
@@ -272,7 +277,7 @@
                             <label for="employee" class="form-label">Employee</label>
                             <select name="employee" id="employee" class="form-control select2" required>
                                 <option value="">Select Employee</option>
-                                {% for employee in user.get_accessible_employees %}
+                                {% for employee in employees %}
                                 <option value="{{ employee.id }}">{{ employee.get_full_name }} ({{ employee.employee_code }})</option>
                                 {% endfor %}
                             </select>
@@ -734,6 +739,8 @@
 {% endblock %}
 
 {% block javascript %}
+<script src="{% static 'assets/libs/jquery/jquery.min.js' %}"></script>
+<script src="{% static 'assets/libs/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
 <script src="{% static 'assets/libs/datatables/datatables.min.js' %}"></script>
 <script src="{% static 'assets/libs/select2/select2.min.js' %}"></script>
 
@@ -784,15 +791,17 @@
             }
         });
         
-        $('.edit-attendance').click(function(e) {
+        $(document).on('click', '.edit-attendance', function(e) {
             e.preventDefault();
             var attendanceId = $(this).data('id');
+            console.log("Edit clicked for ID:", attendanceId);
             
             $.ajax({
-                url: "{% url 'attendance:attendance_list' %}" + attendanceId + "/",
+                url: "{% url 'attendance:attendance_detail' id=0 %}".replace('0', attendanceId),
                 type: 'GET',
                 dataType: 'json',
                 success: function(data) {
+                    console.log("Data received:", data);
                     $('#edit_attendance_id').val(data.id);
                     $('#edit_employee').val(data.full_name);
                     $('#edit_date').val(data.date);
@@ -815,20 +824,23 @@
                     $('#editAttendanceModal').modal('show');
                 },
                 error: function(xhr, status, error) {
+                    console.log('Error fetching attendance data:', xhr.responseText);
                     alert('Error fetching attendance data: ' + error);
                 }
             });
         });
         
-        $('.request-correction').click(function(e) {
+        $(document).on('click', '.request-correction', function(e) {
             e.preventDefault();
             var attendanceId = $(this).data('id');
+            console.log("Correction clicked for ID:", attendanceId);
             
             $.ajax({
-                url: "{% url 'attendance:attendance_list' %}" + attendanceId + "/",
+                url: "{% url 'attendance:attendance_detail' id=0 %}".replace('0', attendanceId),
                 type: 'GET',
                 dataType: 'json',
                 success: function(data) {
+                    console.log("Data received:", data);
                     $('#correction_attendance_id').val(data.id);
                     $('#correction_employee').val(data.full_name);
                     $('#correction_date').val(data.date);
@@ -862,6 +874,7 @@
                     $('#correctionRequestModal').modal('show');
                 },
                 error: function(xhr, status, error) {
+                    console.log('Error fetching attendance data:', xhr.responseText);
                     alert('Error fetching attendance data: ' + error);
                 }
             });
@@ -869,7 +882,3 @@
     });
 </script>
 {% endblock %}
-
-
-
-

@@ -109,10 +109,12 @@ class AttendanceView(LoginRequiredMixin, View):
 
         departments = Department.objects.filter(is_active=True).order_by("name")
         status_choices = Attendance._meta.get_field("status").choices
+        employees = User.objects.filter(is_active=True).order_by('first_name')
 
         context = {
             "page_obj": page_obj,
             "departments": departments,
+            "employees": employees,
             "status_choices": status_choices,
             "filter_date": filter_date,
             "department_filter": department_filter,
@@ -198,14 +200,15 @@ class AttendanceView(LoginRequiredMixin, View):
     def create_attendance(self, request):
         employee_id = request.POST.get("employee")
         date_str = request.POST.get("date")
-
+        
         try:
-            employee = User.objects.get(id=employee_id)
             attendance_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            
+            employee = User.objects.get(id=employee_id)
 
             if attendance_date > get_current_date():
                 messages.error(request, "Cannot create attendance for future dates")
-                return redirect("attendance:attendance_list")
+                return redirect(f"/attendance/?date={date_str}")
 
             if Attendance.objects.filter(
                 employee=employee, date=attendance_date
@@ -214,7 +217,7 @@ class AttendanceView(LoginRequiredMixin, View):
                     request,
                     f"Attendance record already exists for {employee.get_full_name()} on {attendance_date}",
                 )
-                return redirect("attendance:attendance_list")
+                return redirect(f"/attendance/?date={date_str}")
 
             attendance = Attendance(
                 employee=employee,
@@ -228,9 +231,18 @@ class AttendanceView(LoginRequiredMixin, View):
                 out_time = request.POST.get(f"check_out_{i}")
 
                 if in_time:
-                    setattr(attendance, f"check_in_{i}", in_time)
+                    try:
+                        in_time_obj = datetime.strptime(in_time, "%H:%M:%S").time()
+                    except ValueError:
+                        in_time_obj = datetime.strptime(in_time, "%H:%M").time()
+                    setattr(attendance, f"check_in_{i}", in_time_obj)
+                    
                 if out_time:
-                    setattr(attendance, f"check_out_{i}", out_time)
+                    try:
+                        out_time_obj = datetime.strptime(out_time, "%H:%M:%S").time()
+                    except ValueError:
+                        out_time_obj = datetime.strptime(out_time, "%H:%M").time()
+                    setattr(attendance, f"check_out_{i}", out_time_obj)
 
             attendance.notes = request.POST.get("notes", "")
             attendance.save()
@@ -243,8 +255,8 @@ class AttendanceView(LoginRequiredMixin, View):
 
         except User.DoesNotExist:
             messages.error(request, "Employee not found")
-        except ValueError:
-            messages.error(request, "Invalid date format")
+        except ValueError as e:
+            messages.error(request, f"Invalid format: {str(e)}")
         except ValidationError as e:
             messages.error(request, f"Validation error: {str(e)}")
 
@@ -252,78 +264,78 @@ class AttendanceView(LoginRequiredMixin, View):
     
     def update_attendance(self, request):
         attendance_id = request.POST.get('attendance_id')
-        
+
         try:
             attendance = Attendance.objects.get(id=attendance_id)
-            
+
             for i in range(1, 7):
                 in_time = request.POST.get(f'check_in_{i}')
                 out_time = request.POST.get(f'check_out_{i}')
-                
+
                 if in_time:
                     setattr(attendance, f'check_in_{i}', in_time)
                 else:
                     setattr(attendance, f'check_in_{i}', None)
-                
+
                 if out_time:
                     setattr(attendance, f'check_out_{i}', out_time)
                 else:
                     setattr(attendance, f'check_out_{i}', None)
-            
+
             attendance.notes = request.POST.get('notes', '')
             attendance.is_manual_entry = True
             attendance.save()
-            
+
             messages.success(request, f'Attendance record updated for {attendance.employee.get_full_name()} on {attendance.date}')
             return redirect('attendance:attendance_detail', id=attendance.id)
-            
+
         except Attendance.DoesNotExist:
             messages.error(request, 'Attendance record not found')
         except ValidationError as e:
             messages.error(request, f'Validation error: {str(e)}')
-        
+
         return redirect('attendance:attendance_list')
 
     def bulk_update_attendance(self, request):
         try:
             data = json.loads(request.POST.get('attendance_data', '[]'))
             updated_count = 0
-            
+
             for record in data:
                 attendance_id = record.get('id')
                 if not attendance_id:
                     continue
-                
+
                 try:
                     attendance = Attendance.objects.get(id=attendance_id)
-                    
+
                     for i in range(1, 7):
                         in_key = f'check_in_{i}'
                         out_key = f'check_out_{i}'
-                        
+
                         if in_key in record:
                             setattr(attendance, in_key, record[in_key] or None)
-                        
+
                         if out_key in record:
                             setattr(attendance, out_key, record[out_key] or None)
-                    
+
                     if 'notes' in record:
                         attendance.notes = record['notes']
-                    
+
                     attendance.is_manual_entry = True
                     attendance.save()
                     updated_count += 1
-                    
+
                 except Attendance.DoesNotExist:
                     continue
                 except ValidationError:
                     continue
-            
+
             messages.success(request, f'Successfully updated {updated_count} attendance records')
-            
+
         except json.JSONDecodeError:
             messages.error(request, 'Invalid data format')
-        
+
         return redirect('attendance:attendance_list')
 
 
@@ -1953,7 +1965,7 @@ class Corrections(LoginRequiredMixin, View):
             messages.error(request, f'Error rejecting correction: {str(e)}')
         
         return redirect('attendance:correction_list')
-    
+
 class Holidays(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         if 'id' in kwargs:
@@ -2854,20 +2866,3 @@ class Leave(LoginRequiredMixin, View):
             messages.error(request, f'Error updating leave type: {str(e)}')
         
         return redirect('attendance:leave_type_list')
-
-    
-    
-
-
-
-
-
-
-        
-
-
-
-
-        
-    
-

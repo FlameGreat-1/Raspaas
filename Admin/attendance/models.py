@@ -934,7 +934,6 @@ class LeaveRequest(models.Model):
             and self.start_date > get_current_date()
         )
 
-
 class Attendance(models.Model):
     STATUS_CHOICES = [
         ("PRESENT", "Present"),
@@ -1140,11 +1139,12 @@ class Attendance(models.Model):
         if not is_valid:
             raise ValidationError("; ".join(errors))
 
-        is_employee_valid, message = (
-            EmployeeDataManager.validate_employee_for_attendance(self.employee)
-        )
-        if not is_employee_valid:
-            raise ValidationError(message)
+        if not self.is_manual_entry:
+            is_employee_valid, message = (
+                EmployeeDataManager.validate_employee_for_attendance(self.employee)
+            )
+            if not is_employee_valid:
+                raise ValidationError(message)
 
     def save(self, *args, **kwargs):
         if not self.shift:
