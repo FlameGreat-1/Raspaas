@@ -22,7 +22,7 @@
                     </a>
                     <ul class="pe-slide-menu collapse" id="collapseDashboards">
                         <li class="pe-slide-item">
-                            <a href="index.html" class="pe-nav-link">
+                            <a href="{% url 'attendance:dashboard' %}" class="pe-nav-link">
                                 Attendance
                             </a>
                         </li>
@@ -33,7 +33,7 @@
                         </li>
                         <li class="pe-slide-item">
                             <a href="{% url 'accounts:dashboard' %}" class="pe-nav-link">
-                                Analytics
+                                Employee
                             </a>
                         </li>
                         <li class="pe-slide-item">
@@ -95,15 +95,15 @@
                                     </a>
                                 </li>
                                 <li class="pe-slide-item">
-                                    <a href="apps-ecommerce-create-products.html" class="pe-nav-link">
-                                        Create Product
+                                    <a href="{% url 'attendance:reports' %}" class="pe-nav-link">
+                                        Reports
                                     </a>
                                 </li>
                                 <li class="pe-slide-item">
-                                    <a href="apps-ecommerce-customer.html" class="pe-nav-link">
-                                        Customer
+                                    <a href="{% url 'attendance:summaries' %}" class="pe-nav-link">
+                                        Monthly Summaries
                                     </a>
-                                </li>
+                                </li>                                
                                 <li class="pe-slide-item">
                                     <a href="apps-ecommerce-customer-details.html" class="pe-nav-link">
                                         Customer Details

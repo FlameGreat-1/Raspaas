@@ -1,0 +1,541 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Attendance Dashboard" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+<link rel="stylesheet" href="/static/assets/libs/apexcharts/apexcharts.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Attendance" title="Dashboard" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xxl-8">
+        <div class="row">
+            <div class="col-xxl col-sm-6">
+                <div class="card overflow-hidden">
+                    <div class="card-body bg-primary-subtle position-relative z-1">
+                        <div class="d-flex gap-2">
+                            <div class="school-icon bg-primary d-flex justify-content-center align-items-center fs-4">
+                                <i class="ri-user-follow-line" id="hexagon"></i>
+                            </div>
+                            <div class="text-center">
+                                <span class="d-block fw-semibold mb-2 fs-5">Present Today</span>
+                                <h4 class="mb-0 fw-semibold">{{ attendance_stats.present_count }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xxl col-sm-6">
+                <div class="card overflow-hidden">
+                    <div class="card-body bg-danger-subtle position-relative z-1">
+                        <div class="d-flex gap-2">
+                            <div class="school-icon bg-danger d-flex justify-content-center align-items-center fs-4">
+                                <i class="ri-user-unfollow-line" id="hexagon"></i>
+                            </div>
+                            <div class="text-center">
+                                <span class="d-block fw-semibold mb-2 fs-5">Absent Today</span>
+                                <h4 class="mb-0 fw-semibold">{{ attendance_stats.absent_count }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xxl col-sm-6">
+                <div class="card overflow-hidden">
+                    <div class="card-body bg-warning-subtle position-relative z-1">
+                        <div class="d-flex gap-2">
+                            <div class="school-icon bg-warning d-flex justify-content-center align-items-center fs-4">
+                                <i class="ri-time-line" id="hexagon"></i>
+                            </div>
+                            <div class="text-center">
+                                <span class="d-block fw-semibold mb-2 fs-5">Late Today</span>
+                                <h4 class="mb-0 fw-semibold">{{ attendance_stats.late_count }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xxl col-sm-6">
+                <div class="card overflow-hidden">
+                    <div class="card-body bg-info-subtle position-relative z-1">
+                        <div class="d-flex gap-2">
+                            <div class="school-icon bg-info d-flex justify-content-center align-items-center fs-4">
+                                <i class="ri-calendar-check-line" id="hexagon"></i>
+                            </div>
+                            <div class="text-center">
+                                <span class="d-block fw-semibold mb-2 fs-5">On Leave</span>
+                                <h4 class="mb-0 fw-semibold">{{ attendance_stats.leave_count }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-12">
+                <div class="card card-h-100">
+                    <div class="card-header">
+                        <h4>Monthly Attendance Overview</h4>
+                        <div class="dropdown">
+                            <a href="javascript:void(0)" data-bs-toggle="dropdown" class="text-body" aria-expanded="false">
+                                <i class="bi bi-three-dots"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{% url 'attendance:reports' %}">View Reports</a></li>
+                                <li><a class="dropdown-item" href="{% url 'attendance:summaries' %}">View Summaries</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="monthlyAttendanceChart" class="apex-charts" dir="ltr"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="card card-h-100">
+                    <div class="card-header">
+                        <h4>Department Attendance</h4>
+                        <div class="dropdown">
+                            <a href="javascript:void(0)" data-bs-toggle="dropdown" class="text-body" aria-expanded="false">
+                                <i class="bi bi-three-dots"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{% url 'attendance:reports' %}?report_type=DEPARTMENT">Department Reports</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive" data-simplebar style="max-height: 350px;">
+                            <table class="table table-hover text-nowrap">
+                                <thead class="table-light border-0">
+                                    <tr>
+                                        <th class="text-muted">Department</th>
+                                        <th class="text-muted">Employees</th>
+                                        <th class="text-muted">Present</th>
+                                        <th class="text-muted">Absent</th>
+                                        <th class="text-muted">On Leave</th>
+                                        <th class="text-muted">Attendance %</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for dept in department_stats %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ dept.department.name }}</td>
+                                        <td class="fw-semibold">{{ dept.employee_count }}</td>
+                                        <td class="fw-semibold">{{ dept.present_count }}</td>
+                                        <td class="fw-semibold">{{ dept.absent_count }}</td>
+                                        <td class="fw-semibold">{{ dept.leave_count }}</td>
+                                        <td>
+                                            <div class="w-100">
+                                                <div class="d-flex justify-content-between align-items-center fs-13">
+                                                    <p class="{% if dept.attendance_percentage >= 90 %}text-success{% elif dept.attendance_percentage >= 75 %}text-warning{% else %}text-danger{% endif %} mb-1">{{ dept.attendance_percentage }}%</p>
+                                                </div>
+                                                <div class="progress progress-sm">
+                                                    <div class="progress-bar {% if dept.attendance_percentage >= 90 %}bg-success{% elif dept.attendance_percentage >= 75 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {{ dept.attendance_percentage }}%"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center py-3">No department data available</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Attendance Rate</h4>
+                        <div class="dropdown">
+                            <a href="javascript:void(0)" data-bs-toggle="dropdown" class="text-body" aria-expanded="false">
+                                <i class="bi bi-three-dots"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{% url 'attendance:reports' %}">View Reports</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="attendanceRateChart"></div>
+                        <div class="d-flex align-items-center mt-3">
+                            <div class="w-100">
+                                <div class="d-flex justify-content-between align-items-center fs-13">
+                                    <p class="text-muted mb-1">Attendance Rate</p>
+                                </div>
+                                <div>
+                                    <h5 class="text-primary">{{ attendance_stats.attendance_percentage }}%</h5>
+                                </div>
+                            </div>
+                            <div class="w-100">
+                                <div class="d-flex justify-content-between align-items-center fs-13">
+                                    <p class="text-muted mb-1">Avg. Work Hours</p>
+                                </div>
+                                <div>
+                                    <h5 class="text-primary">{{ attendance_stats.avg_work_hours }} hrs</h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Recent Leave Requests</h4>
+                        <div class="dropdown">
+                            <a href="javascript:void(0)" data-bs-toggle="dropdown" class="text-body" aria-expanded="false">
+                                <i class="bi bi-three-dots"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{% url 'attendance:leave_request_list' %}">View All Leaves</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover text-nowrap">
+                                <thead class="table-light border-0">
+                                    <tr>
+                                        <th class="text-muted">Employee</th>
+                                        <th class="text-muted">Leave Type</th>
+                                        <th class="text-muted">From</th>
+                                        <th class="text-muted">To</th>
+                                        <th class="text-muted">Days</th>
+                                        <th class="text-muted">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for leave in recent_leaves %}
+                                    <tr>
+                                        <td class="fw-semibold">
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-shrink-0 me-2">
+                                                    <div class="avatar-xs">
+                                                        <div class="avatar-title bg-light text-primary rounded-circle">
+                                                            {{ leave.employee.first_name|slice:":1"|upper }}{{ leave.employee.last_name|slice:":1"|upper }}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    {{ leave.employee.get_full_name }}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="fw-semibold">{{ leave.leave_type.name }}</td>
+                                        <td class="fw-semibold">{{ leave.start_date|date:"M d, Y" }}</td>
+                                        <td class="fw-semibold">{{ leave.end_date|date:"M d, Y" }}</td>
+                                        <td class="fw-semibold">{{ leave.days }}</td>
+                                        <td>
+                                            {% if leave.status == 'PENDING' %}
+                                            <span class="badge bg-warning-subtle text-warning">Pending</span>
+                                            {% elif leave.status == 'APPROVED' %}
+                                            <span class="badge bg-success-subtle text-success">Approved</span>
+                                            {% elif leave.status == 'REJECTED' %}
+                                            <span class="badge bg-danger-subtle text-danger">Rejected</span>
+                                            {% elif leave.status == 'CANCELLED' %}
+                                            <span class="badge bg-secondary-subtle text-secondary">Cancelled</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center py-3">No recent leave requests</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-4">
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card overflow-hidden">
+                    <div class="card-body bg-primary-subtle position-relative z-1 p-4">
+                        <div class="position-relative z-1 h-100">
+                            <h2 class="text-primary mb-4">Monthly Attendance Summary</h2>
+                            <p class="text-muted mb-4">Generate and view detailed monthly attendance summaries for all employees.</p>
+                            <a href="{% url 'attendance:summaries' %}" class="btn btn-primary position-relative">View Summaries</a>
+                        </div>
+                        <div>
+                            <img src="/static/assets/images/dashboard/attendance-bg.png" alt="Attendance Background" class="position-absolute end-0 bottom-0 opacity-25 img-fluid">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>{{ today|date:"F Y" }} Daily Attendance</h4>
+                        <div class="dropdown">
+                            <a href="javascript:void(0)" data-bs-toggle="dropdown" class="text-body" aria-expanded="false">
+                                <i class="bi bi-three-dots"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{% url 'attendance:reports' %}?report_type=DAILY">Daily Reports</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="dailyAttendanceChart" class="apex-charts" dir="ltr"></div>
+                        <div class="table-responsive mt-3" data-simplebar style="max-height: 250px;">
+                            <table class="table table-sm table-hover text-nowrap">
+                                <thead class="table-light border-0">
+                                    <tr>
+                                        <th class="text-muted">Date</th>
+                                        <th class="text-muted">Day</th>
+                                        <th class="text-muted">Present</th>
+                                        <th class="text-muted">Absent</th>
+                                        <th class="text-muted">%</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for day in monthly_data %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ day.day }}</td>
+                                        <td class="fw-semibold">{{ day.weekday }}</td>
+                                        <td class="fw-semibold">{{ day.present_count }}</td>
+                                        <td class="fw-semibold">{{ day.absent_count }}</td>
+                                        <td class="fw-semibold">
+                                            <span class="{% if day.attendance_percentage >= 90 %}text-success{% elif day.attendance_percentage >= 75 %}text-warning{% else %}text-danger{% endif %}">
+                                                {{ day.attendance_percentage }}%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center py-3">No data available</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Generate Reports</h4>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="{% url 'attendance:dashboard' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="generate_report">
+                            <div class="mb-3">
+                                <label for="report_type" class="form-label">Report Type</label>
+                                <select class="form-select" id="report_type" name="report_type" required>
+                                    <option value="">Select Report Type</option>
+                                    {% for type_value, type_label in report_types %}
+                                    <option value="{{ type_value }}">{{ type_label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Report Name</label>
+                                <input type="text" class="form-control" id="name" name="name" placeholder="Enter report name" value="Attendance Report - {{ today|date:'Y-m-d' }}">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="start_date" class="form-label">Start Date</label>
+                                    <input type="date" class="form-control" id="start_date" name="start_date" value="{{ today|date:'Y-m-d' }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="end_date" class="form-label">End Date</label>
+                                    <input type="date" class="form-control" id="end_date" name="end_date" value="{{ today|date:'Y-m-d' }}" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Generate Report</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="/static/assets/libs/apexcharts/apexcharts.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var monthlyAttendanceOptions = {
+            series: [{
+                name: 'Present',
+                data: [{% for day in monthly_data %}{{ day.present_count }}{% if not forloop.last %},{% endif %}{% endfor %}]
+            }, {
+                name: 'Absent',
+                data: [{% for day in monthly_data %}{{ day.absent_count }}{% if not forloop.last %},{% endif %}{% endfor %}]
+            }, {
+                name: 'On Leave',
+                data: [{% for day in monthly_data %}{{ day.leave_count }}{% if not forloop.last %},{% endif %}{% endfor %}]
+            }],
+            chart: {
+                type: 'bar',
+                height: 350,
+                stacked: true,
+                toolbar: {
+                    show: false
+                }
+            },
+            plotOptions: {
+                bar: {
+                    horizontal: false,
+                    columnWidth: '55%',
+                    endingShape: 'rounded'
+                },
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                show: true,
+                width: 2,
+                colors: ['transparent']
+            },
+            xaxis: {
+                categories: [{% for day in monthly_data %}'{{ day.day }}'{% if not forloop.last %},{% endif %}{% endfor %}],
+            },
+            yaxis: {
+                title: {
+                    text: 'Employees'
+                }
+            },
+            fill: {
+                opacity: 1
+            },
+            tooltip: {
+                y: {
+                    formatter: function (val) {
+                        return val + " employees"
+                    }
+                }
+            },
+            colors: ['#0ab39c', '#f06548', '#405189']
+        };
+
+        var monthlyAttendanceChart = new ApexCharts(document.querySelector("#monthlyAttendanceChart"), monthlyAttendanceOptions);
+        monthlyAttendanceChart.render();
+
+        var attendanceRateOptions = {
+            series: [{{ attendance_stats.attendance_percentage }}],
+            chart: {
+                height: 250,
+                type: 'radialBar',
+            },
+            plotOptions: {
+                radialBar: {
+                    hollow: {
+                        size: '70%',
+                    },
+                    dataLabels: {
+                        name: {
+                            show: false,
+                        },
+                        value: {
+                            fontSize: '30px',
+                            show: true,
+                            formatter: function (val) {
+                                return val + '%'
+                            }
+                        }
+                    }
+                }
+            },
+            fill: {
+                colors: ['#405189']
+            },
+            labels: ['Attendance'],
+        };
+
+        var attendanceRateChart = new ApexCharts(document.querySelector("#attendanceRateChart"), attendanceRateOptions);
+        attendanceRateChart.render();
+
+        var dailyAttendanceOptions = {
+            series: [{
+                name: 'Attendance',
+                data: [{% for day in monthly_data %}{{ day.attendance_percentage }}{% if not forloop.last %},{% endif %}{% endfor %}]
+            }],
+            chart: {
+                height: 250,
+                type: 'line',
+                zoom: {
+                    enabled: false
+                },
+                toolbar: {
+                    show: false
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 3
+            },
+            grid: {
+                row: {
+                    colors: ['#f3f3f3', 'transparent'],
+                    opacity: 0.5
+                },
+            },
+            xaxis: {
+                categories: [{% for day in monthly_data %}'{{ day.day }}'{% if not forloop.last %},{% endif %}{% endfor %}],
+            },
+            yaxis: {
+                min: 0,
+                max: 100,
+                labels: {
+                    formatter: function (val) {
+                        return val.toFixed(0) + '%';
+                    }
+                }
+            },
+            colors: ['#0ab39c']
+        };
+
+        var dailyAttendanceChart = new ApexCharts(document.querySelector("#dailyAttendanceChart"), dailyAttendanceOptions);
+        dailyAttendanceChart.render();
+
+        const startDateInput = document.getElementById('start_date');
+        const endDateInput = document.getElementById('end_date');
+        
+        endDateInput.addEventListener('change', function() {
+            if (startDateInput.value && this.value) {
+                if (new Date(this.value) < new Date(startDateInput.value)) {
+                    alert('End date cannot be earlier than start date');
+                    this.value = startDateInput.value;
+                }
+            }
+        });
+        
+        startDateInput.addEventListener('change', function() {
+            if (endDateInput.value && this.value) {
+                if (new Date(this.value) > new Date(endDateInput.value)) {
+                    endDateInput.value = this.value;
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
+
+

@@ -1225,8 +1225,12 @@ class Dashboard(LoginRequiredMixin, View):
         }
         report.save(update_fields=['report_data'])
 
+    
     def generate_summaries(self, request):
-        year = int(request.POST.get('year', get_current_date().year))
+    
+        year_str = request.POST.get('year', str(get_current_date().year))
+        year = int(year_str.replace(',', ''))
+        
         month = int(request.POST.get('month', get_current_date().month))
         
         employees = User.objects.filter(is_active=True)
@@ -1247,6 +1251,7 @@ class Dashboard(LoginRequiredMixin, View):
         
         messages.success(request, f'Generated {generated_count} monthly summaries for {month}/{year}')
         return redirect('attendance:summaries')
+
 
     def download_report(self, request):
         report_id = request.POST.get('report_id')

@@ -1,0 +1,500 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Attendance Logs" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Attendance" title="Logs" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">Attendance Logs</h4>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary" id="processSelectedBtn" disabled>
+                        <i class="ri-check-double-line align-bottom me-1"></i> Process Selected
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-light dropdown-toggle" type="button" id="bulkActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="ri-settings-3-line align-bottom me-1"></i> Bulk Actions
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="bulkActionsDropdown">
+                            <li>
+                                <button class="dropdown-item" type="button" id="markProcessedBtn" disabled>
+                                    <i class="ri-check-line align-bottom me-2 text-muted"></i> Mark as Processed
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" type="button" id="markErrorBtn" disabled>
+                                    <i class="ri-close-circle-line align-bottom me-2 text-muted"></i> Mark as Error
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <form method="get" action="{% url 'attendance:logs_list' %}" class="row g-3 mb-4">
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <label for="start_date" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <label for="end_date" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <label for="device" class="form-label">Device</label>
+                        <select class="form-select" id="device" name="device">
+                            <option value="">All Devices</option>
+                            {% for device in devices %}
+                            <option value="{{ device.id }}" {% if device_filter == device.id|stringformat:"s" %}selected{% endif %}>{{ device.device_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="">All Status</option>
+                            {% for status_value, status_label in status_choices %}
+                            <option value="{{ status_value }}" {% if status_filter == status_value %}selected{% endif %}>{{ status_label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-9 col-sm-6 mb-2">
+                        <label for="search" class="form-label">Search</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="search" name="search" placeholder="Search by employee code or name..." value="{{ search_query }}">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="ri-search-line"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-light w-100" id="clearFilters">
+                            <i class="ri-filter-off-line align-bottom me-1"></i> Clear Filters
+                        </button>
+                    </div>
+                </form>
+                <form id="logsActionForm" method="post" action="{% url 'attendance:logs_list' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" id="bulkAction" value="">
+                    <input type="hidden" name="error_message" id="errorMessage" value="">
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col" width="40">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="selectAllLogs">
+                                        </div>
+                                    </th>
+                                    <th scope="col">Employee</th>
+                                    <th scope="col">Timestamp</th>
+                                    <th scope="col">Log Type</th>
+                                    <th scope="col">Device</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if page_obj %}
+                                    {% for log in page_obj %}
+                                    <tr>
+                                        <td>
+                                            <div class="form-check">
+                                                <input class="form-check-input log-checkbox" type="checkbox" name="log_ids" value="{{ log.id }}" {% if log.processing_status != "PENDING" %}disabled{% endif %}>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-shrink-0 me-2">
+                                                    <div class="avatar-xs">
+                                                        <div class="avatar-title bg-light text-primary rounded-circle">
+                                                            {% if log.employee %}
+                                                                {{ log.employee.first_name|slice:":1"|upper }}{{ log.employee.last_name|slice:":1"|upper }}
+                                                            {% else %}
+                                                                {{ log.employee_code|slice:":2"|upper }}
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-0">
+                                                        {% if log.employee %}
+                                                            {{ log.employee.get_full_name }}
+                                                        {% else %}
+                                                            Unknown
+                                                        {% endif %}
+                                                    </h6>
+                                                    <small class="text-muted">{{ log.employee_code }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {{ log.timestamp|date:"Y-m-d H:i:s" }}
+                                        </td>
+                                        <td>
+                                            {% if log.log_type == "CHECK_IN" %}
+                                            <span class="badge bg-success-subtle text-success">Check In</span>
+                                            {% elif log.log_type == "CHECK_OUT" %}
+                                            <span class="badge bg-danger-subtle text-danger">Check Out</span>
+                                            {% elif log.log_type == "BREAK_START" %}
+                                            <span class="badge bg-warning-subtle text-warning">Break Start</span>
+                                            {% elif log.log_type == "BREAK_END" %}
+                                            <span class="badge bg-info-subtle text-info">Break End</span>
+                                            {% elif log.log_type == "OVERTIME_IN" %}
+                                            <span class="badge bg-primary-subtle text-primary">Overtime In</span>
+                                            {% elif log.log_type == "OVERTIME_OUT" %}
+                                            <span class="badge bg-secondary-subtle text-secondary">Overtime Out</span>
+                                            {% elif log.log_type == "MANUAL_ENTRY" %}
+                                            <span class="badge bg-dark-subtle text-dark">Manual Entry</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'attendance:device_detail' id=log.device.id %}" class="text-primary">
+                                                {{ log.device.device_name }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            {% if log.processing_status == "PROCESSED" %}
+                                            <span class="badge bg-success">Processed</span>
+                                            {% elif log.processing_status == "PENDING" %}
+                                            <span class="badge bg-warning">Pending</span>
+                                            {% elif log.processing_status == "ERROR" %}
+                                            <span class="badge bg-danger" data-bs-toggle="tooltip" title="{{ log.error_message }}">Error</span>
+                                            {% elif log.processing_status == "DUPLICATE" %}
+                                            <span class="badge bg-info">Duplicate</span>
+                                            {% elif log.processing_status == "IGNORED" %}
+                                            <span class="badge bg-secondary">Ignored</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="dropdown">
+                                                <a href="#" class="btn btn-sm btn-icon btn-light" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="ri-more-2-fill"></i>
+                                                </a>
+                                                <ul class="dropdown-menu dropdown-menu-end">
+                                                    <li>
+                                                        <a class="dropdown-item" href="{% url 'attendance:log_detail' id=log.id %}">
+                                                            <i class="ri-eye-line align-bottom me-2 text-muted"></i> View Details
+                                                        </a>
+                                                    </li>
+                                                    {% if log.processing_status == "PENDING" %}
+                                                    <li>
+                                                        <a class="dropdown-item process-log-btn" href="#" data-id="{{ log.id }}">
+                                                            <i class="ri-check-double-line align-bottom me-2 text-muted"></i> Process Log
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item mark-processed-btn" href="#" data-id="{{ log.id }}">
+                                                            <i class="ri-check-line align-bottom me-2 text-muted"></i> Mark as Processed
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item mark-error-btn" href="#" data-id="{{ log.id }}">
+                                                            <i class="ri-close-circle-line align-bottom me-2 text-muted"></i> Mark as Error
+                                                        </a>
+                                                    </li>
+                                                    {% endif %}
+                                                </ul>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4">
+                                            <div class="d-flex flex-column align-items-center">
+                                                <i class="ri-calendar-todo-line fs-1 text-muted mb-2"></i>
+                                                <h5 class="mb-1">No attendance logs found</h5>
+                                                <p class="text-muted mb-3">No logs found for the selected filters.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
+                {% if page_obj.has_other_pages %}
+                <div class="d-flex justify-content-end mt-3">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if device_filter %}&device={{ device_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if device_filter %}&device={{ device_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if device_filter %}&device={{ device_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if device_filter %}&device={{ device_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if device_filter %}&device={{ device_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error Message Modal -->
+<div class="modal fade" id="errorMessageModal" tabindex="-1" aria-labelledby="errorMessageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="errorMessageModalLabel">Enter Error Message</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="errorMessageInput" class="form-label">Error Message</label>
+                    <textarea class="form-control" id="errorMessageInput" rows="3" placeholder="Enter reason for marking as error..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmErrorBtn">Mark as Error</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Process Log Confirmation Modal -->
+<div class="modal fade" id="processLogModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Process Attendance Logs</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to process the selected attendance logs?</p>
+                <p class="text-muted mb-0">This will create or update attendance records based on these logs.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmProcessBtn">Process Logs</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Date range validation
+        const startDateInput = document.getElementById('start_date');
+        const endDateInput = document.getElementById('end_date');
+        
+        endDateInput.addEventListener('change', function() {
+            if (startDateInput.value && this.value) {
+                if (new Date(this.value) < new Date(startDateInput.value)) {
+                    alert('End date cannot be earlier than start date');
+                    this.value = startDateInput.value;
+                }
+            }
+        });
+        
+        startDateInput.addEventListener('change', function() {
+            if (endDateInput.value && this.value) {
+                if (new Date(this.value) > new Date(endDateInput.value)) {
+                    endDateInput.value = this.value;
+                }
+            }
+        });
+        
+        // Clear filters
+        document.getElementById('clearFilters').addEventListener('click', function() {
+            window.location.href = '{% url "attendance:logs_list" %}';
+        });
+        
+        // Select all logs
+        const selectAllCheckbox = document.getElementById('selectAllLogs');
+        const logCheckboxes = document.querySelectorAll('.log-checkbox:not([disabled])');
+        
+        selectAllCheckbox.addEventListener('change', function() {
+            logCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateBulkActionButtons();
+        });
+        
+        logCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                updateBulkActionButtons();
+                
+                // Update "select all" checkbox state
+                if (!this.checked) {
+                    selectAllCheckbox.checked = false;
+                } else {
+                    const allChecked = Array.from(logCheckboxes).every(cb => cb.checked);
+                    selectAllCheckbox.checked = allChecked;
+                }
+            });
+        });
+        
+        function updateBulkActionButtons() {
+            const selectedCount = document.querySelectorAll('.log-checkbox:checked').length;
+            const processSelectedBtn = document.getElementById('processSelectedBtn');
+            const markProcessedBtn = document.getElementById('markProcessedBtn');
+            const markErrorBtn = document.getElementById('markErrorBtn');
+            
+            processSelectedBtn.disabled = selectedCount === 0;
+            markProcessedBtn.disabled = selectedCount === 0;
+            markErrorBtn.disabled = selectedCount === 0;
+            
+            processSelectedBtn.innerHTML = `<i class="ri-check-double-line align-bottom me-1"></i> Process Selected${selectedCount > 0 ? ` (${selectedCount})` : ''}`;
+        }
+        
+        // Process logs
+        document.getElementById('processSelectedBtn').addEventListener('click', function() {
+            const selectedCount = document.querySelectorAll('.log-checkbox:checked').length;
+            if (selectedCount > 0) {
+                new bootstrap.Modal(document.getElementById('processLogModal')).show();
+            }
+        });
+        
+        document.getElementById('confirmProcessBtn').addEventListener('click', function() {
+            document.getElementById('bulkAction').value = 'process';
+            document.getElementById('logsActionForm').submit();
+        });
+        
+        // Mark as processed
+        document.getElementById('markProcessedBtn').addEventListener('click', function() {
+            document.getElementById('bulkAction').value = 'mark_processed';
+            document.getElementById('logsActionForm').submit();
+        });
+        
+        // Mark as error
+        document.getElementById('markErrorBtn').addEventListener('click', function() {
+            new bootstrap.Modal(document.getElementById('errorMessageModal')).show();
+        });
+        
+        document.getElementById('confirmErrorBtn').addEventListener('click', function() {
+            const errorMessage = document.getElementById('errorMessageInput').value.trim();
+            if (!errorMessage) {
+                alert('Please enter an error message');
+                return;
+            }
+            
+            document.getElementById('bulkAction').value = 'mark_error';
+            document.getElementById('errorMessage').value = errorMessage;
+            document.getElementById('logsActionForm').submit();
+        });
+        
+        // Individual log actions
+        const processLogBtns = document.querySelectorAll('.process-log-btn');
+        processLogBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const logId = this.getAttribute('data-id');
+                
+                // Uncheck all checkboxes
+                logCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                
+                // Check only this log
+                const checkbox = document.querySelector(`.log-checkbox[value="${logId}"]`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                    updateBulkActionButtons();
+                    new bootstrap.Modal(document.getElementById('processLogModal')).show();
+                }
+            });
+        });
+        
+        const markProcessedBtns = document.querySelectorAll('.mark-processed-btn');
+        markProcessedBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const logId = this.getAttribute('data-id');
+                
+                // Uncheck all checkboxes
+                logCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                
+                // Check only this log
+                const checkbox = document.querySelector(`.log-checkbox[value="${logId}"]`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                    document.getElementById('bulkAction').value = 'mark_processed';
+                    document.getElementById('logsActionForm').submit();
+                }
+            });
+        });
+        
+        const markErrorBtns = document.querySelectorAll('.mark-error-btn');
+        markErrorBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const logId = this.getAttribute('data-id');
+                
+                // Uncheck all checkboxes
+                logCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                
+                // Check only this log
+                const checkbox = document.querySelector(`.log-checkbox[value="${logId}"]`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                    new bootstrap.Modal(document.getElementById('errorMessageModal')).show();
+                }
+            });
+        });
+        
+        // Initialize tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}
+
+

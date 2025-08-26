@@ -1,0 +1,431 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Summary Details" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/apexcharts/apexcharts.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Attendance" title="Summary Details" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xl-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h5 class="card-title mb-0 flex-grow-1">
+                    Monthly Summary: {{ summary.employee.get_full_name }} - {{ summary.month|date:"F" }} {{ summary.year }}
+                </h5>
+                <div class="flex-shrink-0">
+                    <a href="{% url 'attendance:summaries' %}?year={{ summary.year }}&month={{ summary.month }}" class="btn btn-light btn-sm">
+                        <i class="ri-arrow-left-line align-bottom me-1"></i> Back to Summaries
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="table-responsive">
+                            <table class="table table-borderless mb-0">
+                                <tbody>
+                                    <tr>
+                                        <th class="ps-0" scope="row" width="200">Employee:</th>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-shrink-0 me-2">
+                                                    <div class="avatar-xs">
+                                                        <div class="avatar-title bg-light text-primary rounded-circle">
+                                                            {{ summary.employee.first_name|slice:":1"|upper }}{{ summary.employee.last_name|slice:":1"|upper }}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h5 class="fs-14 mb-0">{{ summary.employee.get_full_name }}</h5>
+                                                    <p class="text-muted mb-0">{{ summary.employee.employee_code }}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Department:</th>
+                                        <td class="text-muted">{{ summary.employee.department.name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Period:</th>
+                                        <td class="text-muted">{{ start_date|date:"M d, Y" }} to {{ end_date|date:"M d, Y" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Working Days:</th>
+                                        <td class="text-muted">{{ summary.working_days }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="table-responsive">
+                            <table class="table table-borderless mb-0">
+                                <tbody>
+                                    <tr>
+                                        <th class="ps-0" scope="row" width="200">Present Days:</th>
+                                        <td class="text-muted">{{ summary.present_days }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Absent Days:</th>
+                                        <td class="text-muted">{{ summary.absent_days }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Late Days:</th>
+                                        <td class="text-muted">{{ summary.late_days }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Leave Days:</th>
+                                        <td class="text-muted">{{ summary.leave_days }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card border">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm flex-shrink-0">
+                                        <span class="avatar-title bg-light text-primary rounded fs-3">
+                                            <i class="ri-time-line"></i>
+                                        </span>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <p class="text-uppercase fw-medium text-muted mb-1">Total Work Hours</p>
+                                        <h4 class="fs-4 mb-0">{{ summary.total_work_hours }} hrs</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm flex-shrink-0">
+                                        <span class="avatar-title bg-light text-primary rounded fs-3">
+                                            <i class="ri-percent-line"></i>
+                                        </span>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <p class="text-uppercase fw-medium text-muted mb-1">Attendance Percentage</p>
+                                        <h4 class="fs-4 mb-0">{{ summary.attendance_percentage }}%</h4>
+                                        <div class="progress mt-2" style="height: 6px;">
+                                            <div class="progress-bar {% if summary.attendance_percentage >= 90 %}bg-success{% elif summary.attendance_percentage >= 75 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                                 role="progressbar" style="width: {{ summary.attendance_percentage }}%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card border">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Attendance Overview</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="attendanceOverviewChart" class="apex-charts" dir="ltr" style="height: 250px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Daily Attendance Records</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th scope="col">Date</th>
+                                                <th scope="col">Day</th>
+                                                <th scope="col">Status</th>
+                                                <th scope="col">First In</th>
+                                                <th scope="col">Last Out</th>
+                                                <th scope="col">Work Hours</th>
+                                                <th scope="col">Overtime</th>
+                                                <th scope="col">Late Minutes</th>
+                                                <th scope="col">Early Departure</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for record in attendance_records %}
+                                            <tr>
+                                                <td>{{ record.date|date:"M d, Y" }}</td>
+                                                <td>{{ record.date|date:"l" }}</td>
+                                                <td>
+                                                    {% if record.status == "PRESENT" %}
+                                                    <span class="badge bg-success-subtle text-success">Present</span>
+                                                    {% elif record.status == "ABSENT" %}
+                                                    <span class="badge bg-danger-subtle text-danger">Absent</span>
+                                                    {% elif record.status == "LATE" %}
+                                                    <span class="badge bg-warning-subtle text-warning">Late</span>
+                                                    {% elif record.status == "EARLY_DEPARTURE" %}
+                                                    <span class="badge bg-info-subtle text-info">Early Departure</span>
+                                                    {% elif record.status == "LEAVE" %}
+                                                    <span class="badge bg-primary-subtle text-primary">On Leave</span>
+                                                    {% elif record.status == "HOLIDAY" %}
+                                                    <span class="badge bg-secondary-subtle text-secondary">Holiday</span>
+                                                    {% elif record.status == "HALF_DAY" %}
+                                                    <span class="badge bg-dark-subtle text-dark">Half Day</span>
+                                                    {% else %}
+                                                    <span class="badge bg-light text-dark">{{ record.status }}</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ record.first_in_time|time:"H:i:s"|default:"-" }}</td>
+                                                <td>{{ record.last_out_time|time:"H:i:s"|default:"-" }}</td>
+                                                <td>
+                                                    {% if record.work_time %}
+                                                    {{ record.work_time|floatformat:2 }} hrs
+                                                    {% else %}
+                                                    -
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if record.overtime %}
+                                                    {{ record.overtime|floatformat:2 }} hrs
+                                                    {% else %}
+                                                    -
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if record.late_minutes > 0 %}
+                                                    <span class="text-warning">{{ record.late_minutes }} mins</span>
+                                                    {% else %}
+                                                    -
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if record.early_departure_minutes > 0 %}
+                                                    <span class="text-info">{{ record.early_departure_minutes }} mins</span>
+                                                    {% else %}
+                                                    -
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="9" class="text-center py-3">No attendance records found for this period.</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card border">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Attendance Distribution</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="attendanceDistributionChart" class="apex-charts" dir="ltr" style="height: 300px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Work Hours Trend</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="workHoursTrendChart" class="apex-charts" dir="ltr" style="height: 300px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="/static/assets/libs/apexcharts/apexcharts.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Attendance Overview Chart
+        var attendanceOverviewOptions = {
+            series: [{
+                name: 'Attendance Status',
+                data: [
+                    {{ summary.present_days }},
+                    {{ summary.absent_days }},
+                    {{ summary.late_days }},
+                    {{ summary.leave_days }}
+                ]
+            }],
+            chart: {
+                type: 'bar',
+                height: 250,
+                toolbar: {
+                    show: false
+                }
+            },
+            plotOptions: {
+                bar: {
+                    horizontal: false,
+                    columnWidth: '55%',
+                    endingShape: 'rounded',
+                    distributed: true
+                },
+            },
+            dataLabels: {
+                enabled: true
+            },
+            legend: {
+                show: false
+            },
+            colors: ['#0ab39c', '#f06548', '#f7b84b', '#405189'],
+            xaxis: {
+                categories: ['Present', 'Absent', 'Late', 'Leave'],
+            },
+            yaxis: {
+                title: {
+                    text: 'Days'
+                }
+            }
+        };
+
+        var attendanceOverviewChart = new ApexCharts(document.querySelector("#attendanceOverviewChart"), attendanceOverviewOptions);
+        attendanceOverviewChart.render();
+        
+        // Attendance Distribution Chart
+        var attendanceDistributionOptions = {
+            series: [
+                {{ summary.present_days }},
+                {{ summary.absent_days }},
+                {{ summary.late_days }},
+                {{ summary.leave_days }}
+            ],
+            chart: {
+                type: 'donut',
+                height: 300
+            },
+            labels: ['Present', 'Absent', 'Late', 'Leave'],
+            colors: ['#0ab39c', '#f06548', '#f7b84b', '#405189'],
+            legend: {
+                position: 'bottom'
+            },
+            dataLabels: {
+                enabled: true,
+                formatter: function(val, opts) {
+                    return opts.w.config.series[opts.seriesIndex] + ' days';
+                }
+            },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '65%',
+                        labels: {
+                            show: true,
+                            total: {
+                                show: true,
+                                label: 'Total Days',
+                                formatter: function(w) {
+                                    return {{ summary.working_days }};
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        var attendanceDistributionChart = new ApexCharts(document.querySelector("#attendanceDistributionChart"), attendanceDistributionOptions);
+        attendanceDistributionChart.render();
+        
+        // Work Hours Trend Chart
+        var workHoursTrendOptions = {
+            series: [{
+                name: 'Work Hours',
+                data: [
+                    {% for record in attendance_records %}
+                        {% if record.work_time %}
+                            {{ record.work_time|floatformat:2 }}{% if not forloop.last %},{% endif %}
+                        {% else %}
+                            0{% if not forloop.last %},{% endif %}
+                        {% endif %}
+                    {% endfor %}
+                ]
+            }],
+            chart: {
+                type: 'area',
+                height: 300,
+                toolbar: {
+                    show: false
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 2
+            },
+            colors: ['#0ab39c'],
+            fill: {
+                type: 'gradient',
+                gradient: {
+                    shadeIntensity: 1,
+                    opacityFrom: 0.6,
+                    opacityTo: 0.1,
+                    stops: [0, 90, 100]
+                }
+            },
+            xaxis: {
+                categories: [
+                    {% for record in attendance_records %}
+                        '{{ record.date|date:"M d" }}'{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                labels: {
+                    rotate: -45,
+                    rotateAlways: true
+                }
+            },
+            yaxis: {
+                title: {
+                    text: 'Hours'
+                },
+                min: 0
+            },
+            markers: {
+                size: 4
+            }
+        };
+
+        var workHoursTrendChart = new ApexCharts(document.querySelector("#workHoursTrendChart"), workHoursTrendOptions);
+        workHoursTrendChart.render();
+    });
+</script>
+{% endblock %}
+
+

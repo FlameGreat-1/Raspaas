@@ -1,0 +1,398 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Log Details" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/highlight.js/styles/github.min.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Attendance" title="Log Details" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h5 class="card-title mb-0 flex-grow-1">Attendance Log Information</h5>
+                <div class="flex-shrink-0">
+                    <a href="{% url 'attendance:logs_list' %}" class="btn btn-light btn-sm">
+                        <i class="ri-arrow-left-line align-bottom me-1"></i> Back to Logs
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <th class="ps-0" scope="row" width="200">Log ID:</th>
+                                <td class="text-muted">{{ log.id }}</td>
+                            </tr>
+                            <tr>
+                                <th class="ps-0" scope="row">Employee:</th>
+                                <td>
+                                    {% if log.employee %}
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0 me-2">
+                                            <div class="avatar-xs">
+                                                <div class="avatar-title bg-light text-primary rounded-circle">
+                                                    {{ log.employee.first_name|slice:":1"|upper }}{{ log.employee.last_name|slice:":1"|upper }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0">{{ log.employee.get_full_name }}</h6>
+                                            <small class="text-muted">{{ log.employee_code }}</small>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted">{{ log.employee_code }} (Employee not found)</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="ps-0" scope="row">Timestamp:</th>
+                                <td class="text-muted">{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+                            </tr>
+                            <tr>
+                                <th class="ps-0" scope="row">Log Type:</th>
+                                <td>
+                                    {% if log.log_type == "CHECK_IN" %}
+                                    <span class="badge bg-success-subtle text-success">Check In</span>
+                                    {% elif log.log_type == "CHECK_OUT" %}
+                                    <span class="badge bg-danger-subtle text-danger">Check Out</span>
+                                    {% elif log.log_type == "BREAK_START" %}
+                                    <span class="badge bg-warning-subtle text-warning">Break Start</span>
+                                    {% elif log.log_type == "BREAK_END" %}
+                                    <span class="badge bg-info-subtle text-info">Break End</span>
+                                    {% elif log.log_type == "OVERTIME_IN" %}
+                                    <span class="badge bg-primary-subtle text-primary">Overtime In</span>
+                                    {% elif log.log_type == "OVERTIME_OUT" %}
+                                    <span class="badge bg-secondary-subtle text-secondary">Overtime Out</span>
+                                    {% elif log.log_type == "MANUAL_ENTRY" %}
+                                    <span class="badge bg-dark-subtle text-dark">Manual Entry</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="ps-0" scope="row">Device:</th>
+                                <td>
+                                    <a href="{% url 'attendance:device_detail' id=log.device.id %}" class="text-primary">
+                                        {{ log.device.device_name }}
+                                    </a>
+                                    <small class="text-muted d-block">{{ log.device.device_id }} ({{ log.device.get_device_type_display }})</small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="ps-0" scope="row">Device Location:</th>
+                                <td class="text-muted">{{ log.device_location|default:log.device.location }}</td>
+                            </tr>
+                            <tr>
+                                <th class="ps-0" scope="row">Processing Status:</th>
+                                <td>
+                                    {% if log.processing_status == "PROCESSED" %}
+                                    <span class="badge bg-success">Processed</span>
+                                    {% elif log.processing_status == "PENDING" %}
+                                    <span class="badge bg-warning">Pending</span>
+                                    {% elif log.processing_status == "ERROR" %}
+                                    <span class="badge bg-danger">Error</span>
+                                    {% elif log.processing_status == "DUPLICATE" %}
+                                    <span class="badge bg-info">Duplicate</span>
+                                    {% elif log.processing_status == "IGNORED" %}
+                                    <span class="badge bg-secondary">Ignored</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if log.processing_status == "ERROR" and log.error_message %}
+                            <tr>
+                                <th class="ps-0" scope="row">Error Message:</th>
+                                <td class="text-danger">{{ log.error_message }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if log.processed_at %}
+                            <tr>
+                                <th class="ps-0" scope="row">Processed At:</th>
+                                <td class="text-muted">{{ log.processed_at|date:"Y-m-d H:i:s" }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <th class="ps-0" scope="row">Created At:</th>
+                                <td class="text-muted">{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex gap-2 mt-4">
+                    {% if log.processing_status == "PENDING" %}
+                    <form method="post" action="{% url 'attendance:logs_list' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="process">
+                        <input type="hidden" name="log_ids" value="{{ log.id }}">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ri-check-double-line align-bottom me-1"></i> Process Log
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'attendance:logs_list' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="mark_processed">
+                        <input type="hidden" name="log_ids" value="{{ log.id }}">
+                        <button type="submit" class="btn btn-success">
+                            <i class="ri-check-line align-bottom me-1"></i> Mark as Processed
+                        </button>
+                    </form>
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#markErrorModal">
+                        <i class="ri-close-circle-line align-bottom me-1"></i> Mark as Error
+                    </button>
+                    {% endif %}
+                    <button type="button" class="btn btn-info" id="viewRelatedLogsBtn">
+                        <i class="ri-list-check align-bottom me-1"></i> View Related Logs
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Raw Data</h5>
+            </div>
+            <div class="card-body">
+                <pre><code class="language-json">{{ raw_data }}</code></pre>
+                
+                {% if log.raw_data.status %}
+                <div class="mt-3">
+                    <h6 class="fs-14 mb-2">Status Information</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tbody>
+                                <tr>
+                                    <th class="ps-0" scope="row" width="150">Status:</th>
+                                    <td>
+                                        {% if log.raw_data.status == "ON_TIME" %}
+                                        <span class="badge bg-success-subtle text-success">On Time</span>
+                                        {% elif log.raw_data.status == "LATE" %}
+                                        <span class="badge bg-danger-subtle text-danger">Late</span>
+                                        {% elif log.raw_data.status == "EARLY_DEPARTURE" %}
+                                        <span class="badge bg-warning-subtle text-warning">Early Departure</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary-subtle text-secondary">{{ log.raw_data.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% if log.raw_data.late_minutes %}
+                                <tr>
+                                    <th class="ps-0" scope="row">Late By:</th>
+                                    <td class="text-danger">{{ log.raw_data.late_minutes }} minutes</td>
+                                </tr>
+                                {% endif %}
+                                {% if log.raw_data.early_minutes %}
+                                <tr>
+                                    <th class="ps-0" scope="row">Early By:</th>
+                                    <td class="text-warning">{{ log.raw_data.early_minutes }} minutes</td>
+                                </tr>
+                                {% endif %}
+                                {% if log.raw_data.overtime_minutes %}
+                                <tr>
+                                    <th class="ps-0" scope="row">Overtime:</th>
+                                    <td class="text-success">{{ log.raw_data.overtime_minutes }} minutes</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Mark as Error Modal -->
+<div class="modal fade" id="markErrorModal" tabindex="-1" aria-labelledby="markErrorModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="markErrorModalLabel">Mark Log as Error</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'attendance:logs_list' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="mark_error">
+                <input type="hidden" name="log_ids" value="{{ log.id }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="error_message" class="form-label">Error Message</label>
+                        <textarea class="form-control" id="error_message" name="error_message" rows="3" placeholder="Enter reason for marking as error..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Mark as Error</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Related Logs Modal -->
+<div class="modal fade" id="relatedLogsModal" tabindex="-1" aria-labelledby="relatedLogsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="relatedLogsModalLabel">Related Logs</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center py-4" id="relatedLogsLoading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading related logs...</p>
+                </div>
+                <div class="table-responsive" id="relatedLogsTable" style="display: none;">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Timestamp</th>
+                                <th scope="col">Log Type</th>
+                                <th scope="col">Device</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="relatedLogsBody">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center py-4" id="relatedLogsEmpty" style="display: none;">
+                    <i class="ri-calendar-todo-line fs-1 text-muted mb-2"></i>
+                    <h5 class="mb-1">No related logs found</h5>
+                    <p class="text-muted mb-0">No other logs found for this employee on this date.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="/static/assets/libs/highlight.js/highlight.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block);
+        });
+        
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        const viewRelatedLogsBtn = document.getElementById('viewRelatedLogsBtn');
+        if (viewRelatedLogsBtn) {
+            viewRelatedLogsBtn.addEventListener('click', function() {
+                const employeeCode = '{{ log.employee_code }}';
+                const logDate = '{{ log.timestamp|date:"Y-m-d" }}';
+                const logId = '{{ log.id }}';
+                
+                document.getElementById('relatedLogsLoading').style.display = 'block';
+                document.getElementById('relatedLogsTable').style.display = 'none';
+                document.getElementById('relatedLogsEmpty').style.display = 'none';
+                
+                fetch(`/attendance/api/logs/?employee_code=${employeeCode}&date=${logDate}&exclude=${logId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('relatedLogsLoading').style.display = 'none';
+                        
+                        if (data.logs && data.logs.length > 0) {
+                            const tbody = document.getElementById('relatedLogsBody');
+                            tbody.innerHTML = '';
+                            
+                            data.logs.forEach(log => {
+                                const row = document.createElement('tr');
+                                
+                                let logTypeLabel = '';
+                                let logTypeClass = '';
+                                
+                                if (log.log_type === 'CHECK_IN') {
+                                    logTypeLabel = 'Check In';
+                                    logTypeClass = 'success';
+                                } else if (log.log_type === 'CHECK_OUT') {
+                                    logTypeLabel = 'Check Out';
+                                    logTypeClass = 'danger';
+                                } else if (log.log_type === 'BREAK_START') {
+                                    logTypeLabel = 'Break Start';
+                                    logTypeClass = 'warning';
+                                } else if (log.log_type === 'BREAK_END') {
+                                    logTypeLabel = 'Break End';
+                                    logTypeClass = 'info';
+                                } else if (log.log_type === 'OVERTIME_IN') {
+                                    logTypeLabel = 'Overtime In';
+                                    logTypeClass = 'primary';
+                                } else if (log.log_type === 'OVERTIME_OUT') {
+                                    logTypeLabel = 'Overtime Out';
+                                    logTypeClass = 'secondary';
+                                } else if (log.log_type === 'MANUAL_ENTRY') {
+                                    logTypeLabel = 'Manual Entry';
+                                    logTypeClass = 'dark';
+                                }
+                                
+                                let statusLabel = '';
+                                let statusClass = '';
+                                
+                                if (log.processing_status === 'PROCESSED') {
+                                    statusLabel = 'Processed';
+                                    statusClass = 'success';
+                                } else if (log.processing_status === 'PENDING') {
+                                    statusLabel = 'Pending';
+                                    statusClass = 'warning';
+                                } else if (log.processing_status === 'ERROR') {
+                                    statusLabel = 'Error';
+                                    statusClass = 'danger';
+                                } else if (log.processing_status === 'DUPLICATE') {
+                                    statusLabel = 'Duplicate';
+                                    statusClass = 'info';
+                                } else if (log.processing_status === 'IGNORED') {
+                                    statusLabel = 'Ignored';
+                                    statusClass = 'secondary';
+                                }
+                                
+                                row.innerHTML = `
+                                    <td>${log.timestamp}</td>
+                                    <td><span class="badge bg-${logTypeClass}-subtle text-${logTypeClass}">${logTypeLabel}</span></td>
+                                    <td><a href="/attendance/devices/${log.device_id}/" class="text-primary">${log.device_name}</a></td>
+                                    <td><span class="badge bg-${statusClass}">${statusLabel}</span></td>
+                                    <td><a href="/attendance/logs/${log.id}/" class="btn btn-sm btn-light">View</a></td>
+                                `;
+                                
+                                tbody.appendChild(row);
+                            });
+                            
+                            document.getElementById('relatedLogsTable').style.display = 'block';
+                        } else {
+                            document.getElementById('relatedLogsEmpty').style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching related logs:', error);
+                        document.getElementById('relatedLogsLoading').style.display = 'none';
+                        document.getElementById('relatedLogsEmpty').style.display = 'block';
+                    });
+                
+                new bootstrap.Modal(document.getElementById('relatedLogsModal')).show();
+            });
+        }
+    });
+</script>
+{% endblock %}

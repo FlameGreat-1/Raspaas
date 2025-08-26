@@ -1,0 +1,300 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Monthly Attendance Summaries" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Attendance" title="Monthly Summaries" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">Monthly Attendance Summaries</h4>
+                <div class="flex-shrink-0">
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateSummariesModal">
+                        <i class="ri-add-line align-bottom me-1"></i> Generate Summaries
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <form method="get" action="{% url 'attendance:summaries' %}" class="row g-3">
+                            <div class="col-md-2">
+                                <label for="month" class="form-label">Month</label>
+                                <select class="form-select" id="month" name="month">
+                                    {% for m in months %}
+                                    <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m|date:"F" }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="year" class="form-label">Year</label>
+                                <select class="form-select" id="year" name="year">
+                                    {% for y in years %}
+                                    <option value="{{ y|stringformat:'d' }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="department" class="form-label">Department</label>
+                                <select class="form-select" id="department" name="department">
+                                    <option value="">All Departments</option>
+                                    {% for dept in departments %}
+                                    <option value="{{ dept.id }}" {% if department_filter == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="search" class="form-label">Search</label>
+                                <input type="text" class="form-control" id="search" name="search" placeholder="Name or Employee Code" value="{{ search_query }}">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">Filter</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Employee</th>
+                                <th scope="col">Department</th>
+                                <th scope="col">Working Days</th>
+                                <th scope="col">Present</th>
+                                <th scope="col">Absent</th>
+                                <th scope="col">Late</th>
+                                <th scope="col">Leave</th>
+                                <th scope="col">Attendance %</th>
+                                <th scope="col">Work Hours</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if page_obj %}
+                                {% for summary in page_obj %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-shrink-0 me-2">
+                                                <div class="avatar-xs">
+                                                    <div class="avatar-title bg-light text-primary rounded-circle">
+                                                        {{ summary.employee.first_name|slice:":1"|upper }}{{ summary.employee.last_name|slice:":1"|upper }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h5 class="fs-14 mb-0">{{ summary.employee.get_full_name }}</h5>
+                                                <p class="text-muted mb-0">{{ summary.employee.employee_code }}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ summary.employee.department.name }}</td>
+                                    <td>{{ summary.working_days }}</td>
+                                    <td>{{ summary.present_days }}</td>
+                                    <td>{{ summary.absent_days }}</td>
+                                    <td>{{ summary.late_days }}</td>
+                                    <td>{{ summary.leave_days }}</td>
+                                    <td>
+                                        <div class="w-100">
+                                            <div class="d-flex justify-content-between align-items-center fs-13">
+                                                <p class="{% if summary.attendance_percentage >= 90 %}text-success{% elif summary.attendance_percentage >= 75 %}text-warning{% else %}text-danger{% endif %} mb-1">{{ summary.attendance_percentage }}%</p>
+                                            </div>
+                                            <div class="progress progress-sm">
+                                                <div class="progress-bar {% if summary.attendance_percentage >= 90 %}bg-success{% elif summary.attendance_percentage >= 75 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {{ summary.attendance_percentage }}%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ summary.total_work_hours }} hrs</td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <a href="{% url 'attendance:summary_detail' summary_id=summary.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                                <i class="ri-eye-line"></i>
+                                            </a>
+                                            <form method="post" action="{% url 'attendance:dashboard' %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="download_summary">
+                                                <input type="hidden" name="summary_id" value="{{ summary.id }}">
+                                                <input type="hidden" name="format" value="pdf">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Download PDF">
+                                                    <i class="ri-file-pdf-line"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>                                    
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="10" class="text-center py-4">
+                                        <div class="d-flex flex-column align-items-center">
+                                            <i class="ri-calendar-line fs-1 text-muted mb-2"></i>
+                                            <h5 class="mb-1">No summaries found</h5>
+                                            <p class="text-muted mb-3">No monthly attendance summaries available for the selected filters.</p>
+                                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateSummariesModal">
+                                                Generate Summaries
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                {% if page_obj.has_other_pages %}
+                <div class="d-flex justify-content-end mt-3">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1&year={{ year }}&month={{ month }}&department={{ department_filter }}&search={{ search_query }}" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}&year={{ year }}&month={{ month }}&department={{ department_filter }}&search={{ search_query }}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}&year={{ year }}&month={{ month }}&department={{ department_filter }}&search={{ search_query }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}&year={{ year }}&month={{ month }}&department={{ department_filter }}&search={{ search_query }}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&year={{ year }}&month={{ month }}&department={{ department_filter }}&search={{ search_query }}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generate Summaries Modal -->
+<div class="modal fade" id="generateSummariesModal" tabindex="-1" aria-labelledby="generateSummariesModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="generateSummariesModalLabel">Generate Monthly Summaries</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'attendance:dashboard' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="generate_summaries">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="summary_month" class="form-label">Month</label>
+                            <select class="form-select" id="summary_month" name="month" required>
+                                {% for m in months %}
+                                <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m|date:"F" }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="summary_year" class="form-label">Year</label>
+                            <select class="form-select" id="summary_year" name="year" required>
+                                {% for y in years %}
+                                <option value="{{ y|stringformat:'d' }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    <div class="mb-3">
+                        <label for="summary_department" class="form-label">Department (Optional)</label>
+                        <select class="form-select" id="summary_department" name="department">
+                            <option value="">All Departments</option>
+                            {% for dept in departments %}
+                            <option value="{{ dept.id }}">{{ dept.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="ri-information-line me-2"></i>
+                        This will generate or update monthly attendance summaries for all employees based on their attendance records for the selected month and year.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Generate Summaries</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const monthSelect = document.getElementById('month');
+        const yearSelect = document.getElementById('year');
+        const departmentSelect = document.getElementById('department');
+        const searchInput = document.getElementById('search');
+        
+        monthSelect.addEventListener('change', function() {
+            applyFilters();
+        });
+        
+        yearSelect.addEventListener('change', function() {
+            applyFilters();
+        });
+        
+        departmentSelect.addEventListener('change', function() {
+            applyFilters();
+        });
+        
+        function applyFilters() {
+            const month = monthSelect.value;
+            const year = yearSelect.value;
+            const department = departmentSelect.value;
+            const search = searchInput.value;
+            
+            let url = `{% url 'attendance:summaries' %}?month=${month}&year=${year}`;
+            
+            if (department) {
+                url += `&department=${department}`;
+            }
+            
+            if (search) {
+                url += `&search=${encodeURIComponent(search)}`;
+            }
+            
+            window.location.href = url;
+        }
+    });
+</script>
+{% endblock %}
