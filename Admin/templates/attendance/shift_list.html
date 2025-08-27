@@ -1,0 +1,415 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Shifts Management" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Attendance" title="Shifts Management" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">All Shifts</h4>
+                <div>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createShiftModal">
+                        <i class="ri-add-line align-bottom me-1"></i> Add New Shift
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6 col-sm-12 mb-2 mb-md-0">
+                        <form method="get" class="d-flex gap-2">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="Search shifts..." name="search" value="{{ search_query }}">
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="ri-search-line"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-md-6 col-sm-12">
+                        <form method="get" class="d-flex justify-content-md-end">
+                            <select class="form-select w-md-50" name="shift_type" onchange="this.form.submit()">
+                                <option value="">All Shift Types</option>
+                                {% for shift_type_value, shift_type_label in shift_type_choices %}
+                                <option value="{{ shift_type_value }}" {% if shift_type_filter == shift_type_value %}selected{% endif %}>
+                                    {{ shift_type_label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Code</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Type</th>
+                                <th scope="col">Timing</th>
+                                <th scope="col">Working Hours</th>
+                                <th scope="col">Break</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for shift in page_obj %}
+                            <tr>
+                                <td class="fw-semibold">{{ shift.code }}</td>
+                                <td>{{ shift.name }}</td>
+                                <td>
+                                    {% if shift.shift_type == 'REGULAR' %}
+                                    <span class="badge bg-primary">Regular</span>
+                                    {% elif shift.shift_type == 'MORNING' %}
+                                    <span class="badge bg-success">Morning</span>
+                                    {% elif shift.shift_type == 'AFTERNOON' %}
+                                    <span class="badge bg-warning">Afternoon</span>
+                                    {% elif shift.shift_type == 'NIGHT' %}
+                                    <span class="badge bg-info">Night</span>
+                                    {% elif shift.shift_type == 'FLEXIBLE' %}
+                                    <span class="badge bg-secondary">Flexible</span>
+                                    {% elif shift.shift_type == 'PART_TIME' %}
+                                    <span class="badge bg-dark">Part Time</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ shift.start_time|time:"H:i" }} - {{ shift.end_time|time:"H:i" }}</td>
+                                <td>{{ shift.working_hours }} hrs</td>
+                                <td>{{ shift.break_duration_minutes }} mins</td>
+                                <td>
+                                    {% if shift.is_active %}
+                                    <span class="badge bg-success rounded-3 px-3">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-danger rounded-3 px-3">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="dropdown">
+                                        <a href="#" class="btn btn-sm btn-icon btn-light" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </a>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="{% url 'attendance:shift_detail' id=shift.id %}">View Details</a></li>
+                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editShiftModal{{ shift.id }}">Edit Shift</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger" href="#" data-bs-toggle="modal" data-bs-target="#deleteShiftModal{{ shift.id }}">Delete</a></li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <div class="d-flex flex-column align-items-center">
+                                        <i class="ri-calendar-todo-line fs-1 text-muted mb-2"></i>
+                                        <h5>No shifts found</h5>
+                                        <p class="text-muted">Try adjusting your search or filter to find what you're looking for.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if page_obj.has_other_pages %}
+                <div class="d-flex justify-content-end mt-3">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if shift_type_filter %}&shift_type={{ shift_type_filter }}{% endif %}" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if shift_type_filter %}&shift_type={{ shift_type_filter }}{% endif %}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if shift_type_filter %}&shift_type={{ shift_type_filter }}{% endif %}">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if shift_type_filter %}&shift_type={{ shift_type_filter }}{% endif %}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if shift_type_filter %}&shift_type={{ shift_type_filter }}{% endif %}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="createShiftModal" tabindex="-1" aria-labelledby="createShiftModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createShiftModalLabel">Create New Shift</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'attendance:shift_list' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_shift">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="name" class="form-label">Shift Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="shift_type" class="form-label">Shift Type</label>
+                            <select class="form-select" id="shift_type" name="shift_type" required>
+                                {% for shift_type_value, shift_type_label in shift_type_choices %}
+                                <option value="{{ shift_type_value }}">{{ shift_type_label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="start_time" class="form-label">Start Time</label>
+                            <input type="time" class="form-control" id="start_time" name="start_time" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="end_time" class="form-label">End Time</label>
+                            <input type="time" class="form-control" id="end_time" name="end_time" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="break_duration_minutes" class="form-label">Break Duration (minutes)</label>
+                            <input type="number" class="form-control" id="break_duration_minutes" name="break_duration_minutes" value="75" min="0" max="180" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="grace_period_minutes" class="form-label">Grace Period (minutes)</label>
+                            <input type="number" class="form-control" id="grace_period_minutes" name="grace_period_minutes" value="15" min="0" max="60" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="working_hours" class="form-label">Working Hours</label>
+                            <input type="number" class="form-control" id="working_hours" name="working_hours" value="9.75" step="0.25" min="1" max="24" required>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="is_night_shift" name="is_night_shift">
+                                <label class="form-check-label" for="is_night_shift">
+                                    Night Shift
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="weekend_applicable" name="weekend_applicable">
+                                <label class="form-check-label" for="weekend_applicable">
+                                    Weekend Applicable
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="holiday_applicable" name="holiday_applicable">
+                                <label class="form-check-label" for="holiday_applicable">
+                                    Holiday Applicable
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Shift</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% for shift in page_obj %}
+<div class="modal fade" id="editShiftModal{{ shift.id }}" tabindex="-1" aria-labelledby="editShiftModalLabel{{ shift.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editShiftModalLabel{{ shift.id }}">Edit Shift</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'attendance:shift_list' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_shift">
+                <input type="hidden" name="shift_id" value="{{ shift.id }}">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="name{{ shift.id }}" class="form-label">Shift Name</label>
+                            <input type="text" class="form-control" id="name{{ shift.id }}" name="name" value="{{ shift.name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="shift_type{{ shift.id }}" class="form-label">Shift Type</label>
+                            <select class="form-select" id="shift_type{{ shift.id }}" name="shift_type" required>
+                                {% for shift_type_value, shift_type_label in shift_type_choices %}
+                                <option value="{{ shift_type_value }}" {% if shift.shift_type == shift_type_value %}selected{% endif %}>{{ shift_type_label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="start_time{{ shift.id }}" class="form-label">Start Time</label>
+                            <input type="time" class="form-control" id="start_time{{ shift.id }}" name="start_time" value="{{ shift.start_time|time:'H:i' }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="end_time{{ shift.id }}" class="form-label">End Time</label>
+                            <input type="time" class="form-control" id="end_time{{ shift.id }}" name="end_time" value="{{ shift.end_time|time:'H:i' }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="break_duration_minutes{{ shift.id }}" class="form-label">Break Duration (minutes)</label>
+                            <input type="number" class="form-control" id="break_duration_minutes{{ shift.id }}" name="break_duration_minutes" value="{{ shift.break_duration_minutes }}" min="0" max="180" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="grace_period_minutes{{ shift.id }}" class="form-label">Grace Period (minutes)</label>
+                            <input type="number" class="form-control" id="grace_period_minutes{{ shift.id }}" name="grace_period_minutes" value="{{ shift.grace_period_minutes }}" min="0" max="60" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="working_hours{{ shift.id }}" class="form-label">Working Hours</label>
+                            <input type="number" class="form-control" id="working_hours{{ shift.id }}" name="working_hours" value="{{ shift.working_hours }}" step="0.25" min="1" max="24" required>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="is_night_shift{{ shift.id }}" name="is_night_shift" {% if shift.is_night_shift %}checked{% endif %}>
+                                <label class="form-check-label" for="is_night_shift{{ shift.id }}">
+                                    Night Shift
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="weekend_applicable{{ shift.id }}" name="weekend_applicable" {% if shift.weekend_applicable %}checked{% endif %}>
+                                <label class="form-check-label" for="weekend_applicable{{ shift.id }}">
+                                    Weekend Applicable
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="holiday_applicable{{ shift.id }}" name="holiday_applicable" {% if shift.holiday_applicable %}checked{% endif %}>
+                                <label class="form-check-label" for="holiday_applicable{{ shift.id }}">
+                                    Holiday Applicable
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="is_active{{ shift.id }}" name="is_active" {% if shift.is_active %}checked{% endif %}>
+                                <label class="form-check-label" for="is_active{{ shift.id }}">
+                                    Active
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Shift</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteShiftModal{{ shift.id }}" tabindex="-1" aria-labelledby="deleteShiftModalLabel{{ shift.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteShiftModalLabel{{ shift.id }}">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the shift <strong>{{ shift.name }}</strong>?</p>
+                <p class="text-danger">This action cannot be undone and may affect employee schedules.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'attendance:shift_list' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_shift">
+                    <input type="hidden" name="shift_id" value="{{ shift.id }}">
+                    <button type="submit" class="btn btn-danger">Delete Shift</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock content %}
+
+{% block js %}
+<script src="/static/assets/libs/gridjs/gridjs.umd.js"></script>
+<script src="/static/assets/libs/air-datepicker/air-datepicker.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize any JS components here
+        
+        // Form validation for shift creation
+        const createShiftForm = document.querySelector('#createShiftModal form');
+        if (createShiftForm) {
+            createShiftForm.addEventListener('submit', function(e) {
+                const startTime = document.getElementById('start_time').value;
+                const endTime = document.getElementById('end_time').value;
+                const isNightShift = document.getElementById('is_night_shift').checked;
+                
+                if (!isNightShift && startTime >= endTime) {
+                    e.preventDefault();
+                    alert('End time must be after start time for regular shifts');
+                }
+            });
+        }
+        
+        // Form validation for shift editing
+        const editShiftForms = document.querySelectorAll('[id^="editShiftModal"] form');
+        editShiftForms.forEach(form => {
+            form.addEventListener('submit', function(e) {
+                const formId = this.querySelector('[name="shift_id"]').value;
+                const startTime = document.getElementById(`start_time${formId}`).value;
+                const endTime = document.getElementById(`end_time${formId}`).value;
+                const isNightShift = document.getElementById(`is_night_shift${formId}`).checked;
+                
+                if (!isNightShift && startTime >= endTime) {
+                    e.preventDefault();
+                    alert('End time must be after start time for regular shifts');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
+
+
+

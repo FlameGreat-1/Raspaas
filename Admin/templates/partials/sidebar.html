@@ -103,17 +103,18 @@
                                     <a href="{% url 'attendance:summaries' %}" class="pe-nav-link">
                                         Monthly Summaries
                                     </a>
-                                </li>                                
+                                </li> 
                                 <li class="pe-slide-item">
-                                    <a href="apps-ecommerce-customer-details.html" class="pe-nav-link">
-                                        Customer Details
+                                    <a href="{% url 'attendance:shift_list' %}" class="pe-nav-link">
+                                        Shifts Management
                                     </a>
                                 </li>
                                 <li class="pe-slide-item">
-                                    <a href="apps-ecommerce-order.html" class="pe-nav-link">
-                                        Orders
+                                    <a href="{% url 'attendance:employee_shift_list' %}" class="pe-nav-link">
+                                        Employee Shifts
                                     </a>
-                                </li>
+                                </li>                                                       
+                                
                                 <li class="pe-slide-item">
                                     <a href="apps-ecommerce-order-details.html" class="pe-nav-link">
                                         Order Details

@@ -1,0 +1,429 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Employee Shift Assignments" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Attendance" title="Employee Shift Assignments" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">All Employee Shift Assignments</h4>
+                <div>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#assignShiftModal">
+                        <i class="ri-add-line align-bottom me-1"></i> Assign Shift
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4 col-sm-12 mb-2 mb-md-0">
+                        <form method="get" class="d-flex gap-2">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="Search employees..." name="search" value="{{ search_query }}">
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="ri-search-line"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-md-4 col-sm-12 mb-2 mb-md-0">
+                        <form method="get" id="shiftFilterForm">
+                            <select class="form-select" name="shift" onchange="this.form.submit()">
+                                <option value="">All Shifts</option>
+                                {% for shift_item in shifts %}
+                                <option value="{{ shift_item.id }}" {% if shift_filter == shift_item.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ shift_item.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                    </div>
+                    <div class="col-md-4 col-sm-12">
+                        <form method="get" id="statusFilterForm">
+                            <select class="form-select" name="is_active" onchange="this.form.submit()">
+                                <option value="">All Status</option>
+                                <option value="true" {% if is_active_filter == 'true' %}selected{% endif %}>Active</option>
+                                <option value="false" {% if is_active_filter == 'false' %}selected{% endif %}>Inactive</option>
+                            </select>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Employee</th>
+                                <th scope="col">Shift</th>
+                                <th scope="col">Effective From</th>
+                                <th scope="col">Effective To</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for employee_shift in page_obj %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-sm me-2">
+                                            {% if employee_shift.employee.profile_image %}
+                                            <img src="{{ employee_shift.employee.profile_image.url }}" alt="Profile" class="avatar-sm rounded-circle">
+                                            {% else %}
+                                            <div class="avatar-sm rounded-circle bg-primary-subtle text-primary">
+                                                <span class="avatar-title">{{ employee_shift.employee.get_initials }}</span>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0">{{ employee_shift.employee.get_full_name }}</h6>
+                                            <p class="text-muted mb-0">{{ employee_shift.employee.employee_code }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="fw-semibold">{{ employee_shift.shift.name }}</span>
+                                    <p class="text-muted mb-0">{{ employee_shift.shift.start_time|time:"h:i A" }} - {{ employee_shift.shift.end_time|time:"h:i A" }}</p>
+                                </td>
+                                <td>{{ employee_shift.effective_from|date:"M d, Y" }}</td>
+                                <td>
+                                    {% if employee_shift.effective_to %}
+                                    {{ employee_shift.effective_to|date:"M d, Y" }}
+                                    {% else %}
+                                    <span class="badge bg-info">Ongoing</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if employee_shift.is_active %}
+                                        {% if employee_shift.is_current %}
+                                        <span class="badge bg-success rounded-3 px-3">Current</span>
+                                        {% else %}
+                                            {% if employee_shift.effective_from > current_date %}
+                                            <span class="badge bg-warning rounded-3 px-3">Upcoming</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary rounded-3 px-3">Past</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% else %}
+                                    <span class="badge bg-danger rounded-3 px-3">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="dropdown">
+                                        <a href="#" class="btn btn-sm btn-icon btn-light" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </a>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="{% url 'attendance:employee_shift_detail' id=employee_shift.id employee_id=employee_shift.employee.id %}">View Details</a></li>
+                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editEmployeeShiftModal{{ employee_shift.id }}">Edit Assignment</a></li>
+                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#endShiftModal{{ employee_shift.id }}">End Assignment</a></li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <div class="d-flex flex-column align-items-center">
+                                        <i class="ri-calendar-todo-line fs-1 text-muted mb-2"></i>
+                                        <h5>No shift assignments found</h5>
+                                        <p class="text-muted">Try adjusting your search or filter to find what you're looking for.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if page_obj.has_other_pages %}
+                <div class="d-flex justify-content-end mt-3">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if shift_filter %}&shift={{ shift_filter }}{% endif %}{% if is_active_filter %}&is_active={{ is_active_filter }}{% endif %}" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if shift_filter %}&shift={{ shift_filter }}{% endif %}{% if is_active_filter %}&is_active={{ is_active_filter }}{% endif %}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if shift_filter %}&shift={{ shift_filter }}{% endif %}{% if is_active_filter %}&is_active={{ is_active_filter }}{% endif %}">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if shift_filter %}&shift={{ shift_filter }}{% endif %}{% if is_active_filter %}&is_active={{ is_active_filter }}{% endif %}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if shift_filter %}&shift={{ shift_filter }}{% endif %}{% if is_active_filter %}&is_active={{ is_active_filter }}{% endif %}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="assignShiftModal" tabindex="-1" aria-labelledby="assignShiftModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="assignShiftModalLabel">Assign Shift to Employee</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'attendance:employee_shift_list' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="assign_shift">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="employee_id" class="form-label">Employee</label>
+                        <select class="form-select" id="employee_id" name="employee_id" required>
+                            <option value="">Select Employee</option>
+                            {% for employee in employees %}
+                            <option value="{{ employee.id }}">{{ employee.get_full_name }} ({{ employee.employee_code }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="shift_id" class="form-label">Shift</label>
+                        <select class="form-select" id="shift_id" name="shift_id" required>
+                            <option value="">Select Shift</option>
+                            {% for shift in shifts %}
+                            <option value="{{ shift.id }}">{{ shift.name }} ({{ shift.start_time|time:"h:i A" }} - {{ shift.end_time|time:"h:i A" }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="effective_from" class="form-label">Effective From</label>
+                        <input type="date" class="form-control" id="effective_from" name="effective_from" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="effective_to" class="form-label">Effective To (Optional)</label>
+                        <input type="date" class="form-control" id="effective_to" name="effective_to">
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="is_temporary" name="is_temporary">
+                            <label class="form-check-label" for="is_temporary">
+                                Temporary Assignment
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Assign Shift</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% for employee_shift in page_obj %}
+<div class="modal fade" id="editEmployeeShiftModal{{ employee_shift.id }}" tabindex="-1" aria-labelledby="editEmployeeShiftModalLabel{{ employee_shift.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editEmployeeShiftModalLabel{{ employee_shift.id }}">Edit Shift Assignment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'attendance:employee_shift_list' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_employee_shift">
+                <input type="hidden" name="employee_shift_id" value="{{ employee_shift.id }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="shift_id{{ employee_shift.id }}" class="form-label">Shift</label>
+                        <select class="form-select" id="shift_id{{ employee_shift.id }}" name="shift_id" required>
+                            {% for shift in shifts %}
+                            <option value="{{ shift.id }}" {% if employee_shift.shift.id == shift.id %}selected{% endif %}>
+                                {{ shift.name }} ({{ shift.start_time|time:"h:i A" }} - {{ shift.end_time|time:"h:i A" }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="effective_from{{ employee_shift.id }}" class="form-label">Effective From</label>
+                        <input type="date" class="form-control" id="effective_from{{ employee_shift.id }}" name="effective_from" value="{{ employee_shift.effective_from|date:'Y-m-d' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="effective_to{{ employee_shift.id }}" class="form-label">Effective To (Optional)</label>
+                        <input type="date" class="form-control" id="effective_to{{ employee_shift.id }}" name="effective_to" value="{% if employee_shift.effective_to %}{{ employee_shift.effective_to|date:'Y-m-d' }}{% endif %}">
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="is_temporary{{ employee_shift.id }}" name="is_temporary" {% if employee_shift.is_temporary %}checked{% endif %}>
+                            <label class="form-check-label" for="is_temporary{{ employee_shift.id }}">
+                                Temporary Assignment
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="is_active{{ employee_shift.id }}" name="is_active" {% if employee_shift.is_active %}checked{% endif %}>
+                            <label class="form-check-label" for="is_active{{ employee_shift.id }}">
+                                Active
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes{{ employee_shift.id }}" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes{{ employee_shift.id }}" name="notes" rows="3">{{ employee_shift.notes }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Assignment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="endShiftModal{{ employee_shift.id }}" tabindex="-1" aria-labelledby="endShiftModalLabel{{ employee_shift.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="endShiftModalLabel{{ employee_shift.id }}">End Shift Assignment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'attendance:employee_shift_list' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="end_employee_shift">
+                <input type="hidden" name="employee_shift_id" value="{{ employee_shift.id }}">
+                <div class="modal-body">
+                    <p>You are about to end the shift assignment for <strong>{{ employee_shift.employee.get_full_name }}</strong> from <strong>{{ employee_shift.shift.name }}</strong>.</p>
+                    <div class="mb-3">
+                        <label for="end_date{{ employee_shift.id }}" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="end_date{{ employee_shift.id }}" name="end_date" value="{{ current_date|date:'Y-m-d' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="end_notes{{ employee_shift.id }}" class="form-label">Notes</label>
+                        <textarea class="form-control" id="end_notes{{ employee_shift.id }}" name="notes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">End Assignment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock content %}
+
+{% block js %}
+<script src="/static/assets/libs/gridjs/gridjs.umd.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize date pickers if needed
+        
+        // Form validation for effective dates
+        const assignShiftForm = document.querySelector('#assignShiftModal form');
+        if (assignShiftForm) {
+            assignShiftForm.addEventListener('submit', function(e) {
+                const effectiveFrom = document.getElementById('effective_from').value;
+                const effectiveTo = document.getElementById('effective_to').value;
+                
+                if (effectiveTo && effectiveTo <= effectiveFrom) {
+                    e.preventDefault();
+                    alert('Effective To date must be after Effective From date');
+                }
+            });
+        }
+        
+        // Handle filter form submissions
+        const shiftFilterForm = document.getElementById('shiftFilterForm');
+        const statusFilterForm = document.getElementById('statusFilterForm');
+        
+        if (shiftFilterForm) {
+            shiftFilterForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const searchParams = new URLSearchParams(window.location.search);
+                const shiftValue = this.querySelector('select[name="shift"]').value;
+                
+                if (shiftValue) {
+                    searchParams.set('shift', shiftValue);
+                } else {
+                    searchParams.delete('shift');
+                }
+                
+                // Preserve other parameters
+                if (searchParams.has('search')) {
+                    searchParams.set('search', searchParams.get('search'));
+                }
+                if (searchParams.has('is_active')) {
+                    searchParams.set('is_active', searchParams.get('is_active'));
+                }
+                
+                window.location.search = searchParams.toString();
+            });
+        }
+        
+        if (statusFilterForm) {
+            statusFilterForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const searchParams = new URLSearchParams(window.location.search);
+                const statusValue = this.querySelector('select[name="is_active"]').value;
+                
+                if (statusValue) {
+                    searchParams.set('is_active', statusValue);
+                } else {
+                    searchParams.delete('is_active');
+                }
+                
+                // Preserve other parameters
+                if (searchParams.has('search')) {
+                    searchParams.set('search', searchParams.get('search'));
+                }
+                if (searchParams.has('shift')) {
+                    searchParams.set('shift', searchParams.get('shift'));
+                }
+                
+                window.location.search = searchParams.toString();
+            });
+        }
+    });
+</script>
+{% endblock %}
+
