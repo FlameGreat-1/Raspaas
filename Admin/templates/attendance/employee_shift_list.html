@@ -124,17 +124,21 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <div class="dropdown">
-                                        <a href="#" class="btn btn-sm btn-icon btn-light" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <i class="bi bi-three-dots-vertical"></i>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'attendance:employee_shift_detail' id=employee_shift.id employee_id=employee_shift.employee.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="bi bi-eye"></i>
                                         </a>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            <li><a class="dropdown-item" href="{% url 'attendance:employee_shift_detail' id=employee_shift.id employee_id=employee_shift.employee.id %}">View Details</a></li>
-                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editEmployeeShiftModal{{ employee_shift.id }}">Edit Assignment</a></li>
-                                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#endShiftModal{{ employee_shift.id }}">End Assignment</a></li>
-                                        </ul>
+                                        <a href="{% url 'attendance:employee_shifts' employee_id=employee_shift.employee.id %}" class="btn btn-sm btn-outline-info" title="Employee Shifts">
+                                            <i class="bi bi-calendar-check"></i>
+                                        </a>
+                                        <a href="#" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editEmployeeShiftModal{{ employee_shift.id }}" title="Edit Assignment">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a href="#" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#endShiftModal{{ employee_shift.id }}" title="End Assignment">
+                                            <i class="bi bi-x-circle"></i>
+                                        </a>
                                     </div>
-                                </td>
+                                </td>                                
                             </tr>
                             {% empty %}
                             <tr>

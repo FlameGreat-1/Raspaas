@@ -34,10 +34,10 @@ urlpatterns = [
     
     # Shifts URLs
     path('shifts/', views.Shifts.as_view(), name='shift_list'),
-    path('shifts/<uuid:id>/', views.Shifts.as_view(), name='shift_detail'),
+    path('shifts/<int:id>/', views.Shifts.as_view(), name='shift_detail'),
     path('employee_shifts/', views.Shifts.as_view(), name='employee_shift_list'),
     path('employee/<int:employee_id>/shifts/', views.Shifts.as_view(), name='employee_shifts'),
-    path('employee/<int:employee_id>/shifts/<uuid:id>/', views.Shifts.as_view(), name='employee_shift_detail'),
+    path('employee/<int:employee_id>/shifts/<int:id>/', views.Shifts.as_view(), name='employee_shift_detail'),
     
     # Leave URLs
     path('leave/', views.Leave.as_view(), name='leave_request_list'),

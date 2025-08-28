@@ -2161,108 +2161,114 @@ class Shifts(LoginRequiredMixin, View):
 
     def shift_list(self, request):
         shifts = Shift.objects.all()
-        
+
         shift_type_filter = request.GET.get('shift_type', '')
         search_query = request.GET.get('search', '')
-        
+
         if shift_type_filter:
             shifts = shifts.filter(shift_type=shift_type_filter)
-        
+
         if search_query:
             shifts = shifts.filter(
                 Q(name__icontains=search_query) |
                 Q(code__icontains=search_query)
             )
-        
+
         shifts = shifts.order_by('name')
-        
+
         paginator = Paginator(shifts, 25)
         page_number = request.GET.get('page', 1)
         page_obj = paginator.get_page(page_number)
-        
+
         shift_type_choices = Shift._meta.get_field('shift_type').choices
-        
+
         context = {
             'page_obj': page_obj,
             'shift_type_choices': shift_type_choices,
             'shift_type_filter': shift_type_filter,
             'search_query': search_query,
         }
-        
+
         return render(request, 'attendance/shift_list.html', context)
 
     def shift_detail(self, request, shift_id):
         shift = get_object_or_404(Shift, id=shift_id)
-        
+
         assigned_employees = EmployeeShift.objects.filter(
             shift=shift,
             is_active=True
         ).order_by('-effective_from')
-        
+
         paginator = Paginator(assigned_employees, 25)
         page_number = request.GET.get('page', 1)
         page_obj = paginator.get_page(page_number)
-        
+
         context = {
             'shift': shift,
             'page_obj': page_obj,
         }
-        
+
         return render(request, 'attendance/shift_detail.html', context)
 
     def employee_shift_list(self, request):
         employee_shifts = EmployeeShift.objects.all()
-        
+
         shift_filter = request.GET.get('shift', '')
         is_active_filter = request.GET.get('is_active', '')
         search_query = request.GET.get('search', '')
-        
+
         if shift_filter:
             employee_shifts = employee_shifts.filter(shift_id=shift_filter)
-        
+
         if is_active_filter:
             is_active = is_active_filter == 'true'
             employee_shifts = employee_shifts.filter(is_active=is_active)
-        
+
         if search_query:
             employee_shifts = employee_shifts.filter(
                 Q(employee__first_name__icontains=search_query) |
                 Q(employee__last_name__icontains=search_query) |
                 Q(employee__employee_code__icontains=search_query)
             )
-        
+
         employee_shifts = employee_shifts.order_by('-effective_from')
-        
+
         paginator = Paginator(employee_shifts, 25)
         page_number = request.GET.get('page', 1)
         page_obj = paginator.get_page(page_number)
-        
+
         shifts = Shift.objects.filter(is_active=True).order_by('name')
-        
+
+        employees = User.objects.filter(is_active=True).order_by(
+            "first_name", "last_name"
+        )
+
         context = {
             'page_obj': page_obj,
             'shifts': shifts,
             'shift_filter': shift_filter,
             'is_active_filter': is_active_filter,
             'search_query': search_query,
+            'employees': employees,
+            'current_date': date.today(),
         }
-        
+
         return render(request, 'attendance/employee_shift_list.html', context)
 
     def employee_shifts(self, request, employee_id):
         employee = get_object_or_404(User, id=employee_id)
-        
+
         employee_shifts = EmployeeShift.objects.filter(
             employee=employee
         ).order_by('-effective_from')
-        
+
         context = {
             'employee': employee,
             'employee_shifts': employee_shifts,
         }
-        
-        return render(request, 'attendance/employee_shifts.html', context)
 
+        return render(request, 'attendance/employee_shifts.html', context)
+    
     def employee_shift_detail(self, request, shift_id, employee_id):
         employee_shift = get_object_or_404(
             EmployeeShift, 
@@ -2270,10 +2276,20 @@ class Shifts(LoginRequiredMixin, View):
             employee_id=employee_id
         )
         
+        employee = employee_shift.employee
+        
+        available_shifts = Shift.objects.filter(is_active=True).order_by('name')
+        
+        assignment_history = []
+        
         context = {
             'employee_shift': employee_shift,
+            'employee': employee,
+            'available_shifts': available_shifts,
+            'current_date': date.today(),
+            'assignment_history': assignment_history
         }
-        
+
         return render(request, 'attendance/employee_shift_detail.html', context)
 
     def post(self, request, *args, **kwargs):
@@ -2302,7 +2318,7 @@ class Shifts(LoginRequiredMixin, View):
         is_night_shift = request.POST.get('is_night_shift') == 'on'
         weekend_applicable = request.POST.get('weekend_applicable') == 'on'
         holiday_applicable = request.POST.get('holiday_applicable') == 'on'
-        
+
         try:
             shift = Shift(
                 name=name,
@@ -2317,25 +2333,25 @@ class Shifts(LoginRequiredMixin, View):
                 holiday_applicable=holiday_applicable,
                 created_by=request.user
             )
-            
+
             shift.save()
-            
+
             messages.success(request, f'Shift "{name}" created successfully')
             return redirect('attendance:shift_detail', id=shift.id)
-            
+
         except ValidationError as e:
             messages.error(request, f'Validation error: {str(e)}')
         except Exception as e:
             messages.error(request, f'Error creating shift: {str(e)}')
-        
+
         return redirect('attendance:shift_list')
 
     def update_shift(self, request):
         shift_id = request.POST.get('shift_id')
-        
+
         try:
             shift = Shift.objects.get(id=shift_id)
-            
+
             shift.name = request.POST.get('name')
             shift.shift_type = request.POST.get('shift_type')
             shift.start_time = request.POST.get('start_time')
@@ -2347,19 +2363,19 @@ class Shifts(LoginRequiredMixin, View):
             shift.weekend_applicable = request.POST.get('weekend_applicable') == 'on'
             shift.holiday_applicable = request.POST.get('holiday_applicable') == 'on'
             shift.is_active = request.POST.get('is_active') == 'on'
-            
+
             shift.save()
-            
+
             messages.success(request, f'Shift "{shift.name}" updated successfully')
             return redirect('attendance:shift_detail', id=shift.id)
-            
+
         except Shift.DoesNotExist:
             messages.error(request, 'Shift not found')
         except ValidationError as e:
             messages.error(request, f'Validation error: {str(e)}')
         except Exception as e:
             messages.error(request, f'Error updating shift: {str(e)}')
-        
+
         return redirect('attendance:shift_list')
 
     def assign_shift(self, request):
@@ -2369,21 +2385,21 @@ class Shifts(LoginRequiredMixin, View):
         effective_to_str = request.POST.get('effective_to', '')
         is_temporary = request.POST.get('is_temporary') == 'on'
         notes = request.POST.get('notes', '')
-        
+
         try:
             employee = User.objects.get(id=employee_id)
             shift = Shift.objects.get(id=shift_id)
-            
+
             effective_from = datetime.strptime(effective_from_str, '%Y-%m-%d').date()
-            
+
             effective_to = None
             if effective_to_str:
                 effective_to = datetime.strptime(effective_to_str, '%Y-%m-%d').date()
-                
+
                 if effective_to <= effective_from:
                     messages.error(request, 'Effective to date must be after effective from date')
                     return redirect('attendance:employee_shifts', employee_id=employee_id)
-            
+
             employee_shift = EmployeeShift(
                 employee=employee,
                 shift=shift,
@@ -2393,15 +2409,15 @@ class Shifts(LoginRequiredMixin, View):
                 notes=notes,
                 assigned_by=request.user
             )
-            
+
             employee_shift.save()
-            
+
             messages.success(
                 request, 
                 f'Shift "{shift.name}" assigned to {employee.get_full_name()} successfully'
             )
             return redirect('attendance:employee_shift_detail', id=employee_shift.id, employee_id=employee.id)
-            
+
         except User.DoesNotExist:
             messages.error(request, 'Employee not found')
         except Shift.DoesNotExist:
@@ -2412,36 +2428,36 @@ class Shifts(LoginRequiredMixin, View):
             messages.error(request, f'Validation error: {str(e)}')
         except Exception as e:
             messages.error(request, f'Error assigning shift: {str(e)}')
-        
+
         return redirect('attendance:employee_shift_list')
 
     def update_employee_shift(self, request):
         employee_shift_id = request.POST.get('employee_shift_id')
-        
+
         try:
             employee_shift = EmployeeShift.objects.get(id=employee_shift_id)
-            
+
             shift_id = request.POST.get('shift_id')
             effective_from_str = request.POST.get('effective_from')
             effective_to_str = request.POST.get('effective_to', '')
             is_temporary = request.POST.get('is_temporary') == 'on'
             notes = request.POST.get('notes', '')
             is_active = request.POST.get('is_active') == 'on'
-            
+
             employee_shift.shift_id = shift_id
             employee_shift.effective_from = datetime.strptime(effective_from_str, '%Y-%m-%d').date()
-            
+
             if effective_to_str:
                 employee_shift.effective_to = datetime.strptime(effective_to_str, '%Y-%m-%d').date()
             else:
                 employee_shift.effective_to = None
-            
+
             employee_shift.is_temporary = is_temporary
             employee_shift.notes = notes
             employee_shift.is_active = is_active
-            
+
             employee_shift.save()
-            
+
             messages.success(
                 request, 
                 f'Shift assignment updated successfully for {employee_shift.employee.get_full_name()}'
@@ -2451,7 +2467,7 @@ class Shifts(LoginRequiredMixin, View):
                 id=employee_shift.id, 
                 employee_id=employee_shift.employee.id
             )
-            
+
         except EmployeeShift.DoesNotExist:
             messages.error(request, 'Shift assignment not found')
         except ValueError:
@@ -2460,18 +2476,18 @@ class Shifts(LoginRequiredMixin, View):
             messages.error(request, f'Validation error: {str(e)}')
         except Exception as e:
             messages.error(request, f'Error updating shift assignment: {str(e)}')
-        
+
         return redirect('attendance:employee_shift_list')
-    
+
     def end_employee_shift(self, request):
         employee_shift_id = request.POST.get('employee_shift_id')
         end_date_str = request.POST.get('end_date')
-        
+
         try:
             employee_shift = EmployeeShift.objects.get(id=employee_shift_id)
-            
+
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-            
+
             if end_date <= employee_shift.effective_from:
                 messages.error(request, 'End date must be after effective from date')
                 return redirect(
@@ -2479,10 +2495,10 @@ class Shifts(LoginRequiredMixin, View):
                     id=employee_shift.id, 
                     employee_id=employee_shift.employee.id
                 )
-            
+
             employee_shift.effective_to = end_date
             employee_shift.save(update_fields=['effective_to'])
-            
+
             messages.success(
                 request, 
                 f'Shift assignment ended successfully for {employee_shift.employee.get_full_name()}'
@@ -2492,14 +2508,14 @@ class Shifts(LoginRequiredMixin, View):
                 id=employee_shift.id, 
                 employee_id=employee_shift.employee.id
             )
-            
+
         except EmployeeShift.DoesNotExist:
             messages.error(request, 'Shift assignment not found')
         except ValueError:
             messages.error(request, 'Invalid date format')
         except Exception as e:
             messages.error(request, f'Error ending shift assignment: {str(e)}')
-        
+
         return redirect('attendance:employee_shift_list')
 
 
