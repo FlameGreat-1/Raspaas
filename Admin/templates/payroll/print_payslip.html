@@ -1,0 +1,335 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payslip - {{ payslip.reference_number }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .print-container {
+            max-width: 800px;
+            margin: 20px auto;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .print-header {
+            padding: 20px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .company-logo {
+            max-height: 80px;
+        }
+        .company-info {
+            text-align: right;
+        }
+        .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .company-address {
+            font-size: 14px;
+            color: #6c757d;
+        }
+        .payslip-title {
+            text-align: center;
+            padding: 15px 0;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .payslip-title h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .payslip-info {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .employee-info, .payslip-details {
+            width: 48%;
+        }
+        .info-group {
+            margin-bottom: 15px;
+        }
+        .info-label {
+            font-size: 14px;
+            color: #6c757d;
+            margin-bottom: 3px;
+        }
+        .info-value {
+            font-size: 15px;
+            font-weight: 500;
+        }
+        .payslip-section {
+            padding: 0 20px 20px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        th {
+            font-weight: 600;
+            color: #495057;
+            background-color: #f8f9fa;
+        }
+        .amount-column {
+            text-align: right;
+        }
+        .total-row {
+            font-weight: 600;
+            background-color: #f8f9fa;
+        }
+        .summary-section {
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+        }
+        .summary-box {
+            width: 30%;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.05);
+        }
+        .summary-title {
+            font-size: 14px;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+        .summary-value {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .net-pay {
+            background-color: #e8f5e9;
+        }
+        .net-pay .summary-value {
+            color: #2e7d32;
+        }
+        .footer {
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #6c757d;
+            border-top: 1px solid #dee2e6;
+        }
+        .print-actions {
+            padding: 20px;
+            text-align: center;
+        }
+        .print-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .print-btn:hover {
+            background-color: #0069d9;
+        }
+        @media print {
+            body {
+                background-color: #fff;
+            }
+            .print-container {
+                box-shadow: none;
+                margin: 0;
+                max-width: 100%;
+            }
+            .print-actions {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-container">
+        <div class="print-header">
+            <img src="{% static 'assets/images/logo.png' %}" alt="Company Logo" class="company-logo">
+            <div class="company-info">
+                <div class="company-name">Your Company Name</div>
+                <div class="company-address">
+                    123 Business Street, Suite 100<br>
+                    Colombo, Sri Lanka<br>
+                    Tel: +94 11 123 4567
+                </div>
+            </div>
+        </div>
+        
+        <div class="payslip-title">
+            <h2>PAYSLIP - {{ payslip.payroll_period.period_name }}</h2>
+        </div>
+        
+        <div class="payslip-info">
+            <div class="employee-info">
+                <div class="info-group">
+                    <div class="info-label">Employee Name</div>
+                    <div class="info-value">{{ employee.get_full_name }}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Employee ID</div>
+                    <div class="info-value">{{ employee.employee_code }}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Department</div>
+                    <div class="info-value">{{ employee.department.name }}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Designation</div>
+                    <div class="info-value">{{ employee.role.name }}</div>
+                </div>
+            </div>
+            
+            <div class="payslip-details">
+                <div class="info-group">
+                    <div class="info-label">Payslip Reference</div>
+                    <div class="info-value">{{ payslip.reference_number }}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Pay Period</div>
+                    <div class="info-value">{{ payslip.payroll_period.period_name }}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Working Days</div>
+                    <div class="info-value">{{ payslip.working_days }}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Attended Days</div>
+                    <div class="info-value">{{ payslip.attended_days }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="payslip-section">
+            <div class="section-title">Earnings</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th class="amount-column">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for earning in earnings %}
+                    <tr>
+                        <td>{{ earning.name }}</td>
+                        <td class="amount-column">{{ earning.amount|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="total-row">
+                        <td>Total Earnings</td>
+                        <td class="amount-column">{{ payslip.gross_salary|floatformat:2 }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="payslip-section">
+            <div class="section-title">Deductions</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th class="amount-column">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for deduction in deductions %}
+                    <tr>
+                        <td>{{ deduction.name }}</td>
+                        <td class="amount-column">{{ deduction.amount|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr class="total-row">
+                        <td>Total Deductions</td>
+                        <td class="amount-column">{{ payslip.total_deductions|floatformat:2 }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="payslip-section">
+            <div class="section-title">Employer Contributions</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th class="amount-column">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contribution in employer_contributions %}
+                    <tr>
+                        <td>{{ contribution.name }}</td>
+                        <td class="amount-column">{{ contribution.amount|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="summary-section">
+            <div class="summary-box">
+                <div class="summary-title">Gross Pay</div>
+                <div class="summary-value">{{ payslip.gross_salary|floatformat:2 }}</div>
+            </div>
+            <div class="summary-box">
+                <div class="summary-title">Total Deductions</div>
+                <div class="summary-value">{{ payslip.total_deductions|floatformat:2 }}</div>
+            </div>
+            <div class="summary-box net-pay">
+                <div class="summary-title">Net Pay</div>
+                <div class="summary-value">{{ payslip.net_salary|floatformat:2 }}</div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>This is a computer-generated payslip and does not require a signature.</p>
+            <p>For any queries regarding this payslip, please contact the HR department.</p>
+            <p>Generated on: {{ payslip.updated_at|date:"d M Y, h:i A" }}</p>
+        </div>
+        
+        <div class="print-actions">
+            <button class="print-btn" onclick="window.print()">Print Payslip</button>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-print when page loads in print mode
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('print') === 'auto') {
+                window.print();
+            }
+        });
+    </script>
+</body>
+</html>
+

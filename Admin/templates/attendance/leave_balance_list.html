@@ -1,0 +1,337 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Leave Balances" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Attendance" title="Leave Balances" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>Leave Balances</h4>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#adjustLeaveBalanceModal">
+                        <i class="ri-add-line align-bottom me-1"></i> Adjust Balance
+                    </button>
+                    <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#initializeLeaveBalancesModal">
+                        <i class="ri-refresh-line align-bottom me-1"></i> Initialize Balances
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <form method="get" class="row g-3">
+                            <div class="col-md-2">
+                                <select name="year" class="form-select" onchange="this.form.submit()">
+                                    {% for year_option in years %}
+                                    <option value="{{ year_option }}" {% if year == year_option %}selected{% endif %}>{{ year_option }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select name="leave_type" class="form-select" onchange="this.form.submit()">
+                                    <option value="">All Leave Types</option>
+                                    {% for leave_type in leave_types %}
+                                    <option value="{{ leave_type.id }}" {% if leave_type_filter == leave_type.id|stringformat:"s" %}selected{% endif %}>{{ leave_type.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="input-group">
+                                    <input type="text" name="search" class="form-control" placeholder="Search by employee name or ID..." value="{{ search_query }}">
+                                    <button class="btn btn-primary" type="submit">
+                                        <i class="ri-search-line"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <a href="{% url 'attendance:leave_balance_list' %}" class="btn btn-outline-secondary w-100">
+                                    <i class="ri-refresh-line"></i> Reset
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover text-nowrap">
+                        <thead class="table-light border-0">
+                            <tr>
+                                <th class="text-muted">Employee</th>
+                                <th class="text-muted">Leave Type</th>
+                                <th class="text-muted">Allocated</th>
+                                <th class="text-muted">Used</th>
+                                <th class="text-muted">Carried Forward</th>
+                                <th class="text-muted">Adjustments</th>
+                                <th class="text-muted">Available</th>
+                                <th class="text-muted">Utilization</th>
+                                <th class="text-muted">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for balance in page_obj %}
+                            <tr>
+                                <td class="fw-semibold">
+                                    {% if balance.employee.profile_image %}
+                                    <img src="{{ balance.employee.profile_image.url }}" class="avatar-sm rounded-circle me-2" alt="{{ balance.employee.get_full_name }}">
+                                    {% else %}
+                                    <div class="avatar-sm bg-primary text-white rounded-circle me-2 d-inline-flex align-items-center justify-content-center">
+                                        {{ balance.employee.first_name|first }}{{ balance.employee.last_name|first }}
+                                    </div>
+                                    {% endif %}
+                                    <a href="{% url 'attendance:employee_leave_balances' employee_id=balance.employee.id %}">
+                                        {{ balance.employee.get_full_name }}
+                                    </a>
+                                </td>
+                                <td class="fw-semibold">
+                                    <a href="{% url 'attendance:leave_type_detail' type_id=balance.leave_type.id %}">
+                                        {{ balance.leave_type.name }}
+                                    </a>
+                                </td>
+                                <td class="fw-semibold">{{ balance.allocated_days }}</td>
+                                <td class="fw-semibold">{{ balance.used_days }}</td>
+                                <td class="fw-semibold">{{ balance.carried_forward_days }}</td>
+                                <td class="fw-semibold {% if balance.adjustment_days > 0 %}text-success{% elif balance.adjustment_days < 0 %}text-danger{% endif %}">
+                                    {{ balance.adjustment_days }}
+                                </td>
+                                <td class="fw-semibold text-success">{{ balance.available_days }}</td>
+                                <td>
+                                    <div class="w-100">
+                                        <div class="d-flex justify-content-between align-items-center fs-13">
+                                            <p class="text-muted mb-1">{{ balance.utilization_percentage }}%</p>
+                                        </div>
+                                        <div class="progress progress-sm">
+                                            <div class="progress-bar {% if balance.utilization_percentage > 80 %}bg-danger{% elif balance.utilization_percentage > 50 %}bg-warning{% else %}bg-success{% endif %}" style="width: {{ balance.utilization_percentage }}%"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'attendance:leave_balance_detail' balance_id=balance.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="ri-eye-line"></i>
+                                        </a>
+                                        <a href="#" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#adjustLeaveBalanceModal" 
+                                            data-employee-id="{{ balance.employee.id }}" 
+                                            data-employee-name="{{ balance.employee.get_full_name }}"
+                                            data-leave-type-id="{{ balance.leave_type.id }}"
+                                            data-leave-type-name="{{ balance.leave_type.name }}"
+                                            data-balance-id="{{ balance.id }}" title="Adjust Balance">
+                                            <i class="ri-edit-line"></i>
+                                        </a>
+                                    </div>
+                                </td>                                
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-center py-4">
+                                    <div class="d-flex justify-content-center align-items-center flex-column">
+                                        <i class="ri-file-list-3-line fs-1 text-muted mb-2"></i>
+                                        <h5>No leave balances found</h5>
+                                        <p class="text-muted">Try adjusting your search or filter to find what you're looking for.</p>
+                                        <button type="button" class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#initializeLeaveBalancesModal">
+                                            <i class="ri-refresh-line align-bottom me-1"></i> Initialize Balances
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if page_obj.has_other_pages %}
+                <div class="d-flex justify-content-end mt-3">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if year %}&year={{ year }}{% endif %}{% if leave_type_filter %}&leave_type={{ leave_type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if year %}&year={{ year }}{% endif %}{% if leave_type_filter %}&leave_type={{ leave_type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item"><a class="page-link" href="?page={{ num }}{% if year %}&year={{ year }}{% endif %}{% if leave_type_filter %}&leave_type={{ leave_type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a></li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if year %}&year={{ year }}{% endif %}{% if leave_type_filter %}&leave_type={{ leave_type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if year %}&year={{ year }}{% endif %}{% if leave_type_filter %}&leave_type={{ leave_type_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Adjust Leave Balance Modal -->
+<div class="modal fade" id="adjustLeaveBalanceModal" tabindex="-1" aria-labelledby="adjustLeaveBalanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="adjustLeaveBalanceModalLabel">Adjust Leave Balance</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_leave_balance">
+                <input type="hidden" name="employee_id" id="adjust_employee_id">
+                <input type="hidden" name="leave_type_id" id="adjust_leave_type_id">
+                <input type="hidden" name="balance_id" id="adjust_balance_id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Employee</label>
+                        <select name="employee" id="employee_select" class="form-select select2" required>
+                            <option value="">Select Employee</option>
+                            {% for employee in employees %}
+                            <option value="{{ employee.id }}">{{ employee.get_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>                    
+                    <div class="mb-3">
+                        <label class="form-label">Leave Type</label>
+                        <select name="leave_type" id="leave_type_select" class="form-select select2" required>
+                            <option value="">Select Leave Type</option>
+                            {% for leave_type in leave_types %}
+                            <option value="{{ leave_type.id }}">{{ leave_type.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="year" class="form-label">Year</label>
+                        <select name="year" id="year_select" class="form-select" required>
+                            {% for year_option in years %}
+                            <option value="{{ year_option|stringformat:'d' }}" {% if year == year_option %}selected{% endif %}>{{ year_option }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>                    
+                    <div class="mb-3">
+                        <label for="adjustment_days" class="form-label">Adjustment Days</label>
+                        <input type="number" name="adjustment_days" id="adjustment_days" class="form-control" step="0.5" required>
+                        <div class="form-text">Use positive values to add days, negative values to deduct days.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">Reason for Adjustment</label>
+                        <textarea name="reason" id="reason" class="form-control" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Adjustment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Initialize Leave Balances Modal -->
+<div class="modal fade" id="initializeLeaveBalancesModal" tabindex="-1" aria-labelledby="initializeLeaveBalancesModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="initializeLeaveBalancesModalLabel">Initialize Leave Balances</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="initialize_leave_balances">
+                <div class="modal-body">
+                    <p>This will initialize leave balances for all active employees for all active leave types.</p>
+                    <div class="mb-3">
+                        <label for="init_year" class="form-label">Year</label>
+                        <select name="year" id="init_year" class="form-select" required>
+                            {% for year_option in years %}
+                            <option value="{{ year_option }}" {% if year == year_option %}selected{% endif %}>{{ year_option }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Initialize Balances</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        $('.select2').select2({
+            dropdownParent: $('#adjustLeaveBalanceModal')
+        });
+        
+        $('#adjustLeaveBalanceModal').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget);
+            var employeeId = button.data('employee-id');
+            var leaveTypeId = button.data('leave-type-id');
+            var balanceId = button.data('balance-id');
+            
+            if (employeeId) {
+                $('#adjust_employee_id').val(employeeId);
+                $('#employee_select').val(employeeId).trigger('change');
+                $('#employee_select').prop('disabled', true);
+            } else {
+                $('#adjust_employee_id').val('');
+                $('#employee_select').val('').trigger('change');
+                $('#employee_select').prop('disabled', false);
+            }
+            
+            if (leaveTypeId) {
+                $('#adjust_leave_type_id').val(leaveTypeId);
+                $('#leave_type_select').val(leaveTypeId).trigger('change');
+                $('#leave_type_select').prop('disabled', true);
+            } else {
+                $('#adjust_leave_type_id').val('');
+                $('#leave_type_select').val('').trigger('change');
+                $('#leave_type_select').prop('disabled', false);
+            }
+            
+            $('#adjust_balance_id').val(balanceId || '');
+            $('#adjustment_days').val('');
+            $('#reason').val('');
+        });
+    
+        var employeeSelect = $('#employee_select');
+        {% for employee in employees %}
+            employeeSelect.append(new Option('{{ employee.get_full_name }}', '{{ employee.id }}'));
+        {% endfor %}
+        employeeSelect.trigger('change');
+    });
+</script>
+{% endblock js %}
+{% endblock content %}

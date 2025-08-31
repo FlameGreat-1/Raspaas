@@ -1,0 +1,422 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Leave Request Details" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Attendance" title="Leave Request Details" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xl-9">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex align-items-center">
+                    <h4 class="card-title mb-0 flex-grow-1">Leave Request Information</h4>
+                    <div class="flex-shrink-0">
+                        <div class="action-buttons">
+                            <a href="{% url 'attendance:leave_request_list' %}" class="btn btn-sm btn-outline-secondary" title="Back to List">
+                                <i class="ri-arrow-left-line"></i>
+                            </a>
+                            {% if leave_request.status == 'PENDING' %}
+                            <a href="#" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#approveLeaveModal" title="Approve">
+                                <i class="ri-check-line"></i>
+                            </a>
+                            <a href="#" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectLeaveModal" title="Reject">
+                                <i class="ri-close-line"></i>
+                            </a>
+                            {% endif %}
+                            {% if leave_request.can_be_cancelled %}
+                            <a href="#" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#cancelLeaveModal" title="Cancel">
+                                <i class="ri-delete-bin-line"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>                    
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12 mb-4">
+                        <div class="d-flex align-items-center">
+                            {% if leave_request.employee.profile_image %}
+                            <img src="{{ leave_request.employee.profile_image.url }}" class="avatar-lg rounded-circle me-3" alt="{{ leave_request.employee.get_full_name }}">
+                            {% else %}
+                            <div class="avatar-lg bg-primary text-white rounded-circle me-3 d-flex align-items-center justify-content-center fs-24">
+                                {{ leave_request.employee.first_name|first }}{{ leave_request.employee.last_name|first }}
+                            </div>
+                            {% endif %}
+                            <div>
+                                <h4 class="mb-1">{{ leave_request.employee.get_full_name }}</h4>
+                                <p class="text-muted mb-0">
+                                    {% if leave_request.employee.employee_code %}
+                                    <span class="me-2">ID: {{ leave_request.employee.employee_code }}</span>
+                                    {% endif %}
+                                    {% if leave_request.employee.department %}
+                                    <span class="me-2">{{ leave_request.employee.department.name }}</span>
+                                    {% endif %}
+                                    {% if leave_request.employee.role %}
+                                    <span>{{ leave_request.employee.role.name }}</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="table-responsive">
+                            <table class="table table-borderless mb-0">
+                                <tbody>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Leave Type:</th>
+                                        <td class="text-muted">{{ leave_request.leave_type.name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Leave Period:</th>
+                                        <td class="text-muted">
+                                            {% if leave_request.is_half_day %}
+                                            {{ leave_request.start_date|date:"d M Y" }} ({{ leave_request.half_day_period }})
+                                            {% else %}
+                                            {{ leave_request.start_date|date:"d M Y" }} - {{ leave_request.end_date|date:"d M Y" }}
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Total Days:</th>
+                                        <td class="text-muted">{{ leave_request.total_days }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Status:</th>
+                                        <td>
+                                            {% if leave_request.status == 'PENDING' %}
+                                            <span class="badge bg-warning px-3 rounded-3">Pending</span>
+                                            {% elif leave_request.status == 'APPROVED' %}
+                                            <span class="badge bg-success px-3 rounded-3">Approved</span>
+                                            {% elif leave_request.status == 'REJECTED' %}
+                                            <span class="badge bg-danger px-3 rounded-3">Rejected</span>
+                                            {% elif leave_request.status == 'CANCELLED' %}
+                                            <span class="badge bg-secondary px-3 rounded-3">Cancelled</span>
+                                            {% elif leave_request.status == 'WITHDRAWN' %}
+                                            <span class="badge bg-info px-3 rounded-3">Withdrawn</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Applied On:</th>
+                                        <td class="text-muted">{{ leave_request.applied_at|date:"d M Y H:i" }}</td>
+                                    </tr>
+                                    {% if leave_request.approved_by %}
+                                    <tr>
+                                        <th class="ps-0" scope="row">Approved/Rejected By:</th>
+                                        <td class="text-muted">{{ leave_request.approved_by.get_full_name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Approved/Rejected On:</th>
+                                        <td class="text-muted">{{ leave_request.approved_at|date:"d M Y H:i" }}</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="border rounded p-3">
+                            <h5 class="mb-3">Leave Balance</h5>
+                            <div class="progress-box mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <p class="text-muted mb-0">Used</p>
+                                    <p class="text-muted mb-0">{{ leave_request.leave_type.name }}</p>
+                                </div>
+                                {% with balance=leave_balance %}
+                                {% if balance %}
+                                <div class="progress progress-sm">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ balance.utilization_percentage }}%" aria-valuenow="{{ balance.utilization_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <p class="text-muted mb-0">{{ balance.used_days }}/{{ balance.allocated_days }}</p>
+                                    <p class="text-muted mb-0">{{ balance.utilization_percentage }}%</p>
+                                </div>
+                                <div class="mt-3">
+                                    <p class="mb-1 text-muted">Available: <span class="fw-semibold text-success">{{ balance.available_days }} days</span></p>
+                                    {% if balance.carried_forward_days > 0 %}
+                                    <p class="mb-1 text-muted">Carried Forward: <span class="fw-semibold">{{ balance.carried_forward_days }} days</span></p>
+                                    {% endif %}
+                                    {% if balance.adjustment_days != 0 %}
+                                    <p class="mb-1 text-muted">Adjustments: <span class="fw-semibold {% if balance.adjustment_days > 0 %}text-success{% else %}text-danger{% endif %}">{{ balance.adjustment_days }} days</span></p>
+                                    {% endif %}
+                                </div>
+                                {% else %}
+                                <p class="text-muted">No balance information available</p>
+                                {% endif %}
+                                {% endwith %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5 class="mb-3">Reason for Leave</h5>
+                        <div class="border rounded p-3 bg-light">
+                            <p class="mb-0">{{ leave_request.reason }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {% if leave_request.emergency_contact_during_leave %}
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5 class="mb-3">Emergency Contact During Leave</h5>
+                        <div class="border rounded p-3 bg-light">
+                            <p class="mb-0">{{ leave_request.emergency_contact_during_leave }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if leave_request.handover_notes %}
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5 class="mb-3">Handover Notes</h5>
+                        <div class="border rounded p-3 bg-light">
+                            <p class="mb-0">{{ leave_request.handover_notes }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if leave_request.medical_certificate %}
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5 class="mb-3">Medical Certificate</h5>
+                        <div class="border rounded p-3">
+                            <div class="d-flex align-items-center">
+                                <i class="ri-file-text-line fs-24 me-2"></i>
+                                <div>
+                                    <p class="mb-0 fw-medium">Medical Certificate</p>
+                                    <p class="text-muted mb-0 fs-12">Uploaded on {{ leave_request.applied_at|date:"d M Y" }}</p>
+                                </div>
+                                <a href="{{ leave_request.medical_certificate.url }}" class="btn btn-sm btn-primary ms-auto" target="_blank">View</a>
+                                <a href="{{ leave_request.medical_certificate.url }}" class="btn btn-sm btn-outline-primary ms-2" download>Download</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if leave_request.rejection_reason %}
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5 class="mb-3">Rejection Reason</h5>
+                        <div class="border rounded p-3 bg-danger-subtle">
+                            <p class="mb-0">{{ leave_request.rejection_reason }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Leave Timeline</h5>
+            </div>
+            <div class="card-body">
+                <div class="profile-timeline">
+                    <div class="accordion accordion-flush" id="leaveTimeline">
+                        <div class="accordion-item border-0">
+                            <div class="accordion-header">
+                                <div class="d-flex">
+                                    <div class="flex-shrink-0 avatar-xs">
+                                        <div class="avatar-title bg-success-subtle text-success rounded-circle">
+                                            <i class="ri-calendar-todo-line"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="fs-14 mb-1">Leave Applied</h6>
+                                        <small class="text-muted">{{ leave_request.applied_at|date:"d M Y H:i" }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if leave_request.status != 'PENDING' %}
+                        <div class="accordion-item border-0">
+                            <div class="accordion-header">
+                                <div class="d-flex">
+                                    <div class="flex-shrink-0 avatar-xs">
+                                        <div class="avatar-title {% if leave_request.status == 'APPROVED' %}bg-success-subtle text-success{% elif leave_request.status == 'REJECTED' %}bg-danger-subtle text-danger{% else %}bg-secondary-subtle text-secondary{% endif %} rounded-circle">
+                                            {% if leave_request.status == 'APPROVED' %}
+                                            <i class="ri-check-line"></i>
+                                            {% elif leave_request.status == 'REJECTED' %}
+                                            <i class="ri-close-line"></i>
+                                            {% else %}
+                                            <i class="ri-delete-bin-line"></i>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="fs-14 mb-1">
+                                            {% if leave_request.status == 'APPROVED' %}
+                                            Leave Approved
+                                            {% elif leave_request.status == 'REJECTED' %}
+                                            Leave Rejected
+                                            {% elif leave_request.status == 'CANCELLED' %}
+                                            Leave Cancelled
+                                            {% elif leave_request.status == 'WITHDRAWN' %}
+                                            Leave Withdrawn
+                                            {% endif %}
+                                        </h6>
+                                        <small class="text-muted">{{ leave_request.approved_at|date:"d M Y H:i" }}</small>
+                                        {% if leave_request.approved_by %}
+                                        <p class="text-muted mb-0">By {{ leave_request.approved_by.get_full_name }}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if leave_request.status == 'APPROVED' %}
+                        <div class="accordion-item border-0">
+                            <div class="accordion-header">
+                                <div class="d-flex">
+                                    <div class="flex-shrink-0 avatar-xs">
+                                        <div class="avatar-title bg-primary-subtle text-primary rounded-circle">
+                                            <i class="ri-calendar-check-line"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="fs-14 mb-1">Leave Period</h6>
+                                        <small class="text-muted">
+                                            {% if leave_request.is_half_day %}
+                                            {{ leave_request.start_date|date:"d M Y" }} ({{ leave_request.half_day_period }})
+                                            {% else %}
+                                            {{ leave_request.start_date|date:"d M Y" }} - {{ leave_request.end_date|date:"d M Y" }}
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Approve Leave Modal -->
+<div class="modal fade" id="approveLeaveModal" tabindex="-1" aria-labelledby="approveLeaveModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="approveLeaveModalLabel">Approve Leave Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="approve_leave_request">
+                <input type="hidden" name="leave_request_id" value="{{ leave_request.id }}">
+                <div class="modal-body">
+                    <p>Are you sure you want to approve this leave request?</p>
+                    <div class="mb-3">
+                        <label for="approval_notes" class="form-label">Approval Notes (Optional)</label>
+                        <textarea name="approval_notes" id="approval_notes" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Approve</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Leave Modal -->
+<div class="modal fade" id="rejectLeaveModal" tabindex="-1" aria-labelledby="rejectLeaveModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rejectLeaveModalLabel">Reject Leave Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reject_leave_request">
+                <input type="hidden" name="leave_request_id" value="{{ leave_request.id }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="rejection_reason" class="form-label">Rejection Reason</label>
+                        <textarea name="rejection_reason" id="rejection_reason" class="form-control" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Reject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Leave Modal -->
+<div class="modal fade" id="cancelLeaveModal" tabindex="-1" aria-labelledby="cancelLeaveModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cancelLeaveModalLabel">Cancel Leave Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="cancel_leave_request">
+                <input type="hidden" name="leave_request_id" value="{{ leave_request.id }}">
+                <div class="modal-body">
+                    <p>Are you sure you want to cancel this leave request?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">No</button>
+                    <button type="submit" class="btn btn-danger">Yes, Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+        
+        // Handle modal form submission
+        $('#approveLeaveModal form, #rejectLeaveModal form, #cancelLeaveModal form').on('submit', function() {
+            // Disable submit button to prevent double submission
+            $(this).find('button[type="submit"]').prop('disabled', true);
+        });
+        
+        // Reset form when modal is closed
+        $('#approveLeaveModal, #rejectLeaveModal').on('hidden.bs.modal', function () {
+            $(this).find('textarea').val('');
+        });
+    });
+</script>
+{% endblock %}

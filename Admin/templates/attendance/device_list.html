@@ -114,56 +114,56 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <div class="dropdown">
-                                            <a href="#" class="btn btn-sm btn-icon btn-light" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="ri-more-2-fill"></i>
+                                        <div class="action-buttons">
+                                            <a href="{% url 'attendance:device_detail' id=device.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                                <i class="bi bi-eye"></i>
                                             </a>
-                                            <ul class="dropdown-menu dropdown-menu-end">
-                                                <li>
-                                                    <a class="dropdown-item" href="{% url 'attendance:device_detail' id=device.id %}">
-                                                        <i class="ri-eye-line align-bottom me-2 text-muted"></i> View Details
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a class="dropdown-item edit-device-btn" href="#" 
-                                                       data-bs-toggle="modal" data-bs-target="#editDeviceModal" 
-                                                       data-id="{{ device.id }}"
-                                                       data-device-id="{{ device.device_id }}"
-                                                       data-name="{{ device.device_name }}"
-                                                       data-type="{{ device.device_type }}"
-                                                       data-ip="{{ device.ip_address }}"
-                                                       data-port="{{ device.port }}"
-                                                       data-location="{{ device.location }}"
-                                                       data-department="{{ device.department.id|default:'' }}"
-                                                       data-status="{{ device.status }}"
-                                                       data-active="{{ device.is_active|yesno:'true,false' }}">
-                                                        <i class="ri-pencil-line align-bottom me-2 text-muted"></i> Edit
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a class="dropdown-item sync-device-btn" href="#" data-id="{{ device.id }}" data-name="{{ device.device_name }}">
-                                                        <i class="ri-refresh-line align-bottom me-2 text-muted"></i> Sync Data
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a class="dropdown-item test-connection-btn" href="#" data-id="{{ device.id }}" data-name="{{ device.device_name }}">
-                                                        <i class="ri-link-m align-bottom me-2 text-muted"></i> Test Connection
-                                                    </a>
-                                                </li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <a class="dropdown-item {% if not device.is_active %}text-success{% else %}text-danger{% endif %} toggle-status-btn" 
-                                                       href="#" data-id="{{ device.id }}" data-active="{{ device.is_active|yesno:'true,false' }}">
-                                                        {% if not device.is_active %}
-                                                        <i class="ri-checkbox-circle-line align-bottom me-2 text-success"></i> Activate
-                                                        {% else %}
-                                                        <i class="ri-close-circle-line align-bottom me-2 text-danger"></i> Deactivate
-                                                        {% endif %}
-                                                    </a>
-                                                </li>
-                                            </ul>
+                                            <a href="#" class="btn btn-sm btn-outline-warning edit-device-btn" 
+                                               data-bs-toggle="modal" data-bs-target="#editDeviceModal" 
+                                               data-id="{{ device.id }}"
+                                               data-device-id="{{ device.device_id }}"
+                                               data-name="{{ device.device_name }}"
+                                               data-type="{{ device.device_type }}"
+                                               data-ip="{{ device.ip_address }}"
+                                               data-port="{{ device.port }}"
+                                               data-location="{{ device.location }}"
+                                               data-department="{{ device.department.id|default:'' }}"
+                                               data-status="{{ device.status }}"
+                                               data-active="{{ device.is_active|yesno:'true,false' }}" 
+                                               title="Edit Device">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            
+                                            <form method="POST" action="{% url 'attendance:device_list' %}" style="display:inline;">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="sync">
+                                                <input type="hidden" name="device_id" value="{{ device.id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-success" title="Sync Data" onclick="return confirm('Are you sure you want to sync data from {{ device.device_name }}?');">
+                                                    <i class="bi bi-arrow-repeat"></i>
+                                                </button>
+                                            </form>
+                                            
+                                            <form method="POST" action="{% url 'attendance:device_list' %}" style="display:inline;">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="test_connection">
+                                                <input type="hidden" name="device_id" value="{{ device.id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-info" title="Test Connection" onclick="return confirm('Are you sure you want to test connection to {{ device.device_name }}?');">
+                                                    <i class="bi bi-link"></i>
+                                                </button>
+                                            </form>
+                                            <form method="POST" action="{% url 'attendance:device_list' %}" style="display:inline;">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="toggle_status">
+                                                <input type="hidden" name="device_id" value="{{ device.id }}">
+                                                <button type="submit" class="btn btn-sm {% if not device.is_active %}btn-outline-success{% else %}btn-outline-danger{% endif %}" 
+                                                        title="{% if not device.is_active %}Activate{% else %}Deactivate{% endif %}"
+                                                        onclick="return confirm('Are you sure you want to {% if not device.is_active %}activate{% else %}deactivate{% endif %} {{ device.device_name }}?');">
+                                                    <i class="bi {% if not device.is_active %}bi-check-circle{% else %}bi-x-circle{% endif %}"></i>
+                                                </button>
+                                            </form>                                             
                                         </div>
-                                    </td>
+                                    </td>                                    
+                                    
                                 </tr>
                                 {% endfor %}
                             {% else %}
@@ -396,7 +396,9 @@
                 <h5 class="modal-title" id="syncDevicesModalLabel">Sync Attendance Devices</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="syncDevicesForm">
+            <form id="syncDevicesForm" method="post" action="{% url 'attendance:device_list' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="sync_multiple">
                 <div class="modal-body">
                     <div class="mb-3">
                         <div class="form-check mb-2">
@@ -508,7 +510,6 @@
 {% block javascript %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Filter handling
         const searchInput = document.getElementById('searchInput');
         const searchButton = document.getElementById('searchButton');
         const statusFilter = document.getElementById('statusFilter');
@@ -558,7 +559,6 @@
             window.location.href = '{% url "attendance:device_list" %}';
         });
         
-        // Edit device modal
         const editDeviceModal = document.getElementById('editDeviceModal');
         if (editDeviceModal) {
             editDeviceModal.addEventListener('show.bs.modal', function(event) {
@@ -587,7 +587,6 @@
             });
         }
         
-        // Sync device confirmation
         const syncBtns = document.querySelectorAll('.sync-device-btn');
         syncBtns.forEach(btn => {
             btn.addEventListener('click', function(e) {
@@ -595,14 +594,31 @@
                 const id = this.getAttribute('data-id');
                 const name = this.getAttribute('data-name');
                 
-                document.getElementById('syncDeviceId').value = id;
-                document.getElementById('syncDeviceName').textContent = name;
-                
-                new bootstrap.Modal(document.getElementById('syncConfirmModal')).show();
+                if (confirm(`Are you sure you want to sync data from "${name}"?`)) {
+                    fetch('{% url "attendance:device_list" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: new URLSearchParams({
+                            'action': 'sync',
+                            'device_id': id
+                        })
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            window.location.href = '{% url "attendance:device_list" %}';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred while syncing the device.');
+                    });
+                }
             });
         });
         
-        // Test connection confirmation
         const testConnectionBtns = document.querySelectorAll('.test-connection-btn');
         testConnectionBtns.forEach(btn => {
             btn.addEventListener('click', function(e) {
@@ -610,72 +626,118 @@
                 const id = this.getAttribute('data-id');
                 const name = this.getAttribute('data-name');
                 
-                document.getElementById('testDeviceId').value = id;
-                document.getElementById('testDeviceName').textContent = name;
-                
-                new bootstrap.Modal(document.getElementById('testConnectionModal')).show();
+                if (confirm(`Are you sure you want to test connection to "${name}"?`)) {
+                    fetch('{% url "attendance:device_list" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: new URLSearchParams({
+                            'action': 'test_connection',
+                            'device_id': id
+                        })
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            window.location.href = '{% url "attendance:device_list" %}';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred while testing the connection.');
+                    });
+                }
             });
         });
         
-        // Sync devices form
+        const toggleStatusBtns = document.querySelectorAll('.toggle-status-btn');
+        toggleStatusBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const id = this.getAttribute('data-id');
+                const isActive = this.getAttribute('data-active') === 'true';
+                const action = isActive ? 'deactivate' : 'activate';
+                
+                if (confirm(`Are you sure you want to ${action} this device?`)) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '{% url "attendance:device_list" %}';
+                    
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrfmiddlewaretoken';
+                    csrfInput.value = '{{ csrf_token }}';
+                    
+                    const actionInput = document.createElement('input');
+                    actionInput.type = 'hidden';
+                    actionInput.name = 'action';
+                    actionInput.value = 'toggle_status';
+                    
+                    const deviceIdInput = document.createElement('input');
+                    deviceIdInput.type = 'hidden';
+                    deviceIdInput.name = 'device_id';
+                    deviceIdInput.value = id;
+                    
+                    form.appendChild(csrfInput);
+                    form.appendChild(actionInput);
+                    form.appendChild(deviceIdInput);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        });
+        
         const syncAllCheckbox = document.getElementById('sync_all');
         const devicesSelection = document.getElementById('devices_selection');
         const deviceCheckboxes = document.querySelectorAll('.device-checkbox');
         const syncDevicesForm = document.getElementById('syncDevicesForm');
         
-        syncAllCheckbox.addEventListener('change', function() {
-            if (this.checked) {
-                devicesSelection.style.opacity = '0.5';
-                deviceCheckboxes.forEach(cb => {
-                    cb.disabled = true;
-                });
-            } else {
-                devicesSelection.style.opacity = '1';
-                deviceCheckboxes.forEach(cb => {
-                    cb.disabled = false;
-                });
-            }
-        });
-        
-        syncDevicesForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const syncAll = syncAllCheckbox.checked;
-            const syncEmployees = document.getElementById('sync_employees').checked;
-            
-            if (!syncAll) {
-                const selectedDevices = Array.from(deviceCheckboxes)
-                    .filter(cb => cb.checked)
-                    .map(cb => cb.value);
-                
-                if (selectedDevices.length === 0) {
-                    alert('Please select at least one device to sync or choose "Sync All Active Devices"');
-                    return;
+        if (syncAllCheckbox) {
+            syncAllCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    devicesSelection.style.opacity = '0.5';
+                    deviceCheckboxes.forEach(cb => {
+                        cb.disabled = true;
+                    });
+                } else {
+                    devicesSelection.style.opacity = '1';
+                    deviceCheckboxes.forEach(cb => {
+                        cb.disabled = false;
+                    });
                 }
-            }
-            
-            // Here you would normally submit the form via AJAX
-            // For now, we'll just redirect to a URL that would handle this server-side
-            let url = new URL('{% url "attendance:device_list" %}');
-            url.searchParams.set('sync', 'true');
-            
-            if (syncAll) {
-                url.searchParams.set('sync_all', 'true');
-            } else {
-                const selectedDevices = Array.from(deviceCheckboxes)
-                    .filter(cb => cb.checked)
-                    .map(cb => cb.value);
-                url.searchParams.set('devices', selectedDevices.join(','));
-            }
-            
-            if (syncEmployees) {
-                url.searchParams.set('sync_employees', 'true');
-            }
-            
-            window.location.href = url.toString();
-        });
+            });
+        }
         
-        // Initialize tooltips
+        if (syncDevicesForm) {
+            syncDevicesForm.addEventListener('submit', function(e) {
+                const syncAll = syncAllCheckbox.checked;
+                
+                if (!syncAll) {
+                    const selectedDevices = Array.from(deviceCheckboxes)
+                        .filter(cb => cb.checked)
+                        .map(cb => cb.value);
+                    
+                    if (selectedDevices.length === 0) {
+                        e.preventDefault();
+                        alert('Please select at least one device to sync or choose "Sync All Active Devices"');
+                        return false;
+                    }
+                }
+                
+                if (syncAll) {
+                    syncAllCheckbox.value = 'true';
+                }
+                
+                const syncEmployees = document.getElementById('sync_employees');
+                if (syncEmployees.checked) {
+                    syncEmployees.value = 'true';
+                }
+                
+                return true;
+            });
+        }
+        
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
@@ -683,8 +745,3 @@
     });
 </script>
 {% endblock %}
-
-
-
-
-

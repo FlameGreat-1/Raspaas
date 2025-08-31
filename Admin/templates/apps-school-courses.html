@@ -133,26 +133,20 @@
                         </td>
                         <td>{{ department.created_at|date:"M d, Y" }}</td>
                         <td>
-                            <div class="dropdown">
-                                <button class="btn btn-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                    <i class="bi bi-three-dots-vertical"></i>
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="{% url 'employee:department_detail' department.pk %}">
-                                        <i class="ri-eye-line me-2"></i>View Details
-                                    </a></li>
-                                    {% if can_add_department %}
-                                    <li><a class="dropdown-item" href="{% url 'accounts:department_update' department.pk %}">
-                                        <i class="ri-edit-line me-2"></i>Edit
-                                    </a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="#" onclick="confirmDelete('{{ department.pk }}', '{{ department.name }}')">
-                                        <i class="ri-delete-bin-line me-2"></i>Delete
-                                    </a></li>
-                                    {% endif %}
-                                </ul>
+                            <div class="action-buttons">
+                                <a href="{% url 'employee:department_detail' department.pk %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                    <i class="ri-eye-line"></i>
+                                </a>
+                                {% if can_add_department %}
+                                <a href="{% url 'accounts:department_update' department.pk %}" class="btn btn-sm btn-outline-info" title="Edit">
+                                    <i class="ri-edit-line"></i>
+                                </a>
+                                <a href="#" class="btn btn-sm btn-outline-danger" title="Delete" onclick="confirmDelete('{{ department.pk }}', '{{ department.name }}')">
+                                    <i class="ri-delete-bin-line"></i>
+                                </a>
+                                {% endif %}
                             </div>
-                        </td>
+                        </td>                        
                     </tr>
                     {% empty %}
                     <tr>

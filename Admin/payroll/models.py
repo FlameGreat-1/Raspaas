@@ -50,7 +50,108 @@ from .utils import (
 
 logger = logging.getLogger(__name__)
 
+class PayslipManager(models.Manager):
+    def get_employee_payslips(self, employee, year=None, month=None):
+        queryset = self.filter(employee=employee)
 
+        if year:
+            queryset = queryset.filter(payroll_period__year=year)
+        if month:
+            queryset = queryset.filter(payroll_period__month=month)
+
+        return queryset.order_by("-payroll_period__year", "-payroll_period__month")
+
+    def get_department_payslips(self, department, payroll_period):
+        return self.filter(
+            employee__department=department, payroll_period=payroll_period
+        )
+
+    def get_role_payslips(self, role, payroll_period):
+        return self.filter(employee__role=role, payroll_period=payroll_period)
+
+    def bulk_calculate(self, payroll_period, employees=None):
+        if employees is None:
+            employees = CustomUser.active.filter(status="ACTIVE")
+
+        calculated_payslips = []
+        failed_employees = []
+
+        for employee in employees:
+            is_valid, message = PayrollValidationHelper.validate_employee_for_payroll(
+                employee, payroll_period.year, payroll_period.month
+            )
+
+            if not is_valid:
+                failed_employees.append(f"{employee.employee_code}: {message}")
+                continue
+
+            try:
+                payslip, created = self.get_or_create(
+                    payroll_period=payroll_period,
+                    employee=employee,
+                    defaults={"calculated_by": payroll_period.created_by},
+                )
+
+                if created or payslip.status == "DRAFT":
+                    payslip.calculate_payroll()
+                    calculated_payslips.append(payslip)
+
+            except Exception as e:
+                logger.error(
+                    f"Error calculating payroll for {employee.employee_code}: {str(e)}"
+                )
+                failed_employees.append(f"{employee.employee_code}: {str(e)}")
+                continue
+
+        if failed_employees:
+            logger.warning(
+                f"Failed to calculate payroll for: {'; '.join(failed_employees)}"
+            )
+
+        log_payroll_activity(
+            payroll_period.created_by,
+            "BULK_PAYROLL_CALCULATED",
+            {
+                "period_id": str(payroll_period.id),
+                "total_employees": len(employees),
+                "calculated_count": len(calculated_payslips),
+                "failed_count": len(failed_employees),
+            },
+        )
+
+        return calculated_payslips
+
+    def bulk_approve(self, payroll_period, user, employees=None):
+        if employees is None:
+            payslips = self.filter(payroll_period=payroll_period, status="CALCULATED")
+        else:
+            payslips = self.filter(
+                payroll_period=payroll_period,
+                employee__in=employees,
+                status="CALCULATED",
+            )
+
+        approved_count = 0
+        failed_approvals = []
+
+        for payslip in payslips:
+            try:
+                payslip.approve(user)
+                approved_count += 1
+            except Exception as e:
+                failed_approvals.append(f"{payslip.employee.employee_code}: {str(e)}")
+
+        log_payroll_activity(
+            user,
+            "BULK_PAYROLL_APPROVED",
+            {
+                "period_id": str(payroll_period.id),
+                "approved_count": approved_count,
+                "failed_count": len(failed_approvals),
+            },
+        )
+
+        return approved_count, failed_approvals
 class PayrollPeriod(models.Model):
     STATUS_CHOICES = [
         ("DRAFT", "Draft"),
@@ -151,9 +252,9 @@ class PayrollPeriod(models.Model):
 
         if self.end_date <= self.start_date:
             raise ValidationError("End date must be after start date")
-
-        if self.processing_date and self.processing_date < self.end_date:
-            raise ValidationError("Processing date cannot be before period end date")
+        
+        if self.processing_date and self.processing_date < self.start_date:
+            raise ValidationError("Processing date cannot be before period start date")
 
     def save(self, *args, **kwargs):
         if not self.period_name:
@@ -369,11 +470,6 @@ class PayrollPeriod(models.Model):
     def get_department_statistics(self):
         return self.department_summary
 
-
-
-
-
-
 class Payslip(models.Model):
     STATUS_CHOICES = [
         ("DRAFT", "Draft"),
@@ -533,7 +629,7 @@ class Payslip(models.Model):
     )
     approved_at = models.DateTimeField(null=True, blank=True)
 
-    objects = models.Manager()
+    objects = PayslipManager()
     active = ActiveManager()   
     class Meta:
         db_table = "payroll_payslips"
@@ -781,7 +877,7 @@ class SalaryAdvance(models.Model):
     )
 
     reason = models.TextField()
-    purpose_details = models.JSONField(default=dict, blank=True)
+    purpose_details = models.TextField(blank=True, null=True)
 
     requested_date = models.DateField(auto_now_add=True)
     approved_date = models.DateField(null=True, blank=True)
@@ -1523,111 +1619,6 @@ class PayrollManager(models.Manager):
 
         return period
 
-
-class PayslipManager(models.Manager):
-    def get_employee_payslips(self, employee, year=None, month=None):
-        queryset = self.filter(employee=employee)
-
-        if year:
-            queryset = queryset.filter(payroll_period__year=year)
-        if month:
-            queryset = queryset.filter(payroll_period__month=month)
-
-        return queryset.order_by("-payroll_period__year", "-payroll_period__month")
-
-    def get_department_payslips(self, department, payroll_period):
-        return self.filter(
-            employee__department=department, payroll_period=payroll_period
-        )
-
-    def get_role_payslips(self, role, payroll_period):
-        return self.filter(employee__role=role, payroll_period=payroll_period)
-
-    def bulk_calculate(self, payroll_period, employees=None):
-        if employees is None:
-            employees = CustomUser.active.filter(status="ACTIVE")
-
-        calculated_payslips = []
-        failed_employees = []
-
-        for employee in employees:
-            is_valid, message = PayrollValidationHelper.validate_employee_for_payroll(
-                employee, payroll_period.year, payroll_period.month
-            )
-
-            if not is_valid:
-                failed_employees.append(f"{employee.employee_code}: {message}")
-                continue
-
-            try:
-                payslip, created = self.get_or_create(
-                    payroll_period=payroll_period,
-                    employee=employee,
-                    defaults={"calculated_by": payroll_period.created_by},
-                )
-
-                if created or payslip.status == "DRAFT":
-                    payslip.calculate_payroll()
-                    calculated_payslips.append(payslip)
-
-            except Exception as e:
-                logger.error(
-                    f"Error calculating payroll for {employee.employee_code}: {str(e)}"
-                )
-                failed_employees.append(f"{employee.employee_code}: {str(e)}")
-                continue
-
-        if failed_employees:
-            logger.warning(
-                f"Failed to calculate payroll for: {'; '.join(failed_employees)}"
-            )
-
-        log_payroll_activity(
-            payroll_period.created_by,
-            "BULK_PAYROLL_CALCULATED",
-            {
-                "period_id": str(payroll_period.id),
-                "total_employees": len(employees),
-                "calculated_count": len(calculated_payslips),
-                "failed_count": len(failed_employees),
-            },
-        )
-
-        return calculated_payslips
-
-    def bulk_approve(self, payroll_period, user, employees=None):
-        if employees is None:
-            payslips = self.filter(payroll_period=payroll_period, status="CALCULATED")
-        else:
-            payslips = self.filter(
-                payroll_period=payroll_period,
-                employee__in=employees,
-                status="CALCULATED",
-            )
-
-        approved_count = 0
-        failed_approvals = []
-
-        for payslip in payslips:
-            try:
-                payslip.approve(user)
-                approved_count += 1
-            except Exception as e:
-                failed_approvals.append(f"{payslip.employee.employee_code}: {str(e)}")
-
-        log_payroll_activity(
-            user,
-            "BULK_PAYROLL_APPROVED",
-            {
-                "period_id": str(payroll_period.id),
-                "approved_count": approved_count,
-                "failed_count": len(failed_approvals),
-            },
-        )
-
-        return approved_count, failed_approvals
-
-
 class SalaryAdvanceManager(models.Manager):
     def get_employee_advances(self, employee, year=None):
         queryset = self.filter(employee=employee)
@@ -1861,26 +1852,31 @@ def setup_payroll_system_configurations():
         ),
     }
 
+    updated_count = 0
+    for key in payroll_settings.keys():
+        try:
+            existing = SystemConfiguration.objects.get(key=key)
+            if existing.setting_type != 'PAYROLL':
+                existing.setting_type = 'PAYROLL'
+                existing.save()
+                updated_count += 1
+        except SystemConfiguration.DoesNotExist:
+            pass
+    
     created_settings = []
     for key, (value, category, description) in payroll_settings.items():
         setting, created = SystemConfiguration.objects.get_or_create(
             key=key,
             defaults={
                 "value": value,
-                "category": category,
+                "setting_type": "PAYROLL", 
                 "description": description,
-                "setting_type": (
-                    "DECIMAL"
-                    if "." in value and value.replace(".", "").isdigit()
-                    else "TEXT"
-                ),
             },
         )
         if created:
             created_settings.append(setting)
 
     return created_settings
-
 
 def initialize_payroll_system():
     try:

@@ -24,52 +24,36 @@
             <div class="card-header d-flex align-items-center">
                 <h5 class="card-title mb-0 flex-grow-1">Device Information</h5>
                 <div class="flex-shrink-0">
-                    <div class="dropdown">
-                        <a class="btn btn-sm btn-light" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="ri-more-2-fill"></i>
+                    <div class="d-flex gap-1">
+                        <a href="#" class="btn btn-sm btn-outline-warning edit-device-btn" 
+                           data-bs-toggle="modal" data-bs-target="#editDeviceModal" 
+                           data-id="{{ device.id }}"
+                           data-device-id="{{ device.device_id }}"
+                           data-name="{{ device.device_name }}"
+                           data-type="{{ device.device_type }}"
+                           data-ip="{{ device.ip_address }}"
+                           data-port="{{ device.port }}"
+                           data-location="{{ device.location }}"
+                           data-department="{{ device.department.id|default:'' }}"
+                           data-status="{{ device.status }}"
+                           data-active="{{ device.is_active|yesno:'true,false' }}" 
+                           title="Edit Device">
+                            <i class="ri-pencil-line"></i>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li>
-                                <a class="dropdown-item edit-device-btn" href="#" 
-                                   data-bs-toggle="modal" data-bs-target="#editDeviceModal" 
-                                   data-id="{{ device.id }}"
-                                   data-device-id="{{ device.device_id }}"
-                                   data-name="{{ device.device_name }}"
-                                   data-type="{{ device.device_type }}"
-                                   data-ip="{{ device.ip_address }}"
-                                   data-port="{{ device.port }}"
-                                   data-location="{{ device.location }}"
-                                   data-department="{{ device.department.id|default:'' }}"
-                                   data-status="{{ device.status }}"
-                                   data-active="{{ device.is_active|yesno:'true,false' }}">
-                                    <i class="ri-pencil-line align-bottom me-2 text-muted"></i> Edit Device
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item sync-device-btn" href="#" data-id="{{ device.id }}" data-name="{{ device.device_name }}">
-                                    <i class="ri-refresh-line align-bottom me-2 text-muted"></i> Sync Data
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item test-connection-btn" href="#" data-id="{{ device.id }}" data-name="{{ device.device_name }}">
-                                    <i class="ri-link-m align-bottom me-2 text-muted"></i> Test Connection
-                                </a>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <a class="dropdown-item {% if not device.is_active %}text-success{% else %}text-danger{% endif %} toggle-status-btn" 
-                                   href="#" data-id="{{ device.id }}" data-active="{{ device.is_active|yesno:'true,false' }}">
-                                    {% if not device.is_active %}
-                                    <i class="ri-checkbox-circle-line align-bottom me-2 text-success"></i> Activate
-                                    {% else %}
-                                    <i class="ri-close-circle-line align-bottom me-2 text-danger"></i> Deactivate
-                                    {% endif %}
-                                </a>
-                            </li>
-                        </ul>
+                        
+                        <form method="post" action="{% url 'attendance:device_detail' id=device.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="toggle_status">
+                            <input type="hidden" name="device_id" value="{{ device.id }}">
+                            <button type="submit" class="btn btn-sm {% if not device.is_active %}btn-outline-success{% else %}btn-outline-danger{% endif %}" 
+                                    title="{% if not device.is_active %}Activate{% else %}Deactivate{% endif %}"
+                                    onclick="return confirm('Are you sure you want to {% if not device.is_active %}activate{% else %}deactivate{% endif %} {{ device.device_name }}?');">
+                                <i class="{% if not device.is_active %}ri-checkbox-circle-line{% else %}ri-close-circle-line{% endif %}"></i>
+                            </button>
+                        </form>
                     </div>
                 </div>
-            </div>
+            </div>                
             <div class="card-body">
                 <div class="text-center mb-4">
                     <div class="position-relative d-inline-block">
@@ -188,13 +172,23 @@
                     </table>
                 </div>
                 <div class="d-flex gap-2 justify-content-center mt-4">
-                    <button type="button" class="btn btn-primary sync-device-btn" data-id="{{ device.id }}" data-name="{{ device.device_name }}">
-                        <i class="ri-refresh-line align-bottom me-1"></i> Sync Data
-                    </button>
-                    <button type="button" class="btn btn-light test-connection-btn" data-id="{{ device.id }}" data-name="{{ device.device_name }}">
-                        <i class="ri-link-m align-bottom me-1"></i> Test Connection
-                    </button>
-                </div>
+                    <form method="post" action="{% url 'attendance:device_detail' id=device.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="sync">
+                        <input type="hidden" name="device_id" value="{{ device.id }}">
+                        <button type="submit" class="btn btn-primary" onclick="return confirm('Are you sure you want to sync data from {{ device.device_name }}?');">
+                            <i class="ri-refresh-line align-bottom me-1"></i> Sync Data
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'attendance:device_detail' id=device.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="test_connection">
+                        <input type="hidden" name="device_id" value="{{ device.id }}">
+                        <button type="submit" class="btn btn-light" onclick="return confirm('Are you sure you want to test connection to {{ device.device_name }}?');">
+                            <i class="ri-link-m align-bottom me-1"></i> Test Connection
+                        </button>
+                    </form>
+                </div>                  
             </div>
         </div>
     </div>
@@ -297,9 +291,14 @@
                                             <i class="ri-calendar-todo-line fs-1 text-muted mb-2"></i>
                                             <h5 class="mb-1">No attendance logs found</h5>
                                             <p class="text-muted mb-3">No logs found for the selected date range.</p>
-                                            <button type="button" class="btn btn-primary sync-device-btn" data-id="{{ device.id }}" data-name="{{ device.device_name }}">
-                                                <i class="ri-refresh-line align-bottom me-1"></i> Sync Data Now
-                                            </button>
+                                            <form method="post" action="{% url 'attendance:device_detail' id=device.id %}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="sync">
+                                                <input type="hidden" name="device_id" value="{{ device.id }}">
+                                                <button type="submit" class="btn btn-primary" onclick="return confirm('Are you sure you want to sync data from {{ device.device_name }}?');">
+                                                    <i class="ri-refresh-line align-bottom me-1"></i> Sync Data Now
+                                                </button>
+                                            </form>                                            
                                         </div>
                                     </td>
                                 </tr>

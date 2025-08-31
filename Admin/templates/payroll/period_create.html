@@ -1,0 +1,215 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Create Payroll Period" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Payroll" title="Create Payroll Period"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Create New Payroll Period</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger" role="alert">
+                        {% for error in form.non_field_errors %}
+                        <p class="mb-0">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_year" class="form-label">Year <span class="text-danger">*</span></label>
+                                {{ form.year }}
+                                {% if form.year.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.year.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>                            
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_month" class="form-label">Month <span class="text-danger">*</span></label>
+                                <select name="month" id="id_month" class="form-select" required>
+                                    {% for month_id, month_name in months %}
+                                    <option value="{{ month_id }}" {% if form.month.value == month_id %}selected{% endif %}>{{ month_name }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% if form.month.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.month.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_start_date" class="form-label">Start Date <span class="text-danger">*</span></label>
+                                <input type="text" name="start_date" id="id_start_date" class="form-control datepicker-input" 
+                                       value="{{ form.start_date.value|date:'Y-m-d' }}" data-date-format="yyyy-mm-dd" required>
+                                {% if form.start_date.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.start_date.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_end_date" class="form-label">End Date <span class="text-danger">*</span></label>
+                                <input type="text" name="end_date" id="id_end_date" class="form-control datepicker-input" 
+                                       value="{{ form.end_date.value|date:'Y-m-d' }}" data-date-format="yyyy-mm-dd" required>
+                                {% if form.end_date.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.end_date.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_processing_date" class="form-label">Processing Date <span class="text-danger">*</span></label>
+                                <input type="text" name="processing_date" id="id_processing_date" class="form-control datepicker-input" 
+                                       value="{{ form.processing_date.value|date:'Y-m-d' }}" data-date-format="yyyy-mm-dd" required>
+                                {% if form.processing_date.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.processing_date.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_cutoff_date" class="form-label">Cutoff Date <span class="text-danger">*</span></label>
+                                <input type="text" name="cutoff_date" id="id_cutoff_date" class="form-control datepicker-input" 
+                                       value="{{ form.cutoff_date.value|date:'Y-m-d' }}" data-date-format="yyyy-mm-dd" required>
+                                {% if form.cutoff_date.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.cutoff_date.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="alert alert-info" role="alert">
+                                <div class="d-flex">
+                                    <i class="ri-information-line fs-4 me-3 align-self-center"></i>
+                                    <div>
+                                        <h5 class="alert-heading mb-1">Important Information</h5>
+                                        <p class="mb-0">
+                                            Creating a new payroll period will automatically generate attendance summaries for all active employees.
+                                            This process may take a few moments to complete.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-12 d-flex justify-content-end gap-2">
+                            <a href="{% url 'payroll:period_list' %}" class="btn btn-light">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Create Payroll Period</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+{% block javascript %}
+<script src="/static/assets/libs/air-datepicker/air-datepicker.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const datepickerElements = document.querySelectorAll('.datepicker-input');
+        datepickerElements.forEach(function(element) {
+            new AirDatepicker(element, {
+                dateFormat: 'yyyy-MM-dd'
+            });
+        });
+        
+        const yearSelect = document.getElementById('id_year');
+        const monthSelect = document.getElementById('id_month');
+        const startDateInput = document.getElementById('id_start_date');
+        const endDateInput = document.getElementById('id_end_date');
+        
+        function updateDates() {
+            const year = parseInt(yearSelect.value.replace(/,/g, ''));
+            const month = parseInt(monthSelect.value);
+            
+            if (!isNaN(year) && !isNaN(month)) {
+                const startDate = new Date(year, month - 1, 1);
+                const lastDay = new Date(year, month, 0).getDate();
+                const endDate = new Date(year, month - 1, lastDay);
+                
+                startDateInput.value = formatDate(startDate);
+                endDateInput.value = formatDate(endDate);
+            }
+        }
+        
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        yearSelect.addEventListener('change', updateDates);
+        monthSelect.addEventListener('change', updateDates);
+
+        const form = document.querySelector('form');
+        form.addEventListener('submit', function(e) {
+            if(yearSelect) {
+                const selectedIndex = yearSelect.selectedIndex;
+                if(selectedIndex >= 0) {
+                    const selectedOption = yearSelect.options[selectedIndex];
+                    const cleanValue = selectedOption.value.replace(/,/g, '');
+                    selectedOption.value = cleanValue;
+                    yearSelect.value = cleanValue;
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

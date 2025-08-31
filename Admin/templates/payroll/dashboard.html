@@ -1,0 +1,666 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Payroll" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Dashboard" title="Payroll"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xxl-8">
+        <div class="row">
+            <div class="col-xxl col-sm-6">
+                <div class="card overflow-hidden">
+                    <div class="card-body bg-primary-subtle position-relative z-1">
+                        <div class="d-flex gap-2">
+                            <div class="school-icon bg-primary d-flex justify-content-center align-items-center fs-4">
+                                <i class="ri-user-line" id="hexagon"></i>
+                            </div>
+                            <div class="text-center">
+                                <span class="d-block fw-semibold mb-2 fs-5">Total Employees</span>
+                                <h4 class="mb-0 fw-semibold">{{ payroll_stats.total_employees }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xxl col-sm-6">
+                <div class="card overflow-hidden">
+                    <div class="card-body bg-info-subtle position-relative z-1">
+                        <div class="d-flex gap-2">
+                            <div class="school-icon bg-info d-flex justify-content-center align-items-center fs-4">
+                                <i class="ri-building-line" id="hexagon"></i>
+                            </div>
+                            <div class="text-center">
+                                <span class="d-block fw-semibold mb-2 fs-5">Departments</span>
+                                <h4 class="mb-0 fw-semibold">{{ payroll_stats.total_departments }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xxl col-sm-6">
+                <div class="card overflow-hidden">
+                    <div class="card-body bg-success-subtle position-relative z-1">
+                        <div class="d-flex gap-2">
+                            <div class="school-icon bg-success d-flex justify-content-center align-items-center fs-4">
+                                <i class="ri-briefcase-line" id="hexagon"></i>
+                            </div>
+                            <div class="text-center">
+                                <span class="d-block fw-semibold mb-2 fs-5">Roles</span>
+                                <h4 class="mb-0 fw-semibold">{{ payroll_stats.total_roles }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% if current_period_stats %}
+            <div class="col-lg-12">
+                <div class="card card-h-100">
+                    <div class="card-header">
+                        <h4>Current Payroll Period: {{ current_period_stats.period_name }}</h4>
+                        <div class="action-buttons">
+                            <a href="{% url 'payroll:period_detail' current_period.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if can_process_payroll %}
+                            <a href="{% url 'payroll:period_process' current_period.id %}" class="btn btn-sm btn-outline-info" title="Process Payroll">
+                                <i class="bi bi-gear"></i>
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'payroll:period_list' %}" class="btn btn-sm btn-outline-secondary" title="View All Periods">
+                                <i class="bi bi-list"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-4">
+                                    <h5 class="card-title mb-3">Period Status</h5>
+                                    <div class="d-flex align-items-center">
+                                        {% if current_period_stats.status == 'DRAFT' %}
+                                        <span class="badge bg-warning px-3 rounded-3">Draft</span>
+                                        {% elif current_period_stats.status == 'PROCESSING' %}
+                                        <span class="badge bg-info px-3 rounded-3">Processing</span>
+                                        {% elif current_period_stats.status == 'COMPLETED' %}
+                                        <span class="badge bg-primary px-3 rounded-3">Completed</span>
+                                        {% elif current_period_stats.status == 'APPROVED' %}
+                                        <span class="badge bg-success px-3 rounded-3">Approved</span>
+                                        {% elif current_period_stats.status == 'PAID' %}
+                                        <span class="badge bg-success px-3 rounded-3">Paid</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary px-3 rounded-3">{{ current_period_stats.status }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-4">
+                                    <h5 class="card-title mb-3">Completion</h5>
+                                    <div class="w-100">
+                                        <div class="d-flex justify-content-between align-items-center fs-13">
+                                            <p class="text-primary mb-1">{{ current_period_stats.completion_percentage|floatformat:1 }}%</p>
+                                            <p class="text-muted mb-1">{{ current_period_stats.calculated_count }} / {{ payroll_stats.total_employees }}</p>
+                                        </div>
+                                        <div class="progress progress-sm">
+                                            <div class="progress-bar bg-primary" style="width: {{ current_period_stats.completion_percentage }}%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-4">
+                                    <h5 class="card-title mb-3">Total Gross Salary</h5>
+                                    <h3 class="fw-semibold text-primary">${{ current_period_stats.total_gross|floatformat:2 }}</h3>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-4">
+                                    <h5 class="card-title mb-3">Total Deductions</h5>
+                                    <h3 class="fw-semibold text-danger">${{ current_period_stats.total_deductions|floatformat:2 }}</h3>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-4">
+                                    <h5 class="card-title mb-3">Total Net Salary</h5>
+                                    <h3 class="fw-semibold text-success">${{ current_period_stats.total_net|floatformat:2 }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="mb-4">
+                                    <h5 class="card-title mb-3">Calculated Payslips</h5>
+                                    <div class="d-flex align-items-center">
+                                        <h4 class="fw-semibold mb-0">{{ current_period_stats.calculated_count }}</h4>
+                                        <span class="ms-2 text-muted">of {{ payroll_stats.total_employees }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-4">
+                                    <h5 class="card-title mb-3">Approved Payslips</h5>
+                                    <div class="d-flex align-items-center">
+                                        <h4 class="fw-semibold mb-0">{{ current_period_stats.approved_count }}</h4>
+                                        <span class="ms-2 text-muted">of {{ current_period_stats.calculated_count }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-lg-12">
+                <div class="card card-h-100">
+                    <div class="card-body">
+                        <div class="text-center py-4">
+                            <h4>No Active Payroll Period</h4>
+                            <p class="text-muted mb-4">There is no active payroll period for the current month.</p>
+                            {% if can_create_period %}
+                            <a href="{% url 'payroll:period_create' %}" class="btn btn-primary">Create Payroll Period</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="col-lg-12">
+                <div class="card card-h-100">
+                    <div class="card-header">
+                        <h4>Department Statistics</h4>
+                        <div class="action-buttons">
+                            <a href="{% url 'payroll:department_summary_report' %}" class="btn btn-sm btn-outline-primary" title="View Full Report">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive" data-simplebar>
+                            <table class="table table-hover text-nowrap">
+                                <thead class="table-light border-0">
+                                    <tr>
+                                        <th class="text-muted">Department</th>
+                                        <th class="text-muted">Employees</th>
+                                        <th class="text-muted">Calculated</th>
+                                        <th class="text-muted">Total Gross</th>
+                                        <th class="text-muted">Total Net</th>
+                                        <th class="text-muted">Budget Utilization</th>
+                                        <th class="text-muted">Efficiency</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for dept_name, stats in department_stats.items %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ dept_name }}</td>
+                                        <td class="fw-semibold">{{ stats.employee_count }}</td>
+                                        <td class="fw-semibold">{{ stats.calculated_count }}</td>
+                                        <td class="fw-semibold">${{ stats.total_gross|floatformat:2 }}</td>
+                                        <td class="fw-semibold">${{ stats.total_net|floatformat:2 }}</td>
+                                        <td>
+                                            <div class="w-100">
+                                                <div class="d-flex justify-content-between align-items-center fs-13">
+                                                    <p class="text-{% if stats.budget_utilization > 90 %}danger{% elif stats.budget_utilization > 75 %}warning{% else %}success{% endif %} mb-1">{{ stats.budget_utilization|floatformat:1 }}%</p>
+                                                </div>
+                                                <div class="progress progress-sm">
+                                                    <div class="progress-bar bg-{% if stats.budget_utilization > 90 %}danger{% elif stats.budget_utilization > 75 %}warning{% else %}success{% endif %}" style="width: {{ stats.budget_utilization }}%"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="w-100">
+                                                <div class="d-flex justify-content-between align-items-center fs-13">
+                                                    <p class="text-{% if stats.efficiency_score < 70 %}danger{% elif stats.efficiency_score < 85 %}warning{% else %}success{% endif %} mb-1">{{ stats.efficiency_score|floatformat:1 }}</p>
+                                                </div>
+                                                <div class="progress progress-sm">
+                                                    <div class="progress-bar bg-{% if stats.efficiency_score < 70 %}danger{% elif stats.efficiency_score < 85 %}warning{% else %}success{% endif %}" style="width: {{ stats.efficiency_score }}%"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center py-3">No department statistics available</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-12">
+                <div class="card card-h-100">
+                    <div class="card-header">
+                        <h4>Payroll Reports</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="card border shadow-none">
+                                    <div class="card-body text-center">
+                                        <div class="avatar-sm mx-auto mb-3">
+                                            <span class="avatar-title rounded-circle bg-primary-subtle text-primary fs-4">
+                                                <i class="ri-building-line"></i>
+                                            </span>
+                                        </div>
+                                        <h5 class="mb-1">Dept. Summary</h5>
+                                        <p class="text-muted mb-3">Payroll breakdown by department</p>
+                                        <a href="{% url 'payroll:department_summary_report' %}" class="btn btn-primary btn-sm">View Report</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card border shadow-none">
+                                    <div class="card-body text-center">
+                                        <div class="avatar-sm mx-auto mb-3">
+                                            <span class="avatar-title rounded-circle bg-success-subtle text-success fs-4">
+                                                <i class="ri-percent-line"></i>
+                                            </span>
+                                        </div>
+                                        <h5 class="mb-1">Tax Report</h5>
+                                        <p class="text-muted mb-3">Tax analysis and breakdown</p>
+                                        <a href="{% url 'payroll:tax_report' %}" class="btn btn-success btn-sm">View Report</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card border shadow-none">
+                                    <div class="card-body text-center">
+                                        <div class="avatar-sm mx-auto mb-3">
+                                            <span class="avatar-title rounded-circle bg-info-subtle text-info fs-4">
+                                                <i class="ri-calendar-line"></i>
+                                            </span>
+                                        </div>
+                                        <h5 class="mb-1">Year to Date</h5>
+                                        <p class="text-muted mb-3">Employee YTD earnings</p>
+                                        <a href="{% url 'payroll:year_to_date_report' %}" class="btn btn-info btn-sm">View Report</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card border shadow-none">
+                                    <div class="card-body text-center">
+                                        <div class="avatar-sm mx-auto mb-3">
+                                            <span class="avatar-title rounded-circle bg-warning-subtle text-warning fs-4">
+                                                <i class="ri-bar-chart-line"></i>
+                                            </span>
+                                        </div>
+                                        <h5 class="mb-1">Payroll Comparison</h5>
+                                        <p class="text-muted mb-3">Compare payroll periods</p>
+                                        <a href="{% url 'payroll:payroll_comparison_report' %}" class="btn btn-warning btn-sm">View Report</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card card-h-100">
+                    <div class="card-header">
+                        <h4>Salary Advances</h4>
+                        <div class="action-buttons">
+                            <a href="{% url 'payroll:advance_list' %}" class="btn btn-sm btn-outline-primary" title="View All Advances">
+                                <i class="bi bi-list"></i>
+                            </a>
+                            <a href="{% url 'payroll:advance_create' %}" class="btn btn-sm btn-outline-success" title="Create New Advance">
+                                <i class="bi bi-plus"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <h5 class="card-title mb-1">Pending</h5>
+                                    <h3 class="fw-semibold text-warning">{{ advance_stats.pending_count }}</h3>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <h5 class="card-title mb-1">Active</h5>
+                                    <h3 class="fw-semibold text-primary">{{ advance_stats.active_count }}</h3>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <h5 class="card-title mb-1">Outstanding</h5>
+                                    <h3 class="fw-semibold text-danger">${{ advance_stats.total_outstanding|floatformat:2 }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h5 class="card-title mb-3">Recent Advances</h5>
+                        <div class="table-responsive" data-simplebar style="max-height: 250px;">
+                            <table class="table table-hover text-nowrap">
+                                <thead class="table-light border-0">
+                                    <tr>
+                                        <th class="text-muted">Employee</th>
+                                        <th class="text-muted">Amount</th>
+                                        <th class="text-muted">Status</th>
+                                        <th class="text-muted">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for advance in advance_stats.recent_advances %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ advance.employee.get_full_name }}</td>
+                                        <td class="fw-semibold">${{ advance.amount|floatformat:2 }}</td>
+                                        <td>
+                                            {% if advance.status == 'PENDING' %}
+                                            <span class="badge bg-warning px-3 rounded-3">Pending</span>
+                                            {% elif advance.status == 'APPROVED' %}
+                                            <span class="badge bg-info px-3 rounded-3">Approved</span>
+                                            {% elif advance.status == 'ACTIVE' %}
+                                            <span class="badge bg-primary px-3 rounded-3">Active</span>
+                                            {% elif advance.status == 'COMPLETED' %}
+                                            <span class="badge bg-success px-3 rounded-3">Completed</span>
+                                            {% elif advance.status == 'CANCELLED' %}
+                                            <span class="badge bg-danger px-3 rounded-3">Cancelled</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="fw-semibold">{{ advance.requested_date|date:"d/m/Y" }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-3">No recent advances</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-6">
+                <div class="card card-h-100">
+                    <div class="card-header">
+                        <h4>Bank Transfers</h4>
+                        <div class="action-buttons">
+                            <a href="{% url 'payroll:bank_transfer_list' %}" class="btn btn-sm btn-outline-primary" title="View All Transfers">
+                                <i class="bi bi-list"></i>
+                            </a>
+                            <a href="{% url 'payroll:bank_transfer_create' %}" class="btn btn-sm btn-outline-success" title="Create New Transfer">
+                                <i class="bi bi-plus"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <h5 class="card-title mb-1">Pending</h5>
+                                    <h3 class="fw-semibold text-warning">{{ bank_transfer_stats.pending_count }}</h3>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <h5 class="card-title mb-1">Generated</h5>
+                                    <h3 class="fw-semibold text-primary">{{ bank_transfer_stats.generated_count }}</h3>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <h5 class="card-title mb-1">Sent</h5>
+                                    <h3 class="fw-semibold text-success">{{ bank_transfer_stats.sent_count }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <h5 class="card-title mb-3">Recent Transfers</h5>
+                        <div class="table-responsive" data-simplebar style="max-height: 250px;">
+                            <table class="table table-hover text-nowrap">
+                                <thead class="table-light border-0">
+                                    <tr>
+                                        <th class="text-muted">Reference</th>
+                                        <th class="text-muted">Period</th>
+                                        <th class="text-muted">Amount</th>
+                                        <th class="text-muted">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for transfer in bank_transfer_stats.recent_transfers %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ transfer.reference_number }}</td>
+                                        <td class="fw-semibold">{{ transfer.payroll_period.period_name }}</td>
+                                        <td class="fw-semibold">${{ transfer.total_amount|floatformat:2 }}</td>
+                                        <td>
+                                            {% if transfer.status == 'PENDING' %}
+                                            <span class="badge bg-warning px-3 rounded-3">Pending</span>
+                                            {% elif transfer.status == 'GENERATED' %}
+                                            <span class="badge bg-info px-3 rounded-3">Generated</span>
+                                            {% elif transfer.status == 'SENT' %}
+                                            <span class="badge bg-primary px-3 rounded-3">Sent</span>
+                                            {% elif transfer.status == 'PROCESSED' %}
+                                            <span class="badge bg-success px-3 rounded-3">Processed</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-3">No recent transfers</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xxl-4">
+        <div class="card">
+            <div class="card-header">
+                <h4>Recent Payroll Periods</h4>
+                <div class="action-buttons">
+                    <a href="{% url 'payroll:period_list' %}" class="btn btn-sm btn-outline-primary" title="View All Periods">
+                        <i class="bi bi-list"></i>
+                    </a>
+                    {% if can_create_period %}
+                    <a href="{% url 'payroll:period_create' %}" class="btn btn-sm btn-outline-success" title="Create New Period">
+                        <i class="bi bi-plus"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive" data-simplebar>
+                    <table class="table table-hover text-nowrap">
+                        <thead class="table-light border-0">
+                            <tr>
+                                <th class="text-muted">Period</th>
+                                <th class="text-muted">Status</th>
+                                <th class="text-muted">Employees</th>
+                                <th class="text-muted">Total Net</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for period in recent_periods %}
+                            <tr>
+                                <td class="fw-semibold">{{ period.period_name }}</td>
+                                <td>
+                                    {% if period.status == 'DRAFT' %}
+                                    <span class="badge bg-warning px-3 rounded-3">Draft</span>
+                                    {% elif period.status == 'PROCESSING' %}
+                                    <span class="badge bg-info px-3 rounded-3">Processing</span>
+                                    {% elif period.status == 'COMPLETED' %}
+                                    <span class="badge bg-primary px-3 rounded-3">Completed</span>
+                                    {% elif period.status == 'APPROVED' %}
+                                    <span class="badge bg-success px-3 rounded-3">Approved</span>
+                                    {% elif period.status == 'PAID' %}
+                                    <span class="badge bg-success px-3 rounded-3">Paid</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary px-3 rounded-3">{{ period.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-semibold">{{ period.total_employees }}</td>
+                                <td class="fw-semibold">${{ period.total_net_salary|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-3">No payroll periods found</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-4">
+                    <h5 class="card-title mb-3">System Validation</h5>
+                    {% if system_validation.status == 'success' %}
+                    <div class="alert alert-success mb-0">
+                        <i class="ri-check-line me-2"></i> Payroll system is properly configured and ready for use.
+                    </div>
+                    {% else %}
+                    <div class="alert alert-danger mb-0">
+                        <i class="ri-error-warning-line me-2"></i> {{ system_validation.message }}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="mt-4">
+                    <h5 class="card-title mb-3">Quick Actions</h5>
+                    <div class="d-grid gap-2">
+                        {% if can_create_period %}
+                        <a href="{% url 'payroll:period_create' %}" class="btn btn-primary">
+                            <i class="ri-add-line me-1"></i> Create Payroll Period
+                        </a>
+                        {% endif %}
+                        {% if can_process_payroll %}
+                        <a href="{% url 'payroll:period_process' current_period.id %}" class="btn btn-info">
+                            <i class="ri-settings-line me-1"></i> Process Current Period
+                        </a>
+                        {% endif %}
+                        {% if can_view_reports %}
+                        <div class="btn-group w-100">
+                            <button type="button" class="btn btn-outline-primary">
+                                <i class="ri-file-chart-line me-1"></i> View Reports
+                            </button>
+                            <button type="button" class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span class="visually-hidden">Toggle Dropdown</span>
+                            </button>
+                            <ul class="dropdown-menu w-100">
+                                <li><a class="dropdown-item" href="{% url 'payroll:department_summary_report' %}">Department Summary</a></li>
+                                <li><a class="dropdown-item" href="{% url 'payroll:tax_report' %}">Tax Report</a></li>
+                                <li><a class="dropdown-item" href="{% url 'payroll:year_to_date_report' %}">Year to Date</a></li>
+                                <li><a class="dropdown-item" href="{% url 'payroll:payroll_comparison_report' %}">Payroll Comparison</a></li>
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block javascript %}
+<script src="/static/assets/libs/apexcharts/apexcharts.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (document.getElementById('departmentBudgetChart')) {
+            var departmentBudgetOptions = {
+                series: [
+                    {% for dept_name, stats in department_stats.items %}
+                    {{ stats.budget_utilization|floatformat:1 }}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                chart: {
+                    height: 350,
+                    type: 'radialBar',
+                },
+                plotOptions: {
+                    radialBar: {
+                        dataLabels: {
+                            name: {
+                                fontSize: '22px',
+                            },
+                            value: {
+                                fontSize: '16px',
+                                formatter: function(val) {
+                                    return val + '%';
+                                }
+                            },
+                            total: {
+                                show: true,
+                                label: 'Average',
+                                formatter: function(w) {
+                                    return w.globals.seriesTotals.reduce((a, b) => a + b, 0) / w.globals.series.length + '%';
+                                }
+                            }
+                        }
+                    }
+                },
+                labels: [
+                    {% for dept_name, stats in department_stats.items %}
+                    '{{ dept_name }}'{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                colors: ['#6658dd', '#1abc9c', '#f7b84b', '#fa5c7c', '#4a81d4', '#e3eaef']
+            };
+            var departmentBudgetChart = new ApexCharts(document.getElementById('departmentBudgetChart'), departmentBudgetOptions);
+            departmentBudgetChart.render();
+        }
+
+        if (document.getElementById('payrollDistributionChart') && {{ current_period_stats.total_gross|default:0 }} > 0) {
+            var payrollDistributionOptions = {
+                series: [
+                    {{ current_period_stats.total_basic|default:0 }}, 
+                    {{ current_period_stats.total_allowances|default:0 }}, 
+                    {{ current_period_stats.total_overtime|default:0 }}, 
+                    {{ current_period_stats.total_deductions|default:0 }}
+                ],
+                chart: {
+                    type: 'donut',
+                    height: 350
+                },
+                labels: ['Basic Salary', 'Allowances', 'Overtime', 'Deductions'],
+                colors: ['#6658dd', '#1abc9c', '#f7b84b', '#fa5c7c'],
+                responsive: [{
+                    breakpoint: 480,
+                    options: {
+                        chart: {
+                            width: 200
+                        },
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }],
+                tooltip: {
+                    y: {
+                        formatter: function(value) {
+                            return '$' + value.toFixed(2);
+                        }
+                    }
+                }
+            };
+            var payrollDistributionChart = new ApexCharts(document.getElementById('payrollDistributionChart'), payrollDistributionOptions);
+            payrollDistributionChart.render();
+        }
+    });
+</script>
+{% endblock %}
+

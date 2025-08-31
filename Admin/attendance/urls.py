@@ -41,11 +41,12 @@ urlpatterns = [
     
     # Leave URLs
     path('leave/', views.Leave.as_view(), name='leave_request_list'),
-    path('leave/<uuid:request_id>/', views.Leave.as_view(), name='leave_request_detail'),
+    path('leave/<uuid:request_id>/', views.Leave.as_view(), name='leave_request_detail'),  # UUID for LeaveRequest
     path('leave/types/', views.Leave.as_view(), name='leave_type_list'),
-    path('leave/types/<uuid:type_id>/', views.Leave.as_view(), name='leave_type_detail'),
+    path('leave/types/<int:type_id>/', views.Leave.as_view(), name='leave_type_detail'),  # Integer for LeaveType
     path('leave/balances/', views.Leave.as_view(), name='leave_balance_list'),
-    path('leave/balances/<uuid:balance_id>/', views.Leave.as_view(), name='leave_balance_detail'),
+    path('leave/balances/<int:balance_id>/', views.Leave.as_view(), name='leave_balance_detail'),  # Integer for LeaveBalance
     path('employee/<int:employee_id>/leave/', views.Leave.as_view(), name='employee_leave_requests'),
     path('employee/<int:employee_id>/leave/balances/', views.Leave.as_view(), name='employee_leave_balances'),
+
 ]

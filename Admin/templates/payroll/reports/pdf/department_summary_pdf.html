@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+{% load payroll_filters %}
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Department Summary Report</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #333;
+        }
+        .container {
+            width: 100%;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+            color: #333;
+        }
+        .header p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .report-info {
+            margin-bottom: 20px;
+        }
+        .report-info table {
+            width: 100%;
+        }
+        .report-info td {
+            padding: 5px;
+            vertical-align: top;
+        }
+        .report-info .label {
+            font-weight: bold;
+            width: 150px;
+        }
+        table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table.data-table th {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-weight: bold;
+        }
+        table.data-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .page-break {
+            page-break-after: always;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ company_name }}</h1>
+            <p>Department Summary Report</p>
+            <p>Payroll Period: {{ period.period_name }}</p>
+        </div>
+        
+        <div class="report-info">
+            <table>
+                <tr>
+                    <td class="label">Report Date:</td>
+                    <td>{{ generated_date }}</td>
+                    <td class="label">Period Status:</td>
+                    <td>{{ period.get_status_display }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Total Employees:</td>
+                    <td>{{ period.total_employees }}</td>
+                    <td class="label">Total Departments:</td>
+                    <td>{{ department_summaries|length }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Total Gross Salary:</td>
+                    <td>${{ period.total_gross_salary|floatformat:2 }}</td>
+                    <td class="label">Total Net Salary:</td>
+                    <td>${{ period.total_net_salary|floatformat:2 }}</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="section-title">Department Summary</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Department</th>
+                    <th>Employees</th>
+                    <th>Total Basic</th>
+                    <th>Total Allowances</th>
+                    <th>Total Overtime</th>
+                    <th>Total Gross</th>
+                    <th>Total Deductions</th>
+                    <th>Total Net</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dept_name, summary in department_summaries.items %}
+                <tr>
+                    <td>{{ dept_name }}</td>
+                    <td class="text-center">{{ summary.employee_count }}</td>
+                    <td class="text-right">${{ summary.total_basic_salary|floatformat:2 }}</td>
+                    <td class="text-right">${{ summary.total_allowances|floatformat:2 }}</td>
+                    <td class="text-right">${{ summary.total_overtime_pay|floatformat:2 }}</td>
+                    <td class="text-right">${{ summary.total_gross_salary|floatformat:2 }}</td>
+                    <td class="text-right">${{ summary.total_deductions|floatformat:2 }}</td>
+                    <td class="text-right">${{ summary.total_net_salary|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+                <tr>
+                    <td><strong>Total</strong></td>
+                    <td class="text-center"><strong>{{ period.total_employees }}</strong></td>
+                    <td class="text-right"><strong>${{ period.total_basic_salary|floatformat:2 }}</strong></td>
+                    <td class="text-right"><strong>${{ period.total_allowances|floatformat:2 }}</strong></td>
+                    <td class="text-right"><strong>${{ period.total_overtime_pay|floatformat:2 }}</strong></td>
+                    <td class="text-right"><strong>${{ period.total_gross_salary|floatformat:2 }}</strong></td>
+                    <td class="text-right"><strong>${{ period.total_deductions|floatformat:2 }}</strong></td>
+                    <td class="text-right"><strong>${{ period.total_net_salary|floatformat:2 }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="section-title">EPF/ETF Contributions</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Department</th>
+                    <th>EPF Employee</th>
+                    <th>EPF Employer</th>
+                    <th>ETF</th>
+                    <th>Total Contributions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dept_name, summary in department_summaries.items %}
+                <tr>
+                    <td>{{ dept_name }}</td>
+                    <td class="text-right">${{ summary.total_epf_employee|floatformat:2 }}</td>
+                    <td class="text-right">${{ summary.total_epf_employer|floatformat:2 }}</td>
+                    <td class="text-right">${{ summary.total_etf_contribution|floatformat:2 }}</td>
+                    <td class="text-right">${{ summary.total_epf_employee|add:summary.total_epf_employer|add:summary.total_etf_contribution|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+                <tr>
+                    <td><strong>Total</strong></td>
+                    <td class="text-right"><strong>${{ period.total_epf_employee|floatformat:2 }}</strong></td>
+                    <td class="text-right"><strong>${{ period.total_epf_employer|floatformat:2 }}</strong></td>
+                    <td class="text-right"><strong>${{ period.total_etf|floatformat:2 }}</strong></td>
+                    <td class="text-right"><strong>${{ period.total_epf_employee|add:period.total_epf_employer|add:period.total_etf|floatformat:2 }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="section-title">Budget Utilization</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Department</th>
+                    <th>Department Budget</th>
+                    <th>Total Gross Salary</th>
+                    <th>Budget Utilization</th>
+                    <th>Remaining Budget</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dept_name, summary in department_summaries.items %}
+                <tr>
+                    <td>{{ dept_name }}</td>
+                    <td class="text-right">${{ summary.department_budget|floatformat:2 }}</td>
+                    <td class="text-right">${{ summary.total_gross_salary|floatformat:2 }}</td>
+                    <td class="text-right">{{ summary.budget_utilization_percentage|floatformat:2 }}%</td>
+                    <td class="text-right">${{ summary.department_budget|sub:summary.total_gross_salary|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div class="section-title">Role Breakdown</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Department</th>
+                    <th>Role</th>
+                    <th>Count</th>
+                    <th>Total Gross</th>
+                    <th>Total Net</th>
+                    <th>Avg. Gross</th>
+                    <th>Avg. Net</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dept_name, summary in department_summaries.items %}
+                    {% for role_name, role_data in summary.role_breakdown.items %}
+                    <tr>
+                        <td>{{ dept_name }}</td>
+                        <td>{{ role_name }}</td>
+                        <td class="text-center">{{ role_data.count }}</td>
+                        <td class="text-right">${{ role_data.total_gross|floatformat:2 }}</td>
+                        <td class="text-right">${{ role_data.total_net|floatformat:2 }}</td>
+                        <td class="text-right">${{ role_data.avg_gross|floatformat:2 }}</td>
+                        <td class="text-right">${{ role_data.avg_net|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div class="section-title">Performance Metrics</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Department</th>
+                    <th>Efficiency Score</th>
+                    <th>Compliance Score</th>
+                    <th>Avg. Attendance</th>
+                    <th>Avg. Punctuality</th>
+                    <th>Overtime %</th>
+                    <th>Penalty %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for dept_name, summary in department_summaries.items %}
+                <tr>
+                    <td>{{ dept_name }}</td>
+                    <td class="text-center">{{ summary.performance_metrics.department_efficiency_score|floatformat:1 }}</td>
+                    <td class="text-center">{{ summary.performance_metrics.policy_compliance_score|floatformat:1 }}</td>
+                    <td class="text-center">{{ summary.performance_metrics.avg_attendance_percentage|floatformat:1 }}%</td>
+                    <td class="text-center">{{ summary.performance_metrics.avg_punctuality_score|floatformat:1 }}</td>
+                    <td class="text-center">{{ summary.performance_metrics.overtime_employees_percentage|floatformat:1 }}%</td>
+                    <td class="text-center">{{ summary.performance_metrics.penalty_employees_percentage|floatformat:1 }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div class="footer">
+            <p>Generated on {{ generated_date }} | {{ company_name }} | Payroll Department Summary Report</p>
+            <p>This is a computer-generated document. No signature is required.</p>
+        </div>
+    </div>
+</body>
+</html>
+

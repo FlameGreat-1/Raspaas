@@ -948,14 +948,20 @@ class AuditLog(models.Model):
         ip_address=None,
         user_agent=None,
         session_key=None,
+        description=None,
+        additional_data=None,
     ):
+        changes_dict = changes or {}
+        if description:
+            changes_dict['description'] = description
+
         return cls.objects.create(
             user=user,
             action=action,
             model_name=model_name,
             object_id=str(object_id) if object_id else None,
             object_repr=object_repr,
-            changes=changes or {},
+            changes=changes_dict,
             ip_address=ip_address,
             user_agent=user_agent,
             session_key=session_key,
@@ -968,7 +974,6 @@ class AuditLog(models.Model):
         count = old_logs.count()
         old_logs.delete()
         return count
-
 
 class APIKey(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

@@ -1,0 +1,427 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Leave Requests" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock meta %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/select2/css/select2.min.css">
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock css %}
+
+{% block content %}
+{% with title_sub="Attendance" title="Leave Requests" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>Leave Requests</h4>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createLeaveRequestModal">
+                        <i class="ri-add-line align-bottom me-1"></i> New Request
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <form method="get" class="row g-3">
+                            <div class="col-md-2">
+                                <select name="status" class="form-select" onchange="this.form.submit()">
+                                    <option value="">All Status</option>
+                                    {% for status_code, status_label in status_choices %}
+                                    <option value="{{ status_code }}" {% if status_filter == status_code %}selected{% endif %}>{{ status_label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <select name="leave_type" class="form-select" onchange="this.form.submit()">
+                                    <option value="">All Leave Types</option>
+                                    {% for leave_type in leave_types %}
+                                    <option value="{{ leave_type.id }}" {% if leave_type_filter == leave_type.id|stringformat:"s" %}selected{% endif %}>{{ leave_type.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <input type="date" name="start_date" class="form-control" placeholder="Start Date" value="{{ start_date }}" onchange="this.form.submit()">
+                            </div>
+                            <div class="col-md-2">
+                                <input type="date" name="end_date" class="form-control" placeholder="End Date" value="{{ end_date }}" onchange="this.form.submit()">
+                            </div>
+                            <div class="col-md-3">
+                                <div class="input-group">
+                                    <input type="text" name="search" class="form-control" placeholder="Search..." value="{{ search_query }}">
+                                    <button class="btn btn-primary" type="submit">
+                                        <i class="ri-search-line"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-1">
+                                <a href="{% url 'attendance:leave_request_list' %}" class="btn btn-outline-secondary w-100">
+                                    <i class="ri-refresh-line"></i>
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover text-nowrap">
+                        <thead class="table-light border-0">
+                            <tr>
+                                <th class="text-muted">Employee</th>
+                                <th class="text-muted">Leave Type</th>
+                                <th class="text-muted">Period</th>
+                                <th class="text-muted">Days</th>
+                                <th class="text-muted">Status</th>
+                                <th class="text-muted">Applied On</th>
+                                <th class="text-muted">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for leave_request in page_obj %}
+                            <tr>
+                                <td class="fw-semibold">
+                                    {% if leave_request.employee.profile_image %}
+                                    <img src="{{ leave_request.employee.profile_image.url }}" class="avatar-sm rounded-circle me-2" alt="{{ leave_request.employee.get_full_name }}">
+                                    {% else %}
+                                    <div class="avatar-sm bg-primary text-white rounded-circle me-2 d-inline-flex align-items-center justify-content-center">
+                                        {{ leave_request.employee.first_name|first }}{{ leave_request.employee.last_name|first }}
+                                    </div>
+                                    {% endif %}
+                                    <a href="{% url 'attendance:employee_leave_requests' employee_id=leave_request.employee.id %}">
+                                        {{ leave_request.employee.get_full_name }}
+                                    </a>
+                                </td>
+                                <td class="fw-semibold">{{ leave_request.leave_type.name }}</td>
+                                <td class="fw-semibold">
+                                    {% if leave_request.is_half_day %}
+                                    {{ leave_request.start_date|date:"d M Y" }} ({{ leave_request.half_day_period }})
+                                    {% else %}
+                                    {{ leave_request.start_date|date:"d M Y" }} - {{ leave_request.end_date|date:"d M Y" }}
+                                    {% endif %}
+                                </td>
+                                <td class="fw-semibold">{{ leave_request.total_days }}</td>
+                                <td>
+                                    {% if leave_request.status == 'PENDING' %}
+                                    <span class="badge bg-warning px-3 rounded-3">Pending</span>
+                                    {% elif leave_request.status == 'APPROVED' %}
+                                    <span class="badge bg-success px-3 rounded-3">Approved</span>
+                                    {% elif leave_request.status == 'REJECTED' %}
+                                    <span class="badge bg-danger px-3 rounded-3">Rejected</span>
+                                    {% elif leave_request.status == 'CANCELLED' %}
+                                    <span class="badge bg-secondary px-3 rounded-3">Cancelled</span>
+                                    {% elif leave_request.status == 'WITHDRAWN' %}
+                                    <span class="badge bg-info px-3 rounded-3">Withdrawn</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-semibold">{{ leave_request.applied_at|date:"d M Y H:i" }}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'attendance:leave_request_detail' request_id=leave_request.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="ri-eye-line"></i>
+                                        </a>
+                                        {% if leave_request.status == 'PENDING' %}
+                                        <a href="#" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#approveLeaveModal" data-id="{{ leave_request.id }}" title="Approve">
+                                            <i class="ri-check-line"></i>
+                                        </a>
+                                        <a href="#" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectLeaveModal" data-id="{{ leave_request.id }}" title="Reject">
+                                            <i class="ri-close-line"></i>
+                                        </a>
+                                        {% endif %}
+                                        {% if leave_request.can_be_cancelled %}
+                                        <a href="#" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#cancelLeaveModal" data-id="{{ leave_request.id }}" title="Cancel">
+                                            <i class="ri-delete-bin-line"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>                                
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <div class="d-flex justify-content-center align-items-center flex-column">
+                                        <i class="ri-calendar-event-line fs-1 text-muted mb-2"></i>
+                                        <h5>No leave requests found</h5>
+                                        <p class="text-muted">Try adjusting your search or filter to find what you're looking for.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if page_obj.has_other_pages %}
+                <div class="d-flex justify-content-end mt-3">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if leave_type_filter %}&leave_type={{ leave_type_filter }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if leave_type_filter %}&leave_type={{ leave_type_filter }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item"><a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if leave_type_filter %}&leave_type={{ leave_type_filter }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}">{{ num }}</a></li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if leave_type_filter %}&leave_type={{ leave_type_filter }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if leave_type_filter %}&leave_type={{ leave_type_filter }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Leave Request Modal -->
+<div class="modal fade" id="createLeaveRequestModal" tabindex="-1" aria-labelledby="createLeaveRequestModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createLeaveRequestModalLabel">Create Leave Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_leave_request">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="employee" class="form-label">Employee</label>
+                            <select name="employee" id="employee" class="form-control select2" required>
+                                <option value="">Select Employee</option>
+                                {% for employee in employees %}
+                                <option value="{{ employee.id }}">{{ employee.get_full_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>                        
+                        <div class="col-md-6">
+                            <label for="leave_type" class="form-label">Leave Type</label>
+                            <select name="leave_type" id="leave_type" class="form-control select2" required>
+                                <option value="">Select Leave Type</option>
+                                {% for leave_type in leave_types %}
+                                <option value="{{ leave_type.id }}">{{ leave_type.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="start_date" class="form-label">Start Date</label>
+                            <input type="date" name="start_date" id="start_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="end_date" class="form-label">End Date</label>
+                            <input type="date" name="end_date" id="end_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="is_half_day" id="is_half_day">
+                                <label class="form-check-label" for="is_half_day">
+                                    Half Day Leave
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6" id="half_day_period_container" style="display: none;">
+                            <label for="half_day_period" class="form-label">Half Day Period</label>
+                            <select name="half_day_period" id="half_day_period" class="form-control">
+                                <option value="MORNING">Morning</option>
+                                <option value="AFTERNOON">Afternoon</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12">
+                            <label for="reason" class="form-label">Reason</label>
+                            <textarea name="reason" id="reason" class="form-control" rows="4" required></textarea>
+                        </div>
+                        <div class="col-md-12">
+                            <label for="emergency_contact_during_leave" class="form-label">Emergency Contact During Leave</label>
+                            <input type="text" name="emergency_contact_during_leave" id="emergency_contact_during_leave" class="form-control">
+                        </div>
+                        <div class="col-md-12">
+                            <label for="handover_notes" class="form-label">Handover Notes</label>
+                            <textarea name="handover_notes" id="handover_notes" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-12">
+                            <label for="medical_certificate" class="form-label">Medical Certificate (if applicable)</label>
+                            <input type="file" name="medical_certificate" id="medical_certificate" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Submit Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Approve Leave Modal -->
+<div class="modal fade" id="approveLeaveModal" tabindex="-1" aria-labelledby="approveLeaveModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="approveLeaveModalLabel">Approve Leave Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="approve_leave_request">
+                <input type="hidden" name="leave_request_id" id="approve_leave_request_id">
+                <div class="modal-body">
+                    <p>Are you sure you want to approve this leave request?</p>
+                    <div class="mb-3">
+                        <label for="approval_notes" class="form-label">Approval Notes (Optional)</label>
+                        <textarea name="approval_notes" id="approval_notes" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Approve</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Leave Modal -->
+<div class="modal fade" id="rejectLeaveModal" tabindex="-1" aria-labelledby="rejectLeaveModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rejectLeaveModalLabel">Reject Leave Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reject_leave_request">
+                <input type="hidden" name="leave_request_id" id="reject_leave_request_id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="rejection_reason" class="form-label">Rejection Reason</label>
+                        <textarea name="rejection_reason" id="rejection_reason" class="form-control" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Reject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Leave Modal -->
+<div class="modal fade" id="cancelLeaveModal" tabindex="-1" aria-labelledby="cancelLeaveModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cancelLeaveModalLabel">Cancel Leave Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="cancel_leave_request">
+                <input type="hidden" name="leave_request_id" id="cancel_leave_request_id">
+                <div class="modal-body">
+                    <p>Are you sure you want to cancel this leave request?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">No</button>
+                    <button type="submit" class="btn btn-danger">Yes, Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        $('.select2').select2({
+            dropdownParent: $('#createLeaveRequestModal')
+        });
+        
+        $('#is_half_day').change(function() {
+            if(this.checked) {
+                $('#half_day_period_container').show();
+                $('#end_date').val($('#start_date').val());
+                $('#end_date').prop('readonly', true);
+            } else {
+                $('#half_day_period_container').hide();
+                $('#end_date').prop('readonly', false);
+            }
+        });
+        
+        $('#approveLeaveModal').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget);
+            var id = button.data('id');
+            $('#approve_leave_request_id').val(id);
+        });
+        
+        $('#rejectLeaveModal').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget);
+            var id = button.data('id');
+            $('#reject_leave_request_id').val(id);
+        });
+        
+        $('#cancelLeaveModal').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget);
+            var id = button.data('id');
+            $('#cancel_leave_request_id').val(id);
+        });
+        
+        var today = new Date().toISOString().split('T')[0];
+        $('#start_date').attr('min', today);
+        
+        $('#start_date').change(function() {
+            $('#end_date').attr('min', $(this).val());
+            if($('#is_half_day').is(':checked')) {
+                $('#end_date').val($(this).val());
+            } else if($('#end_date').val() && $('#end_date').val() < $(this).val()) {
+                $('#end_date').val($(this).val());
+            }
+        });
+        
+        $('#createLeaveRequestModal').on('hidden.bs.modal', function () {
+            $(this).find('form')[0].reset();
+            $('#half_day_period_container').hide();
+            $('#end_date').prop('readonly', false);
+            $('.select2').val('').trigger('change');
+        });
+    });
+</script>
+{% endblock js %}
+{% endblock content %}

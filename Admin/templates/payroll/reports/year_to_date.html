@@ -1,0 +1,462 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+{% load payroll_filters %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Year to Date Report" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Reports" title="Year to Date"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>Year to Date Report</h4>
+                <div class="action-buttons">
+                    {% if report_generated and can_export_pdf %}
+                    <a href="{% url 'payroll:export_ytd_report_pdf' selected_employee.id selected_year %}" class="btn btn-sm btn-outline-primary" title="Export as PDF">
+                        <i class="bi bi-file-pdf"></i>
+                    </a>
+                    {% endif %}
+                    {% if report_generated and can_export_excel %}
+                    <a href="{% url 'payroll:export_ytd_report_excel' selected_employee.id selected_year %}" class="btn btn-sm btn-outline-success" title="Export as Excel">
+                        <i class="bi bi-file-excel"></i>
+                    </a>
+                    {% endif %}
+                </div>                
+            </div>
+            <div class="card-body">
+                <form method="get" action="{% url 'payroll:year_to_date_report' %}" class="mb-4">
+                    <div class="row">
+                        <div class="col-md-5">
+                            <div class="mb-3">
+                                <label for="employee_id" class="form-label">Select Employee</label>
+                                <select class="form-select" id="employee_id" name="employee_id">
+                                    <option value="">-- Select Employee --</option>
+                                    {% for employee in employees %}
+                                    <option value="{{ employee.id }}" {% if selected_employee and selected_employee.id == employee.id %}selected{% endif %}>{{ employee.get_full_name }} ({{ employee.employee_code }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="year" class="form-label">Select Year</label>
+                                <select class="form-select" id="year" name="year">
+                                    <option value="">-- Select Year --</option>
+                                    {% for year_value, year_label in years %}
+                                    <option value="{{ year_value }}" {% if selected_year|stringformat:"i" == year_value %}selected{% endif %}>{{ year_label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>                            
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">Generate Report</button>
+                        </div>
+                    </div>
+                </form>
+                {% if report_generated %}
+                <div class="report-header mb-4">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Year to Date Report: {{ selected_year }}</h5>
+                            <p class="text-muted">Employee: {{ selected_employee.get_full_name }} ({{ selected_employee.employee_code }})</p>
+                            <p class="text-muted">Department: {{ selected_employee.department.name }}</p>
+                            <p class="text-muted">Job Title: {{ selected_employee.job_title }}</p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <p class="mb-1">Total Months: <strong>{{ ytd_data.total_months }}</strong></p>
+                            <p class="mb-1">Total Gross Salary: <strong>${{ ytd_data.total_gross_salary|default:"0.00"|floatformat:2 }}</strong></p>
+                            <p class="mb-1">Total Net Salary: <strong>${{ ytd_data.total_net_salary|default:"0.00"|floatformat:2 }}</strong></p>
+                        </div>
+                    </div>
+                </div>
+
+                {% if ytd_data.total_months == 0 %}
+                <div class="alert alert-info mb-4">
+                    <i class="ri-information-line me-2"></i> No payroll data found for {{ selected_employee.get_full_name }} in {{ selected_year }}. Please select a different year or employee.
+                </div>
+                {% endif %}
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Salary Summary</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" data-simplebar>
+                                    <table class="table table-hover text-nowrap">
+                                        <thead class="table-light border-0">
+                                            <tr>
+                                                <th class="text-muted">Category</th>
+                                                <th class="text-muted">Total Amount</th>
+                                                <th class="text-muted">Monthly Average</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="fw-semibold">Basic Salary</td>
+                                                <td class="fw-semibold">${{ ytd_data.total_basic_salary|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">
+                                                    ${% if ytd_data.total_months > 0 %}
+                                                    {{ ytd_data.total_basic_salary|default:"0.00"|div:ytd_data.total_months|floatformat:2 }}
+                                                    {% else %}
+                                                    0.00
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Allowances</td>
+                                                <td class="fw-semibold">${{ ytd_data.total_allowances|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">
+                                                    ${% if ytd_data.total_months > 0 %}
+                                                    {{ ytd_data.total_allowances|default:"0.00"|div:ytd_data.total_months|floatformat:2 }}
+                                                    {% else %}
+                                                    0.00
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Overtime Pay</td>
+                                                <td class="fw-semibold">${{ ytd_data.total_overtime_pay|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">
+                                                    ${% if ytd_data.total_months > 0 %}
+                                                    {{ ytd_data.total_overtime_pay|default:"0.00"|div:ytd_data.total_months|floatformat:2 }}
+                                                    {% else %}
+                                                    0.00
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Gross Salary</td>
+                                                <td class="fw-semibold">${{ ytd_data.total_gross_salary|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">${{ ytd_data.average_monthly_gross|default:"0.00"|floatformat:2 }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Deductions</td>
+                                                <td class="fw-semibold">${{ ytd_data.total_deductions|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">
+                                                    ${% if ytd_data.total_months > 0 %}
+                                                    {{ ytd_data.total_deductions|default:"0.00"|div:ytd_data.total_months|floatformat:2 }}
+                                                    {% else %}
+                                                    0.00
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Net Salary</td>
+                                                <td class="fw-semibold">${{ ytd_data.total_net_salary|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">${{ ytd_data.average_monthly_net|default:"0.00"|floatformat:2 }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Monthly Salary Trend</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="monthlySalaryChart" style="height: 300px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Deductions Breakdown</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" data-simplebar>
+                                    <table class="table table-hover text-nowrap">
+                                        <thead class="table-light border-0">
+                                            <tr>
+                                                <th class="text-muted">Deduction Type</th>
+                                                <th class="text-muted">Total Amount</th>
+                                                <th class="text-muted">Percentage</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="fw-semibold">EPF Employee Contribution</td>
+                                                <td class="fw-semibold">${{ ytd_data.total_epf_employee|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">
+                                                    {% if ytd_data.total_deductions > 0 %}
+                                                    {{ ytd_data.total_epf_employee|default:"0.00"|div:ytd_data.total_deductions|mul:100|floatformat:2 }}%
+                                                    {% else %}
+                                                    0.00%
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Income Tax</td>
+                                                <td class="fw-semibold">${{ ytd_data.total_income_tax|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">
+                                                    {% if ytd_data.total_deductions > 0 %}
+                                                    {{ ytd_data.total_income_tax|default:"0.00"|div:ytd_data.total_deductions|mul:100|floatformat:2 }}%
+                                                    {% else %}
+                                                    0.00%
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Late Penalties</td>
+                                                <td class="fw-semibold">${{ ytd_data.total_late_penalties|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">
+                                                    {% if ytd_data.total_deductions > 0 %}
+                                                    {{ ytd_data.total_late_penalties|default:"0.00"|div:ytd_data.total_deductions|mul:100|floatformat:2 }}%
+                                                    {% else %}
+                                                    0.00%
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Lunch Violations</td>
+                                                <td class="fw-semibold">${{ ytd_data.total_lunch_violations|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">
+                                                    {% if ytd_data.total_deductions > 0 %}
+                                                    {{ ytd_data.total_lunch_violations|default:"0.00"|div:ytd_data.total_deductions|mul:100|floatformat:2 }}%
+                                                    {% else %}
+                                                    0.00%
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Advance Deductions</td>
+                                                <td class="fw-semibold">${{ ytd_data.total_advance_deductions|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">
+                                                    {% if ytd_data.total_deductions > 0 %}
+                                                    {{ ytd_data.total_advance_deductions|default:"0.00"|div:ytd_data.total_deductions|mul:100|floatformat:2 }}%
+                                                    {% else %}
+                                                    0.00%
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Other Deductions</td>
+                                                <td class="fw-semibold">${{ ytd_data.total_other_deductions|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">
+                                                    {% if ytd_data.total_deductions > 0 %}
+                                                    {{ ytd_data.total_other_deductions|default:"0.00"|div:ytd_data.total_deductions|mul:100|floatformat:2 }}%
+                                                    {% else %}
+                                                    0.00%
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Deductions Distribution</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="deductionsChart" style="height: 300px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Monthly Breakdown</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" data-simplebar>
+                                    <table class="table table-hover text-nowrap">
+                                        <thead class="table-light border-0">
+                                            <tr>
+                                                <th class="text-muted">Month</th>
+                                                <th class="text-muted">Basic Salary</th>
+                                                <th class="text-muted">Allowances</th>
+                                                <th class="text-muted">Overtime</th>
+                                                <th class="text-muted">Gross Salary</th>
+                                                <th class="text-muted">Deductions</th>
+                                                <th class="text-muted">Net Salary</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for month_data in ytd_data.monthly_breakdown %}
+                                            <tr>
+                                                <td class="fw-semibold">{{ month_data.month_name }}</td>
+                                                <td class="fw-semibold">${{ month_data.basic_salary|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">${{ month_data.allowances|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">${{ month_data.overtime_pay|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">${{ month_data.gross_salary|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">${{ month_data.deductions|default:"0.00"|floatformat:2 }}</td>
+                                                <td class="fw-semibold">${{ month_data.net_salary|default:"0.00"|floatformat:2 }}</td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="7" class="text-center py-3">No monthly data available</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="ri-information-line me-2"></i> Please select an employee and year to generate the Year to Date report.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block javascript %}
+<script src="/static/assets/libs/apexcharts/apexcharts.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if report_generated %}
+        {% if ytd_data.total_months > 0 %}
+        // Monthly Salary Trend Chart
+        var monthlySalaryOptions = {
+            series: [{
+                name: 'Gross Salary',
+                data: [
+                    {% for month_data in ytd_data.monthly_breakdown %}
+                    {{ month_data.gross_salary|default:"0"|floatformat:2 }}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            }, {
+                name: 'Net Salary',
+                data: [
+                    {% for month_data in ytd_data.monthly_breakdown %}
+                    {{ month_data.net_salary|default:"0"|floatformat:2 }}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            }],
+            chart: {
+                type: 'line',
+                height: 300,
+                toolbar: {
+                    show: false
+                }
+            },
+            colors: ['#6658dd', '#1abc9c'],
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 3
+            },
+            grid: {
+                borderColor: '#f1f1f1',
+                padding: {
+                    bottom: 5
+                }
+            },
+            markers: {
+                size: 5,
+                hover: {
+                    size: 7
+                }
+            },
+            xaxis: {
+                categories: [
+                    {% for month_data in ytd_data.monthly_breakdown %}
+                    '{{ month_data.month_name }}'{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                title: {
+                    text: 'Month'
+                }
+            },
+            yaxis: {
+                title: {
+                    text: 'Amount ($)'
+                }
+            },
+            tooltip: {
+                y: {
+                    formatter: function (val) {
+                        return "$" + val.toFixed(2)
+                    }
+                }
+            },
+            legend: {
+                position: 'top',
+                horizontalAlign: 'right'
+            }
+        };
+        
+        var monthlySalaryChart = new ApexCharts(document.querySelector("#monthlySalaryChart"), monthlySalaryOptions);
+        monthlySalaryChart.render();
+        
+        // Deductions Distribution Chart
+        var deductionsOptions = {
+            series: [
+                {{ ytd_data.total_epf_employee|default:"0"|floatformat:2 }},
+                {{ ytd_data.total_income_tax|default:"0"|floatformat:2 }},
+                {{ ytd_data.total_late_penalties|default:"0"|floatformat:2 }},
+                {{ ytd_data.total_lunch_violations|default:"0"|floatformat:2 }},
+                {{ ytd_data.total_advance_deductions|default:"0"|floatformat:2 }},
+                {{ ytd_data.total_other_deductions|default:"0"|floatformat:2 }}
+            ],
+            chart: {
+                type: 'pie',
+                height: 300
+            },
+            labels: ['EPF Employee', 'Income Tax', 'Late Penalties', 'Lunch Violations', 'Advance Deductions', 'Other Deductions'],
+            colors: ['#6658dd', '#f1556c', '#f7b84b', '#1abc9c', '#4fc6e1', '#50a5f1'],
+            legend: {
+                position: 'bottom'
+            },
+            dataLabels: {
+                enabled: false
+            },
+            responsive: [{
+                breakpoint: 480,
+                options: {
+                    chart: {
+                        height: 250
+                    },
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }]
+        };
+        
+        var deductionsChart = new ApexCharts(document.querySelector("#deductionsChart"), deductionsOptions);
+        deductionsChart.render();
+        {% else %}
+        document.getElementById('monthlySalaryChart').innerHTML = '<div class="text-center py-5 text-muted">No data available to display chart</div>';
+        document.getElementById('deductionsChart').innerHTML = '<div class="text-center py-5 text-muted">No data available to display chart</div>';
+        {% endif %}
+        {% endif %}
+    });
+</script>
+{% endblock %}
+
+

@@ -1,0 +1,257 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Salary Advances" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Payroll" title="Salary Advances"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">Salary Advances</h4>
+                <div class="d-flex gap-2">
+                    {% if can_create_advance %}
+                    <a href="{% url 'payroll:advance_create' %}" class="btn btn-primary">
+                        <i class="ri-add-line align-bottom me-1"></i> New Advance
+                    </a>
+                    {% endif %}
+                    {% if can_bulk_approve %}
+                    <a href="{% url 'payroll:bulk_advance_approve' %}" class="btn btn-success">
+                        <i class="ri-check-double-line align-bottom me-1"></i> Bulk Approve
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <div class="d-flex flex-wrap gap-2">
+                            <div class="bg-info-subtle p-2 rounded">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm bg-info rounded d-flex justify-content-center align-items-center">
+                                        <i class="ri-time-line text-white fs-4"></i>
+                                    </div>
+                                    <div class="ms-3">
+                                        <h5 class="mb-0">{{ pending_count }}</h5>
+                                        <p class="mb-0 text-muted">Pending</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-primary-subtle p-2 rounded">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm bg-primary rounded d-flex justify-content-center align-items-center">
+                                        <i class="ri-exchange-dollar-line text-white fs-4"></i>
+                                    </div>
+                                    <div class="ms-3">
+                                        <h5 class="mb-0">{{ active_count }}</h5>
+                                        <p class="mb-0 text-muted">Active</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-success-subtle p-2 rounded">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm bg-success rounded d-flex justify-content-center align-items-center">
+                                        <i class="ri-check-line text-white fs-4"></i>
+                                    </div>
+                                    <div class="ms-3">
+                                        <h5 class="mb-0">{{ completed_count }}</h5>
+                                        <p class="mb-0 text-muted">Completed</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="get" action="{% url 'payroll:advance_list' %}" class="mb-4">
+                    <div class="row g-3">
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label class="form-label">Status</label>
+                                <select name="status" class="form-select">
+                                    <option value="">All Statuses</option>
+                                    {% for status in statuses %}
+                                    <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>{{ status }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label class="form-label">Department</label>
+                                <select name="department_id" class="form-select">
+                                    <option value="">All Departments</option>
+                                    {% for dept in departments %}
+                                    <option value="{{ dept.id }}" {% if department_id == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label class="form-label">Advance Type</label>
+                                <select name="advance_type" class="form-select">
+                                    <option value="">All Types</option>
+                                    {% for type in advance_types %}
+                                    <option value="{{ type }}" {% if advance_type == type %}selected{% endif %}>{{ type }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label class="form-label">From Date</label>
+                                <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label class="form-label">To Date</label>
+                                <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label class="form-label">Search</label>
+                                <input type="text" name="search" class="form-control" placeholder="Name, ID, Ref#" value="{{ search_query }}">
+                            </div>
+                        </div>
+                        <div class="col-md-12 mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="ri-filter-2-line align-bottom me-1"></i> Filter
+                            </button>
+                            <a href="{% url 'payroll:advance_list' %}" class="btn btn-light">
+                                <i class="ri-refresh-line align-bottom me-1"></i> Reset
+                            </a>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-muted">Reference</th>
+                                <th class="text-muted">Employee</th>
+                                <th class="text-muted">Type</th>
+                                <th class="text-muted">Amount</th>
+                                <th class="text-muted">Outstanding</th>
+                                <th class="text-muted">Installments</th>
+                                <th class="text-muted">Requested Date</th>
+                                <th class="text-muted">Status</th>
+                                <th class="text-muted">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for advance in advances %}
+                            <tr>
+                                <td class="fw-semibold">{{ advance.reference_number }}</td>
+                                <td class="fw-semibold">
+                                    {{ advance.employee.get_full_name }}
+                                    <div class="text-muted small">{{ advance.employee.employee_code }}</div>
+                                </td>
+                                <td class="fw-semibold">{{ advance.get_advance_type_display }}</td>
+                                <td class="fw-semibold">LKR {{ advance.amount|floatformat:2 }}</td>
+                                <td class="fw-semibold">LKR {{ advance.outstanding_amount|floatformat:2 }}</td>
+                                <td class="fw-semibold">{{ advance.installments }}</td>
+                                <td class="fw-semibold">{{ advance.requested_date|date:"d M Y" }}</td>
+                                <td>
+                                    {% if advance.status == 'PENDING' %}
+                                    <span class="badge bg-warning px-3 rounded-3">Pending</span>
+                                    {% elif advance.status == 'APPROVED' %}
+                                    <span class="badge bg-info px-3 rounded-3">Approved</span>
+                                    {% elif advance.status == 'ACTIVE' %}
+                                    <span class="badge bg-primary px-3 rounded-3">Active</span>
+                                    {% elif advance.status == 'COMPLETED' %}
+                                    <span class="badge bg-success px-3 rounded-3">Completed</span>
+                                    {% elif advance.status == 'CANCELLED' %}
+                                    <span class="badge bg-danger px-3 rounded-3">Cancelled</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'payroll:advance_detail' pk=advance.pk %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </div>
+                                </td>                                
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-center py-4">
+                                    <div class="d-flex flex-column align-items-center">
+                                        <i class="ri-file-search-line fs-1 text-muted mb-2"></i>
+                                        <h5>No salary advances found</h5>
+                                        <p class="text-muted">Try adjusting your search or filter criteria</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if is_paginated %}
+                <div class="d-flex justify-content-center mt-4">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item"><a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a></li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="/static/assets/libs/gridjs/gridjs.umd.js"></script>
+<script src="/static/assets/libs/air-datepicker/air-datepicker.js"></script>
+{% endblock %}
+

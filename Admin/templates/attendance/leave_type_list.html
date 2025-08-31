@@ -1,0 +1,587 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Leave Types" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Attendance" title="Leave Types" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>Leave Types</h4>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createLeaveTypeModal">
+                        <i class="ri-add-line align-bottom me-1"></i> New Leave Type
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <form method="get" class="row g-3">
+                            <div class="col-md-3">
+                                <select name="category" class="form-select" onchange="this.form.submit()">
+                                    <option value="">All Categories</option>
+                                    {% for category_code, category_label in category_choices %}
+                                    <option value="{{ category_code }}" {% if category_filter == category_code %}selected{% endif %}>{{ category_label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-7">
+                                <div class="input-group">
+                                    <input type="text" name="search" class="form-control" placeholder="Search by name, code or description..." value="{{ search_query }}">
+                                    <button class="btn btn-primary" type="submit">
+                                        <i class="ri-search-line"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <a href="{% url 'attendance:leave_type_list' %}" class="btn btn-outline-secondary w-100">
+                                    <i class="ri-refresh-line"></i> Reset
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover text-nowrap">
+                        <thead class="table-light border-0">
+                            <tr>
+                                <th class="text-muted">Name</th>
+                                <th class="text-muted">Code</th>
+                                <th class="text-muted">Category</th>
+                                <th class="text-muted">Days Allowed</th>
+                                <th class="text-muted">Min Notice</th>
+                                <th class="text-muted">Paid</th>
+                                <th class="text-muted">Status</th>
+                                <th class="text-muted">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for leave_type in page_obj %}
+                            <tr>
+                                <td class="fw-semibold">{{ leave_type.name }}</td>
+                                <td class="fw-semibold">{{ leave_type.code }}</td>
+                                <td>
+                                    {% if leave_type.category == 'ANNUAL' %}
+                                    <span class="badge bg-success px-3 rounded-3">Annual</span>
+                                    {% elif leave_type.category == 'SICK' %}
+                                    <span class="badge bg-danger px-3 rounded-3">Sick</span>
+                                    {% elif leave_type.category == 'MATERNITY' %}
+                                    <span class="badge bg-info px-3 rounded-3">Maternity</span>
+                                    {% elif leave_type.category == 'PATERNITY' %}
+                                    <span class="badge bg-primary px-3 rounded-3">Paternity</span>
+                                    {% elif leave_type.category == 'EMERGENCY' %}
+                                    <span class="badge bg-warning px-3 rounded-3">Emergency</span>
+                                    {% elif leave_type.category == 'STUDY' %}
+                                    <span class="badge bg-secondary px-3 rounded-3">Study</span>
+                                    {% elif leave_type.category == 'UNPAID' %}
+                                    <span class="badge bg-dark px-3 rounded-3">Unpaid</span>
+                                    {% elif leave_type.category == 'COMPENSATORY' %}
+                                    <span class="badge bg-purple px-3 rounded-3">Compensatory</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-semibold">{{ leave_type.days_allowed_per_year }} days</td>
+                                <td class="fw-semibold">{{ leave_type.min_notice_days }} day(s)</td>
+                                <td>
+                                    {% if leave_type.is_paid %}
+                                    <span class="badge bg-success-subtle text-success px-3 rounded-3">Yes</span>
+                                    {% else %}
+                                    <span class="badge bg-danger-subtle text-danger px-3 rounded-3">No</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if leave_type.is_active %}
+                                    <span class="badge bg-success-subtle text-success px-3 rounded-3">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-danger-subtle text-danger px-3 rounded-3">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'attendance:leave_type_detail' type_id=leave_type.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="ri-eye-line"></i>
+                                        </a>
+                                        <a href="#" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editLeaveTypeModal" 
+                                            data-id="{{ leave_type.id }}"
+                                            data-name="{{ leave_type.name }}"
+                                            data-code="{{ leave_type.code }}"
+                                            data-category="{{ leave_type.category }}"
+                                            data-description="{{ leave_type.description }}"
+                                            data-days="{{ leave_type.days_allowed_per_year }}"
+                                            data-max-consecutive="{{ leave_type.max_consecutive_days|default:'' }}"
+                                            data-min-notice="{{ leave_type.min_notice_days }}"
+                                            data-requires-approval="{{ leave_type.requires_approval|yesno:'true,false' }}"
+                                            data-requires-medical="{{ leave_type.requires_medical_certificate|yesno:'true,false' }}"
+                                            data-is-paid="{{ leave_type.is_paid|yesno:'true,false' }}"
+                                            data-carry-forward="{{ leave_type.carry_forward_allowed|yesno:'true,false' }}"
+                                            data-carry-max="{{ leave_type.carry_forward_max_days|default:'' }}"
+                                            data-after-probation="{{ leave_type.applicable_after_probation_only|yesno:'true,false' }}"
+                                            data-gender="{{ leave_type.gender_specific }}"
+                                            data-is-active="{{ leave_type.is_active|yesno:'true,false' }}" title="Edit">
+                                            <i class="ri-pencil-line"></i>
+                                        </a>
+                                        <a href="#" class="btn btn-sm {% if leave_type.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}" 
+                                            data-bs-toggle="modal" data-bs-target="#toggleLeaveTypeStatusModal" 
+                                            data-id="{{ leave_type.id }}" 
+                                            data-name="{{ leave_type.name }}" 
+                                            data-status="{{ leave_type.is_active|yesno:'active,inactive' }}" 
+                                            title="{% if leave_type.is_active %}Deactivate{% else %}Activate{% endif %}">
+                                            {% if leave_type.is_active %}
+                                            <i class="ri-close-circle-line"></i>
+                                            {% else %}
+                                            <i class="ri-checkbox-circle-line"></i>
+                                            {% endif %}
+                                        </a>
+                                    </div>
+                                </td>                                
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <div class="d-flex justify-content-center align-items-center flex-column">
+                                        <i class="ri-file-list-3-line fs-1 text-muted mb-2"></i>
+                                        <h5>No leave types found</h5>
+                                        <p class="text-muted">Try adjusting your search or filter to find what you're looking for.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if page_obj.has_other_pages %}
+                <div class="d-flex justify-content-end mt-3">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item"><a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}">{{ num }}</a></li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if category_filter %}&category={{ category_filter }}{% endif %}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Leave Type Modal -->
+<div class="modal fade" id="createLeaveTypeModal" tabindex="-1" aria-labelledby="createLeaveTypeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createLeaveTypeModalLabel">Create Leave Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_leave_type">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="name" class="form-label">Name</label>
+                            <input type="text" name="name" id="name" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="category" class="form-label">Category</label>
+                            <select name="category" id="category" class="form-select" required>
+                                <option value="">Select Category</option>
+                                {% for category_code, category_label in category_choices %}
+                                <option value="{{ category_code }}">{{ category_label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-12">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea name="description" id="description" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="days_allowed_per_year" class="form-label">Days Allowed Per Year</label>
+                            <input type="number" name="days_allowed_per_year" id="days_allowed_per_year" class="form-control" min="1" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="max_consecutive_days" class="form-label">Max Consecutive Days</label>
+                            <input type="number" name="max_consecutive_days" id="max_consecutive_days" class="form-control" min="1">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="min_notice_days" class="form-label">Min Notice Days</label>
+                            <input type="number" name="min_notice_days" id="min_notice_days" class="form-control" min="0" value="1" required>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="requires_approval" id="requires_approval" checked>
+                                <label class="form-check-label" for="requires_approval">
+                                    Requires Approval
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="requires_medical_certificate" id="requires_medical_certificate">
+                                <label class="form-check-label" for="requires_medical_certificate">
+                                    Requires Medical Certificate
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="is_paid" id="is_paid" checked>
+                                <label class="form-check-label" for="is_paid">
+                                    Is Paid Leave
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="carry_forward_allowed" id="carry_forward_allowed">
+                                <label class="form-check-label" for="carry_forward_allowed">
+                                    Carry Forward Allowed
+                                </label>
+                            </div>
+                            <div class="mb-3" id="carry_forward_max_days_container" style="display: none;">
+                                <label for="carry_forward_max_days" class="form-label">Carry Forward Max Days</label>
+                                <input type="number" name="carry_forward_max_days" id="carry_forward_max_days" class="form-control" min="1">
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="applicable_after_probation_only" id="applicable_after_probation_only">
+                                <label class="form-check-label" for="applicable_after_probation_only">
+                                    Applicable After Probation Only
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="gender_specific" class="form-label">Gender Specific</label>
+                            <select name="gender_specific" id="gender_specific" class="form-select" required>
+                                <option value="A">All</option>
+                                <option value="M">Male Only</option>
+                                <option value="F">Female Only</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Leave Type</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- Edit Leave Type Modal -->
+<div class="modal fade" id="editLeaveTypeModal" tabindex="-1" aria-labelledby="editLeaveTypeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editLeaveTypeModalLabel">Edit Leave Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_leave_type">
+                <input type="hidden" name="leave_type_id" id="edit_leave_type_id">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="edit_name" class="form-label">Name</label>
+                            <input type="text" name="name" id="edit_name" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_category" class="form-label">Category</label>
+                            <select name="category" id="edit_category" class="form-select" required>
+                                <option value="">Select Category</option>
+                                {% for category_code, category_label in category_choices %}
+                                <option value="{{ category_code }}">{{ category_label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-12">
+                            <label for="edit_description" class="form-label">Description</label>
+                            <textarea name="description" id="edit_description" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="edit_days_allowed_per_year" class="form-label">Days Allowed Per Year</label>
+                            <input type="number" name="days_allowed_per_year" id="edit_days_allowed_per_year" class="form-control" min="1" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="edit_max_consecutive_days" class="form-label">Max Consecutive Days</label>
+                            <input type="number" name="max_consecutive_days" id="edit_max_consecutive_days" class="form-control" min="1">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="edit_min_notice_days" class="form-label">Min Notice Days</label>
+                            <input type="number" name="min_notice_days" id="edit_min_notice_days" class="form-control" min="0" required>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="requires_approval" id="edit_requires_approval">
+                                <label class="form-check-label" for="edit_requires_approval">
+                                    Requires Approval
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="requires_medical_certificate" id="edit_requires_medical_certificate">
+                                <label class="form-check-label" for="edit_requires_medical_certificate">
+                                    Requires Medical Certificate
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="is_paid" id="edit_is_paid">
+                                <label class="form-check-label" for="edit_is_paid">
+                                    Is Paid Leave
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="carry_forward_allowed" id="edit_carry_forward_allowed">
+                                <label class="form-check-label" for="edit_carry_forward_allowed">
+                                    Carry Forward Allowed
+                                </label>
+                            </div>
+                            <div class="mb-3" id="edit_carry_forward_max_days_container">
+                                <label for="edit_carry_forward_max_days" class="form-label">Carry Forward Max Days</label>
+                                <input type="number" name="carry_forward_max_days" id="edit_carry_forward_max_days" class="form-control" min="1">
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="applicable_after_probation_only" id="edit_applicable_after_probation_only">
+                                <label class="form-check-label" for="edit_applicable_after_probation_only">
+                                    Applicable After Probation Only
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_gender_specific" class="form-label">Gender Specific</label>
+                            <select name="gender_specific" id="edit_gender_specific" class="form-select" required>
+                                <option value="A">All</option>
+                                <option value="M">Male Only</option>
+                                <option value="F">Female Only</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="edit_is_active">
+                                <label class="form-check-label" for="edit_is_active">
+                                    Is Active
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Leave Type</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Toggle Leave Type Status Modal -->
+<div class="modal fade" id="toggleLeaveTypeStatusModal" tabindex="-1" aria-labelledby="toggleLeaveTypeStatusModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="toggleLeaveTypeStatusModalLabel">Change Leave Type Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_leave_type">
+                <input type="hidden" name="leave_type_id" id="toggle_leave_type_id">
+                <input type="hidden" name="toggle_status_only" value="true">
+                <div class="modal-body">
+                    <p id="toggle_status_message"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" id="toggle_status_button" class="btn"></button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toggle carry forward max days field
+        $('#carry_forward_allowed').change(function() {
+            if(this.checked) {
+                $('#carry_forward_max_days_container').show();
+            } else {
+                $('#carry_forward_max_days_container').hide();
+                $('#carry_forward_max_days').val('');
+            }
+        });
+        
+        $('#edit_carry_forward_allowed').change(function() {
+            if(this.checked) {
+                $('#edit_carry_forward_max_days_container').show();
+            } else {
+                $('#edit_carry_forward_max_days_container').hide();
+                $('#edit_carry_forward_max_days').val('');
+            }
+        });
+        
+        // Populate edit modal
+        $('#editLeaveTypeModal').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget);
+            var id = button.data('id');
+            var name = button.data('name');
+            var code = button.data('code');
+            var category = button.data('category');
+            var description = button.data('description');
+            var days = button.data('days');
+            var maxConsecutive = button.data('max-consecutive');
+            var minNotice = button.data('min-notice');
+            var requiresApproval = button.data('requires-approval') === 'true';
+            var requiresMedical = button.data('requires-medical') === 'true';
+            var isPaid = button.data('is-paid') === 'true';
+            var carryForward = button.data('carry-forward') === 'true';
+            var carryMax = button.data('carry-max');
+            var afterProbation = button.data('after-probation') === 'true';
+            var gender = button.data('gender');
+            var isActive = button.data('is-active') === 'true';
+            
+            $('#edit_leave_type_id').val(id);
+            $('#edit_name').val(name);
+            $('#edit_category').val(category);
+            $('#edit_description').val(description);
+            $('#edit_days_allowed_per_year').val(days);
+            $('#edit_max_consecutive_days').val(maxConsecutive);
+            $('#edit_min_notice_days').val(minNotice);
+            $('#edit_requires_approval').prop('checked', requiresApproval);
+            $('#edit_requires_medical_certificate').prop('checked', requiresMedical);
+            $('#edit_is_paid').prop('checked', isPaid);
+            $('#edit_carry_forward_allowed').prop('checked', carryForward);
+            $('#edit_carry_forward_max_days').val(carryMax);
+            $('#edit_applicable_after_probation_only').prop('checked', afterProbation);
+            $('#edit_gender_specific').val(gender);
+            $('#edit_is_active').prop('checked', isActive);
+            
+            if(carryForward) {
+                $('#edit_carry_forward_max_days_container').show();
+            } else {
+                $('#edit_carry_forward_max_days_container').hide();
+            }
+        });
+        
+        // Populate toggle status modal
+        $('#toggleLeaveTypeStatusModal').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget);
+            var id = button.data('id');
+            var name = button.data('name');
+            var status = button.data('status');
+            
+            $('#toggle_leave_type_id').val(id);
+            
+            if(status === 'active') {
+                $('#toggle_status_message').text('Are you sure you want to deactivate the leave type "' + name + '"?');
+                $('#toggle_status_button').text('Deactivate').removeClass('btn-success').addClass('btn-danger');
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'is_active',
+                    value: 'off'
+                }).appendTo('#toggleLeaveTypeStatusModal form');
+            } else {
+                $('#toggle_status_message').text('Are you sure you want to activate the leave type "' + name + '"?');
+                $('#toggle_status_button').text('Activate').removeClass('btn-danger').addClass('btn-success');
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'is_active',
+                    value: 'on'
+                }).appendTo('#toggleLeaveTypeStatusModal form');
+            }
+        });
+        
+        // Clear form when modal is closed
+        $('#createLeaveTypeModal').on('hidden.bs.modal', function () {
+            $(this).find('form')[0].reset();
+            $('#carry_forward_max_days_container').hide();
+        });
+        
+        // Validate max consecutive days
+        $('#days_allowed_per_year, #max_consecutive_days').on('change', function() {
+            var daysAllowed = parseInt($('#days_allowed_per_year').val()) || 0;
+            var maxConsecutive = parseInt($('#max_consecutive_days').val()) || 0;
+            
+            if(maxConsecutive > daysAllowed) {
+                alert('Max consecutive days cannot exceed days allowed per year');
+                $('#max_consecutive_days').val(daysAllowed);
+            }
+        });
+        
+        $('#edit_days_allowed_per_year, #edit_max_consecutive_days').on('change', function() {
+            var daysAllowed = parseInt($('#edit_days_allowed_per_year').val()) || 0;
+            var maxConsecutive = parseInt($('#edit_max_consecutive_days').val()) || 0;
+            
+            if(maxConsecutive > daysAllowed) {
+                alert('Max consecutive days cannot exceed days allowed per year');
+                $('#edit_max_consecutive_days').val(daysAllowed);
+            }
+        });
+        
+        // Validate carry forward max days
+        $('#days_allowed_per_year, #carry_forward_max_days').on('change', function() {
+            var daysAllowed = parseInt($('#days_allowed_per_year').val()) || 0;
+            var carryMax = parseInt($('#carry_forward_max_days').val()) || 0;
+            
+            if(carryMax > daysAllowed) {
+                alert('Carry forward max days cannot exceed days allowed per year');
+                $('#carry_forward_max_days').val(daysAllowed);
+            }
+        });
+        
+        $('#edit_days_allowed_per_year, #edit_carry_forward_max_days').on('change', function() {
+            var daysAllowed = parseInt($('#edit_days_allowed_per_year').val()) || 0;
+            var carryMax = parseInt($('#edit_carry_forward_max_days').val()) || 0;
+            
+            if(carryMax > daysAllowed) {
+                alert('Carry forward max days cannot exceed days allowed per year');
+                $('#edit_carry_forward_max_days').val(daysAllowed);
+            }
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}

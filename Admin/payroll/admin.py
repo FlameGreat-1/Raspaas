@@ -2685,12 +2685,6 @@ class PayrollAdminSite(admin.AdminSite):
 
 payroll_admin_site = PayrollAdminSite(name="payroll_admin")
 
-
-admin.site.site_header = "HR Management System - Payroll Module"
-admin.site.site_title = "Payroll Admin"
-admin.site.index_title = "Payroll Management Dashboard"
-
-
 def customize_admin_interface():
     admin.site.enable_nav_sidebar = True
     original_get_app_list = admin.AdminSite.get_app_list

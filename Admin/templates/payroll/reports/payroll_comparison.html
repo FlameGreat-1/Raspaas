@@ -1,0 +1,526 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+{% load payroll_filters %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Payroll Comparison Report" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Reports" title="Payroll Comparison"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>Payroll Comparison Report</h4>
+                <div class="action-buttons">
+                    {% if report_generated and can_export_pdf %}
+                    <a href="{% url 'payroll:export_comparison_report_pdf' period1.id period2.id %}" class="btn btn-sm btn-outline-primary" title="Export as PDF">
+                        <i class="bi bi-file-pdf"></i>
+                    </a>
+                    {% endif %}
+                    {% if report_generated and can_export_excel %}
+                    <a href="{% url 'payroll:export_comparison_report_excel' period1.id period2.id %}" class="btn btn-sm btn-outline-success" title="Export as Excel">
+                        <i class="bi bi-file-excel"></i>
+                    </a>
+                    {% endif %}
+                </div>                
+            </div>
+            <div class="card-body">
+                <form method="get" action="{% url 'payroll:payroll_comparison_report' %}" class="mb-4">
+                    <div class="row">
+                        <div class="col-md-5">
+                            <div class="mb-3">
+                                <label for="period1_id" class="form-label">First Payroll Period</label>
+                                <select class="form-select" id="period1_id" name="period1_id">
+                                    <option value="">-- Select Period --</option>
+                                    {% for p in periods %}
+                                    <option value="{{ p.id }}" {% if period1 and period1.id == p.id %}selected{% endif %}>{{ p.period_name }} ({{ p.get_status_display }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="mb-3">
+                                <label for="period2_id" class="form-label">Second Payroll Period</label>
+                                <select class="form-select" id="period2_id" name="period2_id">
+                                    <option value="">-- Select Period --</option>
+                                    {% for p in periods %}
+                                    <option value="{{ p.id }}" {% if period2 and period2.id == p.id %}selected{% endif %}>{{ p.period_name }} ({{ p.get_status_display }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">Compare</button>
+                        </div>
+                    </div>
+                </form>
+
+                {% if report_generated %}
+                <div class="report-header mb-4">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Payroll Comparison Report</h5>
+                            <p class="text-muted">Comparing: {{ period1.period_name }} vs {{ period2.period_name }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Period 1: {{ comparison_data.period1 }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" data-simplebar>
+                                    <table class="table table-hover text-nowrap">
+                                        <thead class="table-light border-0">
+                                            <tr>
+                                                <th class="text-muted">Category</th>
+                                                <th class="text-muted">Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="fw-semibold">Total Employees</td>
+                                                <td class="fw-semibold">{{ comparison_data.period1_data.total_employees }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Total Gross Salary</td>
+                                                <td class="fw-semibold">${{ comparison_data.period1_data.total_gross|floatformat:2 }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Total Net Salary</td>
+                                                <td class="fw-semibold">${{ comparison_data.period1_data.total_net|floatformat:2 }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Total Deductions</td>
+                                                <td class="fw-semibold">${{ comparison_data.period1_data.total_deductions|floatformat:2 }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Average Gross Salary</td>
+                                                <td class="fw-semibold">
+                                                    ${% if comparison_data.period1_data.total_employees > 0 %}
+                                                    {{ comparison_data.period1_data.total_gross|div:comparison_data.period1_data.total_employees|floatformat:2 }}
+                                                    {% else %}
+                                                    0.00
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Average Net Salary</td>
+                                                <td class="fw-semibold">
+                                                    ${% if comparison_data.period1_data.total_employees > 0 %}
+                                                    {{ comparison_data.period1_data.total_net|div:comparison_data.period1_data.total_employees|floatformat:2 }}
+                                                    {% else %}
+                                                    0.00
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Period 2: {{ comparison_data.period2 }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" data-simplebar>
+                                    <table class="table table-hover text-nowrap">
+                                        <thead class="table-light border-0">
+                                            <tr>
+                                                <th class="text-muted">Category</th>
+                                                <th class="text-muted">Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="fw-semibold">Total Employees</td>
+                                                <td class="fw-semibold">{{ comparison_data.period2_data.total_employees }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Total Gross Salary</td>
+                                                <td class="fw-semibold">${{ comparison_data.period2_data.total_gross|floatformat:2 }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Total Net Salary</td>
+                                                <td class="fw-semibold">${{ comparison_data.period2_data.total_net|floatformat:2 }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Total Deductions</td>
+                                                <td class="fw-semibold">${{ comparison_data.period2_data.total_deductions|floatformat:2 }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Average Gross Salary</td>
+                                                <td class="fw-semibold">
+                                                    ${% if comparison_data.period2_data.total_employees > 0 %}
+                                                    {{ comparison_data.period2_data.total_gross|div:comparison_data.period2_data.total_employees|floatformat:2 }}
+                                                    {% else %}
+                                                    0.00
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Average Net Salary</td>
+                                                <td class="fw-semibold">
+                                                    ${% if comparison_data.period2_data.total_employees > 0 %}
+                                                    {{ comparison_data.period2_data.total_net|div:comparison_data.period2_data.total_employees|floatformat:2 }}
+                                                    {% else %}
+                                                    0.00
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Comparison Analysis</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" data-simplebar>
+                                    <table class="table table-hover text-nowrap">
+                                        <thead class="table-light border-0">
+                                            <tr>
+                                                <th class="text-muted">Category</th>
+                                                <th class="text-muted">Period 1</th>
+                                                <th class="text-muted">Period 2</th>
+                                                <th class="text-muted">Change</th>
+                                                <th class="text-muted">% Change</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="fw-semibold">Total Employees</td>
+                                                <td class="fw-semibold">{{ comparison_data.period1_data.total_employees }}</td>
+                                                <td class="fw-semibold">{{ comparison_data.period2_data.total_employees }}</td>
+                                                <td class="fw-semibold">
+                                                    {% if comparison_data.changes.employee_change > 0 %}
+                                                    <span class="text-success">+{{ comparison_data.changes.employee_change }}</span>
+                                                    {% elif comparison_data.changes.employee_change < 0 %}
+                                                    <span class="text-danger">{{ comparison_data.changes.employee_change }}</span>
+                                                    {% else %}
+                                                    <span class="text-muted">0</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="fw-semibold">
+                                                    {% if comparison_data.period1_data.total_employees > 0 %}
+                                                    {% with percent=comparison_data.changes.employee_change|div:comparison_data.period1_data.total_employees|mul:100 %}
+                                                    {% if percent > 0 %}
+                                                    <span class="text-success">+{{ percent|floatformat:2 }}%</span>
+                                                    {% elif percent < 0 %}
+                                                    <span class="text-danger">{{ percent|floatformat:2 }}%</span>
+                                                    {% else %}
+                                                    <span class="text-muted">0.00%</span>
+                                                    {% endif %}
+                                                    {% endwith %}
+                                                    {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Total Gross Salary</td>
+                                                <td class="fw-semibold">${{ comparison_data.period1_data.total_gross|floatformat:2 }}</td>
+                                                <td class="fw-semibold">${{ comparison_data.period2_data.total_gross|floatformat:2 }}</td>
+                                                <td class="fw-semibold">
+                                                    {% if comparison_data.changes.gross_change > 0 %}
+                                                    <span class="text-success">+${{ comparison_data.changes.gross_change|floatformat:2 }}</span>
+                                                    {% elif comparison_data.changes.gross_change < 0 %}
+                                                    <span class="text-danger">-${{ comparison_data.changes.gross_change|absolute|floatformat:2 }}</span>
+                                                    {% else %}
+                                                    <span class="text-muted">$0.00</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="fw-semibold">
+                                                    {% if comparison_data.changes.gross_percentage %}
+                                                    {% if comparison_data.changes.gross_percentage > 0 %}
+                                                    <span class="text-success">+{{ comparison_data.changes.gross_percentage|floatformat:2 }}%</span>
+                                                    {% elif comparison_data.changes.gross_percentage < 0 %}
+                                                    <span class="text-danger">{{ comparison_data.changes.gross_percentage|floatformat:2 }}%</span>
+                                                    {% else %}
+                                                    <span class="text-muted">0.00%</span>
+                                                    {% endif %}
+                                                    {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Total Net Salary</td>
+                                                <td class="fw-semibold">${{ comparison_data.period1_data.total_net|floatformat:2 }}</td>
+                                                <td class="fw-semibold">${{ comparison_data.period2_data.total_net|floatformat:2 }}</td>
+                                                <td class="fw-semibold">
+                                                    {% if comparison_data.changes.net_change > 0 %}
+                                                    <span class="text-success">+${{ comparison_data.changes.net_change|floatformat:2 }}</span>
+                                                    {% elif comparison_data.changes.net_change < 0 %}
+                                                    <span class="text-danger">-${{ comparison_data.changes.net_change|absolute|floatformat:2 }}</span>
+                                                    {% else %}
+                                                    <span class="text-muted">$0.00</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="fw-semibold">
+                                                    {% if comparison_data.changes.net_percentage %}
+                                                    {% if comparison_data.changes.net_percentage > 0 %}
+                                                    <span class="text-success">+{{ comparison_data.changes.net_percentage|floatformat:2 }}%</span>
+                                                    {% elif comparison_data.changes.net_percentage < 0 %}
+                                                    <span class="text-danger">{{ comparison_data.changes.net_percentage|floatformat:2 }}%</span>
+                                                    {% else %}
+                                                    <span class="text-muted">0.00%</span>
+                                                    {% endif %}
+                                                    {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Total Deductions</td>
+                                                <td class="fw-semibold">${{ comparison_data.period1_data.total_deductions|floatformat:2 }}</td>
+                                                <td class="fw-semibold">${{ comparison_data.period2_data.total_deductions|floatformat:2 }}</td>
+                                                <td class="fw-semibold">
+                                                    {% if comparison_data.changes.deduction_change > 0 %}
+                                                    <span class="text-danger">+${{ comparison_data.changes.deduction_change|floatformat:2 }}</span>
+                                                    {% elif comparison_data.changes.deduction_change < 0 %}
+                                                    <span class="text-success">-${{ comparison_data.changes.deduction_change|absolute|floatformat:2 }}</span>
+                                                    {% else %}
+                                                    <span class="text-muted">$0.00</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="fw-semibold">
+                                                    {% if comparison_data.period1_data.total_deductions > 0 %}
+                                                    {% with percent=comparison_data.changes.deduction_change|div:comparison_data.period1_data.total_deductions|mul:100 %}
+                                                    {% if percent > 0 %}
+                                                    <span class="text-danger">+{{ percent|floatformat:2 }}%</span>
+                                                    {% elif percent < 0 %}
+                                                    <span class="text-success">{{ percent|floatformat:2 }}%</span>
+                                                    {% else %}
+                                                    <span class="text-muted">0.00%</span>
+                                                    {% endif %}
+                                                    {% endwith %}
+                                                    {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Salary Comparison Chart</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="salaryComparisonChart" style="height: 300px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Change Analysis</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="changeAnalysisChart" style="height: 300px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="ri-information-line me-2"></i> Please select two different payroll periods to generate the comparison report.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block javascript %}
+<script src="/static/assets/libs/apexcharts/apexcharts.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if report_generated %}
+        // Salary Comparison Chart
+        var salaryComparisonOptions = {
+            series: [{
+                name: 'Period 1: {{ comparison_data.period1 }}',
+                data: [
+                    {{ comparison_data.period1_data.total_gross }},
+                    {{ comparison_data.period1_data.total_net }},
+                    {{ comparison_data.period1_data.total_deductions }}
+                ]
+            }, {
+                name: 'Period 2: {{ comparison_data.period2 }}',
+                data: [
+                    {{ comparison_data.period2_data.total_gross }},
+                    {{ comparison_data.period2_data.total_net }},
+                    {{ comparison_data.period2_data.total_deductions }}
+                ]
+            }],
+            chart: {
+                type: 'bar',
+                height: 300,
+                toolbar: {
+                    show: false
+                }
+            },
+            plotOptions: {
+                bar: {
+                    horizontal: false,
+                    columnWidth: '55%',
+                    endingShape: 'rounded'
+                },
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                show: true,
+                width: 2,
+                colors: ['transparent']
+            },
+            xaxis: {
+                categories: ['Gross Salary', 'Net Salary', 'Deductions'],
+            },
+            yaxis: {
+                title: {
+                    text: 'Amount ($)'
+                },
+                labels: {
+                    formatter: function (val) {
+                        return "$" + val.toFixed(2);
+                    }
+                }
+            },
+            fill: {
+                opacity: 1,
+                colors: ['#6658dd', '#1abc9c']
+            },
+            tooltip: {
+                y: {
+                    formatter: function (val) {
+                        return "$" + val.toFixed(2)
+                    }
+                }
+            },
+            legend: {
+                position: 'top'
+            }
+        };
+        
+        var salaryComparisonChart = new ApexCharts(document.querySelector("#salaryComparisonChart"), salaryComparisonOptions);
+        salaryComparisonChart.render();
+        
+        // Change Analysis Chart
+        var changeAnalysisOptions = {
+            series: [{
+                name: 'Change Percentage',
+                data: [
+                    {% if comparison_data.period1_data.total_employees > 0 %}
+                    {{ comparison_data.changes.employee_change|div:comparison_data.period1_data.total_employees|mul:100|floatformat:2 }},
+                    {% else %}
+                    0,
+                    {% endif %}
+                    {% if comparison_data.changes.gross_percentage %}
+                    {{ comparison_data.changes.gross_percentage|floatformat:2 }},
+                    {% else %}
+                    0,
+                    {% endif %}
+                    {% if comparison_data.changes.net_percentage %}
+                    {{ comparison_data.changes.net_percentage|floatformat:2 }},
+                    {% else %}
+                    0,
+                    {% endif %}
+                    {% if comparison_data.period1_data.total_deductions > 0 %}
+                    {{ comparison_data.changes.deduction_change|div:comparison_data.period1_data.total_deductions|mul:100|floatformat:2 }}
+                    {% else %}
+                    0
+                    {% endif %}
+                ]
+            }],
+            chart: {
+                type: 'bar',
+                height: 300,
+                toolbar: {
+                    show: false
+                }
+            },
+            plotOptions: {
+                bar: {
+                    horizontal: false,
+                    columnWidth: '55%',
+                    endingShape: 'rounded',
+                    distributed: true
+                },
+            },
+            colors: ['#6658dd', '#1abc9c', '#4fc6e1', '#f1556c'],
+            dataLabels: {
+                enabled: true,
+                formatter: function (val) {
+                    return val.toFixed(2) + "%";
+                },
+                style: {
+                    fontSize: '12px',
+                    colors: ['#fff']
+                }
+            },
+            legend: {
+                show: false
+            },
+            xaxis: {
+                categories: ['Employees', 'Gross Salary', 'Net Salary', 'Deductions'],
+                labels: {
+                    style: {
+                        fontSize: '12px'
+                    }
+                }
+            },
+            yaxis: {
+                title: {
+                    text: 'Percentage Change (%)'
+                },
+                labels: {
+                    formatter: function (val) {
+                        return val.toFixed(2) + "%";
+                    }
+                }
+            }
+        };
+        
+        var changeAnalysisChart = new ApexCharts(document.querySelector("#changeAnalysisChart"), changeAnalysisOptions);
+        changeAnalysisChart.render();
+        {% endif %}
+    });
+</script>
+{% endblock %}
+

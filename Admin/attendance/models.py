@@ -566,7 +566,6 @@ class Holiday(models.Model):
 
         return holidays.exists()
 
-
 class LeaveType(models.Model):
     LEAVE_CATEGORIES = [
         ("ANNUAL", "Annual Leave"),

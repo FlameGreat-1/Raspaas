@@ -1,0 +1,333 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Payroll System Configuration" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Payroll" title="System Configuration"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4>System Validation</h4>
+                <div>
+                    <a href="{% url 'payroll:initialize_system' %}" class="btn btn-primary">
+                        <i class="bi bi-gear-fill me-1"></i> Initialize System
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if system_validation.status == 'success' %}
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle-fill me-2"></i> Payroll system validation passed successfully.
+                </div>
+                {% elif system_validation.status == 'warning' %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> Payroll system validation passed with warnings.
+                </div>
+                {% else %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-x-circle-fill me-2"></i> Payroll system validation failed.
+                </div>
+                {% endif %}
+
+                <div class="mt-3">
+                    <h5>Checks Performed:</h5>
+                    <ul class="list-group">
+                        {% for check in system_validation.checks_performed %}
+                        <li class="list-group-item d-flex align-items-center">
+                            <i class="bi bi-check-circle text-success me-2"></i> {{ check }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                {% if system_validation.warnings %}
+                <div class="mt-3">
+                    <h5>Warnings:</h5>
+                    <ul class="list-group">
+                        {% for warning in system_validation.warnings %}
+                        <li class="list-group-item d-flex align-items-center">
+                            <i class="bi bi-exclamation-triangle text-warning me-2"></i> {{ warning }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                {% if system_validation.errors %}
+                <div class="mt-3">
+                    <h5>Errors:</h5>
+                    <ul class="list-group">
+                        {% for error in system_validation.errors %}
+                        <li class="list-group-item d-flex align-items-center">
+                            <i class="bi bi-x-circle text-danger me-2"></i> {{ error }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4>Add New Configuration</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'payroll:add_configuration' %}">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="key" class="form-label">Setting Key</label>
+                                <input type="text" class="form-control" id="key" name="key" required placeholder="Enter setting key">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="value" class="form-label">Setting Value</label>
+                                <input type="text" class="form-control" id="value" name="value" required placeholder="Enter setting value">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="setting_type" class="form-label">Setting Type</label>
+                                <select class="form-select" id="setting_type" name="setting_type" required>
+                                    <option value="TEXT">Text</option>
+                                    <option value="DECIMAL">Decimal</option>
+                                    <option value="INTEGER">Integer</option>
+                                    <option value="BOOLEAN">Boolean</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <input type="text" class="form-control" id="description" name="description" placeholder="Enter description">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-1"></i> Add Configuration
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>Payroll Configuration Settings</h4>
+                <ul class="nav nav-pills" id="settings-tab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="allowances-tab" data-bs-toggle="pill" data-bs-target="#allowances" type="button" role="tab" aria-controls="allowances" aria-selected="true">Allowances</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="bonuses-tab" data-bs-toggle="pill" data-bs-target="#bonuses" type="button" role="tab" aria-controls="bonuses" aria-selected="false">Bonuses</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="deductions-tab" data-bs-toggle="pill" data-bs-target="#deductions" type="button" role="tab" aria-controls="deductions" aria-selected="false">Deductions</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tax-tab" data-bs-toggle="pill" data-bs-target="#tax" type="button" role="tab" aria-controls="tax" aria-selected="false">Tax & Contributions</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="general-tab" data-bs-toggle="pill" data-bs-target="#general" type="button" role="tab" aria-controls="general" aria-selected="false">General</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'payroll:system_configuration' %}">
+                    {% csrf_token %}
+                    <div class="tab-content" id="settings-tabContent">
+                        <!-- Allowances Tab -->
+                        <div class="tab-pane fade show active" id="allowances" role="tabpanel" aria-labelledby="allowances-tab" tabindex="0">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Setting</th>
+                                            <th>Value</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for setting in settings_by_group.allowances %}
+                                        <tr>
+                                            <td>{{ setting.get_display_name }}</td>
+                                            <td>
+                                                <input type="hidden" name="setting_key" value="{{ setting.key }}">
+                                                <input type="text" class="form-control" name="setting_value" value="{{ setting.value }}" {% if not can_edit_settings %}disabled{% endif %}>
+                                            </td>
+                                            <td>{{ setting.description }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="3" class="text-center">No allowance settings found.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Bonuses Tab -->
+                        <div class="tab-pane fade" id="bonuses" role="tabpanel" aria-labelledby="bonuses-tab" tabindex="0">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Setting</th>
+                                            <th>Value</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for setting in settings_by_group.bonuses %}
+                                        <tr>
+                                            <td>{{ setting.get_display_name }}</td>
+                                            <td>
+                                                <input type="hidden" name="setting_key" value="{{ setting.key }}">
+                                                <input type="text" class="form-control" name="setting_value" value="{{ setting.value }}" {% if not can_edit_settings %}disabled{% endif %}>
+                                            </td>
+                                            <td>{{ setting.description }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="3" class="text-center">No bonus settings found.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Deductions Tab -->
+                        <div class="tab-pane fade" id="deductions" role="tabpanel" aria-labelledby="deductions-tab" tabindex="0">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Setting</th>
+                                            <th>Value</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for setting in settings_by_group.deductions %}
+                                        <tr>
+                                            <td>{{ setting.get_display_name }}</td>
+                                            <td>
+                                                <input type="hidden" name="setting_key" value="{{ setting.key }}">
+                                                <input type="text" class="form-control" name="setting_value" value="{{ setting.value }}" {% if not can_edit_settings %}disabled{% endif %}>
+                                            </td>
+                                            <td>{{ setting.description }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="3" class="text-center">No deduction settings found.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Tax Tab -->
+                        <div class="tab-pane fade" id="tax" role="tabpanel" aria-labelledby="tax-tab" tabindex="0">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Setting</th>
+                                            <th>Value</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for setting in settings_by_group.tax %}
+                                        <tr>
+                                            <td>{{ setting.get_display_name }}</td>
+                                            <td>
+                                                <input type="hidden" name="setting_key" value="{{ setting.key }}">
+                                                <input type="text" class="form-control" name="setting_value" value="{{ setting.value }}" {% if not can_edit_settings %}disabled{% endif %}>
+                                            </td>
+                                            <td>{{ setting.description }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="3" class="text-center">No tax settings found.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- General Tab -->
+                        <div class="tab-pane fade" id="general" role="tabpanel" aria-labelledby="general-tab" tabindex="0">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Setting</th>
+                                            <th>Value</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for setting in settings_by_group.general %}
+                                        <tr>
+                                            <td>{{ setting.get_display_name }}</td>
+                                            <td>
+                                                <input type="hidden" name="setting_key" value="{{ setting.key }}">
+                                                <input type="text" class="form-control" name="setting_value" value="{{ setting.value }}" {% if not can_edit_settings %}disabled{% endif %}>
+                                            </td>
+                                            <td>{{ setting.description }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="3" class="text-center">No general settings found.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if can_edit_settings %}
+                    <div class="text-end mt-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i> Save Changes
+                        </button>
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block js %}
+<script type="module" src="/static/assets/js/app.js"></script>
+{% endblock js %}
+

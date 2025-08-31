@@ -37,10 +37,10 @@
                             </a>
                         </li>
                         <li class="pe-slide-item">
-                            <a href="dashboard-media.html" class="pe-nav-link">
+                            <a href="{% url 'payroll:dashboard' %}" class="pe-nav-link">
                                 Payroll
                             </a>
-                        </li>
+                        </li>                        
                     </ul>
                 </li>
                 <li class="pe-slide pe-has-sub">
@@ -113,30 +113,62 @@
                                     <a href="{% url 'attendance:employee_shift_list' %}" class="pe-nav-link">
                                         Employee Shifts
                                     </a>
-                                </li>                                                       
-                                
+                                </li> 
                                 <li class="pe-slide-item">
-                                    <a href="apps-ecommerce-order-details.html" class="pe-nav-link">
-                                        Order Details
+                                    <a href="{% url 'attendance:leave_request_list' %}" class="pe-nav-link">
+                                        Leave Requests
                                     </a>
                                 </li>
                                 <li class="pe-slide-item">
-                                    <a href="apps-ecommerce-cart.html" class="pe-nav-link">
-                                        Cart
+                                    <a href="{% url 'attendance:leave_type_list' %}" class="pe-nav-link">
+                                        Leave Types
                                     </a>
                                 </li>
                                 <li class="pe-slide-item">
-                                    <a href="apps-ecommerce-checkout.html" class="pe-nav-link">
-                                        Checkout
-                                    </a>
-                                </li>
-                                <li class="pe-slide-item">
-                                    <a href="apps-ecommerce-wishlist.html" class="pe-nav-link">
-                                        Wishlist
+                                    <a href="{% url 'attendance:leave_balance_list' %}" class="pe-nav-link">
+                                        Leave Balances
                                     </a>
                                 </li>
                             </ul>
                         </li>
+                        <li class="pe-slide-item pe-has-sub">
+                            <a href="#collapsePayroll" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapsePayroll">
+                                <span class="pe-nav-sub-content">Payroll</span>
+                                <i class="ri-arrow-down-s-line pe-nav-arrow"></i>
+                            </a>
+                            <ul class="pe-slide-menu collapse" id="collapsePayroll">
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'payroll:period_list' %}" class="pe-nav-link">
+                                        Periods
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'payroll:payslip_list' %}" class="pe-nav-link">
+                                        Payslips
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'payroll:advance_list' %}" class="pe-nav-link">
+                                        Salary Advances
+                                    </a>
+                                </li>  
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'payroll:bank_transfer_list' %}" class="pe-nav-link">
+                                        Bank Transfers
+                                    </a>
+                                </li>  
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'payroll:system_configuration' %}" class="pe-nav-link">
+                                        Configuration
+                                    </a>
+                                </li>                                                                       
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'payroll:employee_payslip_select' %}" class="pe-nav-link">
+                                        History
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>                          
                         <li class="pe-slide-item pe-has-sub">
                             <a href="#collapseSchool" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseSchool">
                                 <span class="pe-nav-sub-content">Employee</span>

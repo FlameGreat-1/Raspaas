@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+{% load payroll_filters %}
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Year to Date Report</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #333;
+        }
+        .container {
+            width: 100%;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+            color: #333;
+        }
+        .header p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .report-info {
+            margin-bottom: 20px;
+        }
+        .report-info table {
+            width: 100%;
+        }
+        .report-info td {
+            padding: 5px;
+            vertical-align: top;
+        }
+        .report-info .label {
+            font-weight: bold;
+            width: 150px;
+        }
+        table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table.data-table th {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-weight: bold;
+        }
+        table.data-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .page-break {
+            page-break-after: always;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ company_name }}</h1>
+            <p>Year to Date Report - {{ year }}</p>
+            <p>Employee: {{ employee.get_full_name }}</p>
+        </div>
+        
+        <div class="report-info">
+            <table>
+                <tr>
+                    <td class="label">Report Date:</td>
+                    <td>{{ generated_date }}</td>
+                    <td class="label">Year:</td>
+                    <td>{{ year }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Employee Code:</td>
+                    <td>{{ employee.employee_code }}</td>
+                    <td class="label">Department:</td>
+                    <td>{{ employee.department.name }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Job Title:</td>
+                    <td>{{ employee.job_title }}</td>
+                    <td class="label">Total Months:</td>
+                    <td>{{ ytd_data.total_months }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Total Gross Salary:</td>
+                    <td>${{ ytd_data.total_gross_salary|floatformat:2 }}</td>
+                    <td class="label">Total Net Salary:</td>
+                    <td>${{ ytd_data.total_net_salary|floatformat:2 }}</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="section-title">Salary Summary</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Total Amount</th>
+                    <th>Monthly Average</th>
+                    <th>Percentage of Gross</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Basic Salary</td>
+                    <td class="text-right">${{ ytd_data.total_basic_salary|floatformat:2 }}</td>
+                    <td class="text-right">
+                        ${% if ytd_data.total_months > 0 %}
+                        {{ ytd_data.total_basic_salary|div:ytd_data.total_months|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        {% if ytd_data.total_gross_salary > 0 %}
+                        {{ ytd_data.total_basic_salary|div:ytd_data.total_gross_salary|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Allowances</td>
+                    <td class="text-right">${{ ytd_data.total_allowances|floatformat:2 }}</td>
+                    <td class="text-right">
+                        ${% if ytd_data.total_months > 0 %}
+                        {{ ytd_data.total_allowances|div:ytd_data.total_months|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        {% if ytd_data.total_gross_salary > 0 %}
+                        {{ ytd_data.total_allowances|div:ytd_data.total_gross_salary|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Overtime Pay</td>
+                    <td class="text-right">${{ ytd_data.total_overtime_pay|floatformat:2 }}</td>
+                    <td class="text-right">
+                        ${% if ytd_data.total_months > 0 %}
+                        {{ ytd_data.total_overtime_pay|div:ytd_data.total_months|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        {% if ytd_data.total_gross_salary > 0 %}
+                        {{ ytd_data.total_overtime_pay|div:ytd_data.total_gross_salary|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Total Gross Salary</strong></td>
+                    <td class="text-right"><strong>${{ ytd_data.total_gross_salary|floatformat:2 }}</strong></td>
+                    <td class="text-right"><strong>${{ ytd_data.average_monthly_gross|floatformat:2 }}</strong></td>
+                    <td class="text-right"><strong>100.00%</strong></td>
+                </tr>
+                <tr>
+                    <td>Total Deductions</td>
+                    <td class="text-right">${{ ytd_data.total_deductions|floatformat:2 }}</td>
+                    <td class="text-right">
+                        ${% if ytd_data.total_months > 0 %}
+                        {{ ytd_data.total_deductions|div:ytd_data.total_months|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        {% if ytd_data.total_gross_salary > 0 %}
+                        {{ ytd_data.total_deductions|div:ytd_data.total_gross_salary|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Total Net Salary</strong></td>
+                    <td class="text-right"><strong>${{ ytd_data.total_net_salary|floatformat:2 }}</strong></td>
+                    <td class="text-right"><strong>${{ ytd_data.average_monthly_net|floatformat:2 }}</strong></td>
+                    <td class="text-right">
+                        <strong>
+                        {% if ytd_data.total_gross_salary > 0 %}
+                        {{ ytd_data.total_net_salary|div:ytd_data.total_gross_salary|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                        </strong>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="section-title">Deductions Breakdown</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Deduction Type</th>
+                    <th>Total Amount</th>
+                    <th>Monthly Average</th>
+                    <th>Percentage of Deductions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>EPF Employee Contribution</td>
+                    <td class="text-right">${{ ytd_data.total_epf_employee|floatformat:2 }}</td>
+                    <td class="text-right">
+                        ${% if ytd_data.total_months > 0 %}
+                        {{ ytd_data.total_epf_employee|div:ytd_data.total_months|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        {% if ytd_data.total_deductions > 0 %}
+                        {{ ytd_data.total_epf_employee|div:ytd_data.total_deductions|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Income Tax</td>
+                    <td class="text-right">${{ ytd_data.total_income_tax|floatformat:2 }}</td>
+                    <td class="text-right">
+                        ${% if ytd_data.total_months > 0 %}
+                        {{ ytd_data.total_income_tax|div:ytd_data.total_months|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        {% if ytd_data.total_deductions > 0 %}
+                        {{ ytd_data.total_income_tax|div:ytd_data.total_deductions|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Late Penalties</td>
+                    <td class="text-right">${{ ytd_data.total_late_penalties|floatformat:2 }}</td>
+                    <td class="text-right">
+                        ${% if ytd_data.total_months > 0 %}
+                        {{ ytd_data.total_late_penalties|div:ytd_data.total_months|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        {% if ytd_data.total_deductions > 0 %}
+                        {{ ytd_data.total_late_penalties|div:ytd_data.total_deductions|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Lunch Violations</td>
+                    <td class="text-right">${{ ytd_data.total_lunch_violations|floatformat:2 }}</td>
+                    <td class="text-right">
+                        ${% if ytd_data.total_months > 0 %}
+                        {{ ytd_data.total_lunch_violations|div:ytd_data.total_months|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        {% if ytd_data.total_deductions > 0 %}
+                        {{ ytd_data.total_lunch_violations|div:ytd_data.total_deductions|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Advance Deductions</td>
+                    <td class="text-right">${{ ytd_data.total_advance_deductions|floatformat:2 }}</td>
+                    <td class="text-right">
+                        ${% if ytd_data.total_months > 0 %}
+                        {{ ytd_data.total_advance_deductions|div:ytd_data.total_months|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        {% if ytd_data.total_deductions > 0 %}
+                        {{ ytd_data.total_advance_deductions|div:ytd_data.total_deductions|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Other Deductions</td>
+                    <td class="text-right">${{ ytd_data.total_other_deductions|floatformat:2 }}</td>
+                    <td class="text-right">
+                        ${% if ytd_data.total_months > 0 %}
+                        {{ ytd_data.total_other_deductions|div:ytd_data.total_months|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                    </td>
+                    <td class="text-right">
+                        {% if ytd_data.total_deductions > 0 %}
+                        {{ ytd_data.total_other_deductions|div:ytd_data.total_deductions|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Total Deductions</strong></td>
+                    <td class="text-right"><strong>${{ ytd_data.total_deductions|floatformat:2 }}</strong></td>
+                    <td class="text-right">
+                        <strong>
+                        ${% if ytd_data.total_months > 0 %}
+                        {{ ytd_data.total_deductions|div:ytd_data.total_months|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                        </strong>
+                    </td>
+                    <td class="text-right"><strong>100.00%</strong></td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="section-title">Monthly Breakdown</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th>Basic Salary</th>
+                    <th>Allowances</th>
+                    <th>Overtime</th>
+                    <th>Gross Salary</th>
+                    <th>Deductions</th>
+                    <th>Net Salary</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for month_data in ytd_data.monthly_breakdown %}
+                <tr>
+                    <td>{{ month_data.month_name }}</td>
+                    <td class="text-right">${{ month_data.basic_salary|floatformat:2 }}</td>
+                    <td class="text-right">${{ month_data.allowances|floatformat:2 }}</td>
+                    <td class="text-right">${{ month_data.overtime_pay|floatformat:2 }}</td>
+                    <td class="text-right">${{ month_data.gross_salary|floatformat:2 }}</td>
+                    <td class="text-right">${{ month_data.deductions|floatformat:2 }}</td>
+                    <td class="text-right">${{ month_data.net_salary|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+                <tr>
+                    <td><strong>Total</strong></td>
+                    <td class="text-right"><strong>${{ ytd_data.total_basic_salary|floatformat:2 }}</strong></td>
+                    <td class="text-right"><strong>${{ ytd_data.total_allowances|floatformat:2 }}</strong></td>
+                    <td class="text-right"><strong>${{ ytd_data.total_overtime_pay|floatformat:2 }}</strong></td>
+                    <td class="text-right"><strong>${{ ytd_data.total_gross_salary|floatformat:2 }}</strong></td>
+                    <td class="text-right"><strong>${{ ytd_data.total_deductions|floatformat:2 }}</strong></td>
+                    <td class="text-right"><strong>${{ ytd_data.total_net_salary|floatformat:2 }}</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>Average</strong></td>
+                    <td class="text-right">
+                        <strong>
+                        ${% if ytd_data.total_months > 0 %}
+                        {{ ytd_data.total_basic_salary|div:ytd_data.total_months|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                        </strong>
+                    </td>
+                    <td class="text-right">
+                        <strong>
+                        ${% if ytd_data.total_months > 0 %}
+                        {{ ytd_data.total_allowances|div:ytd_data.total_months|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                        </strong>
+                    </td>
+                    <td class="text-right">
+                        <strong>
+                        ${% if ytd_data.total_months > 0 %}
+                        {{ ytd_data.total_overtime_pay|div:ytd_data.total_months|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                        </strong>
+                    </td>
+                    <td class="text-right"><strong>${{ ytd_data.average_monthly_gross|floatformat:2 }}</strong></td>
+                    <td class="text-right">
+                        <strong>
+                        ${% if ytd_data.total_months > 0 %}
+                        {{ ytd_data.total_deductions|div:ytd_data.total_months|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                        </strong>
+                    </td>
+                    <td class="text-right"><strong>${{ ytd_data.average_monthly_net|floatformat:2 }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="footer">
+            <p>Generated on {{ generated_date }} | {{ company_name }} | Year to Date Report {{ year }}</p>
+            <p>This is a computer-generated document. No signature is required.</p>
+            <p>Confidential: For internal use only.</p>
+        </div>
+    </div>
+</body>
+</html>
+

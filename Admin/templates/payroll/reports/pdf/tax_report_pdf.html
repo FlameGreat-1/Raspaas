@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+{% load payroll_filters %}
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Tax Report</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #333;
+        }
+        .container {
+            width: 100%;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+            color: #333;
+        }
+        .header p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .report-info {
+            margin-bottom: 20px;
+        }
+        .report-info table {
+            width: 100%;
+        }
+        .report-info td {
+            padding: 5px;
+            vertical-align: top;
+        }
+        .report-info .label {
+            font-weight: bold;
+            width: 150px;
+        }
+        table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table.data-table th {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-weight: bold;
+        }
+        table.data-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .page-break {
+            page-break-after: always;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ company_name }}</h1>
+            <p>Tax Report - {{ year }}</p>
+            <p>Report Type: {{ report_type|title }}</p>
+        </div>
+        
+        <div class="report-info">
+            <table>
+                <tr>
+                    <td class="label">Report Date:</td>
+                    <td>{{ generated_date }}</td>
+                    <td class="label">Year:</td>
+                    <td>{{ year }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Total Employees:</td>
+                    <td>{{ tax_report.total_employees }}</td>
+                    <td class="label">Report Type:</td>
+                    <td>{{ report_type|title }}</td>
+                </tr>
+                <tr>
+                    <td class="label">Total Gross Salary:</td>
+                    <td>${{ tax_report.total_gross_salary|floatformat:2 }}</td>
+                    <td class="label">Total Income Tax:</td>
+                    <td>${{ tax_report.total_income_tax|floatformat:2 }}</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="section-title">Tax Summary</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Amount</th>
+                    <th>Percentage of Gross</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Total Gross Salary</td>
+                    <td class="text-right">${{ tax_report.total_gross_salary|floatformat:2 }}</td>
+                    <td class="text-right">100.00%</td>
+                </tr>
+                <tr>
+                    <td>Total EPF Employee Contribution</td>
+                    <td class="text-right">${{ tax_report.total_epf_employee|floatformat:2 }}</td>
+                    <td class="text-right">
+                        {% if tax_report.total_gross_salary > 0 %}
+                        {{ tax_report.total_epf_employee|div:tax_report.total_gross_salary|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Total EPF Employer Contribution</td>
+                    <td class="text-right">${{ tax_report.total_epf_employer|floatformat:2 }}</td>
+                    <td class="text-right">
+                        {% if tax_report.total_gross_salary > 0 %}
+                        {{ tax_report.total_epf_employer|div:tax_report.total_gross_salary|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Total ETF Contribution</td>
+                    <td class="text-right">${{ tax_report.total_etf|floatformat:2 }}</td>
+                    <td class="text-right">
+                        {% if tax_report.total_gross_salary > 0 %}
+                        {{ tax_report.total_etf|div:tax_report.total_gross_salary|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Total Income Tax</td>
+                    <td class="text-right">${{ tax_report.total_income_tax|floatformat:2 }}</td>
+                    <td class="text-right">
+                        {% if tax_report.total_gross_salary > 0 %}
+                        {{ tax_report.total_income_tax|div:tax_report.total_gross_salary|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Total Retirement Funds</strong></td>
+                    <td class="text-right"><strong>${{ tax_report.total_epf_employee|add:tax_report.total_epf_employer|add:tax_report.total_etf|floatformat:2 }}</strong></td>
+                    <td class="text-right">
+                        <strong>
+                        {% if tax_report.total_gross_salary > 0 %}
+                        {{ tax_report.total_epf_employee|add:tax_report.total_epf_employer|add:tax_report.total_etf|div:tax_report.total_gross_salary|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                        </strong>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="section-title">Tax Statistics</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Statistic</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Average Annual Gross Salary</td>
+                    <td class="text-right">
+                        ${% if tax_report.total_employees > 0 %}
+                        {{ tax_report.total_gross_salary|div:tax_report.total_employees|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Average Income Tax</td>
+                    <td class="text-right">
+                        ${% if tax_report.total_employees > 0 %}
+                        {{ tax_report.total_income_tax|div:tax_report.total_employees|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Average Tax Rate</td>
+                    <td class="text-right">
+                        {% if tax_report.total_gross_salary > 0 %}
+                        {{ tax_report.total_income_tax|div:tax_report.total_gross_salary|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Average EPF Employee Contribution</td>
+                    <td class="text-right">
+                        ${% if tax_report.total_employees > 0 %}
+                        {{ tax_report.total_epf_employee|div:tax_report.total_employees|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Average EPF Employer Contribution</td>
+                    <td class="text-right">
+                        ${% if tax_report.total_employees > 0 %}
+                        {{ tax_report.total_epf_employer|div:tax_report.total_employees|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Average ETF Contribution</td>
+                    <td class="text-right">
+                        ${% if tax_report.total_employees > 0 %}
+                        {{ tax_report.total_etf|div:tax_report.total_employees|floatformat:2 }}
+                        {% else %}
+                        0.00
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="section-title">Employee Tax Breakdown</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Employee Code</th>
+                    <th>Employee Name</th>
+                    <th>Annual Gross</th>
+                    <th>EPF Employee</th>
+                    <th>EPF Employer</th>
+                    <th>ETF</th>
+                    <th>Income Tax</th>
+                    <th>Tax Rate</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for employee in tax_report.employee_breakdown %}
+                <tr>
+                    <td>{{ employee.employee_code }}</td>
+                    <td>{{ employee.employee_name }}</td>
+                    <td class="text-right">${{ employee.annual_gross|floatformat:2 }}</td>
+                    <td class="text-right">${{ employee.annual_epf_employee|floatformat:2 }}</td>
+                    <td class="text-right">${{ employee.annual_epf_employer|floatformat:2 }}</td>
+                    <td class="text-right">${{ employee.annual_etf|floatformat:2 }}</td>
+                    <td class="text-right">${{ employee.annual_income_tax|floatformat:2 }}</td>
+                    <td class="text-right">
+                        {% if employee.annual_gross > 0 %}
+                        {{ employee.annual_income_tax|div:employee.annual_gross|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div class="section-title">Tax Bracket Distribution</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Tax Bracket</th>
+                    <th>Number of Employees</th>
+                    <th>Percentage of Workforce</th>
+                    <th>Total Income Tax</th>
+                    <th>Percentage of Total Tax</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bracket in tax_report.tax_brackets %}
+                <tr>
+                    <td>{{ bracket.name }}</td>
+                    <td class="text-center">{{ bracket.count }}</td>
+                    <td class="text-right">
+                        {% if tax_report.total_employees > 0 %}
+                        {{ bracket.count|div:tax_report.total_employees|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                    <td class="text-right">${{ bracket.total_tax|floatformat:2 }}</td>
+                    <td class="text-right">
+                        {% if tax_report.total_income_tax > 0 %}
+                        {{ bracket.total_tax|div:tax_report.total_income_tax|mul:100|floatformat:2 }}%
+                        {% else %}
+                        0.00%
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div class="footer">
+            <p>Generated on {{ generated_date }} | {{ company_name }} | Tax Report {{ year }}</p>
+            <p>This is a computer-generated document. No signature is required.</p>
+            <p>Confidential: For internal use only.</p>
+        </div>
+    </div>
+</body>
+</html>
+

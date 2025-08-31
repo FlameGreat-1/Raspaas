@@ -52,6 +52,9 @@ class PayrollDataProcessor:
 
     @staticmethod
     def validate_payroll_period(year: int, month: int) -> Tuple[bool, str]:
+        if year is None or month is None:
+            return False, "Year and month must be provided"
+            
         if month < 1 or month > 12:
             return False, "Invalid month. Must be between 1 and 12"
 
@@ -96,7 +99,6 @@ class PayrollDataProcessor:
             return default
         except (ValueError, TypeError, InvalidOperation):
             return default
-
 
 class PayrollCalculator:
     @staticmethod
@@ -733,8 +735,6 @@ class PayrollTaxCalculator:
             "annual_tax": annual_tax,
             "monthly_tax": monthly_tax,
         }
-
-
 class PayrollAdvanceCalculator:
     @staticmethod
     def calculate_available_advance_amount(employee: CustomUser) -> Dict[str, Decimal]:
@@ -1490,6 +1490,21 @@ class PayrollUtilityHelper:
         return working_days
 
     @staticmethod
+    def get_current_payroll_period() -> Tuple[int, int]:
+        today = timezone.now().date()
+        processing_day = SystemConfiguration.get_int_setting(
+            "PAYROLL_PROCESSING_DAY", 25
+        )
+
+        if today.day >= processing_day:
+            return today.year, today.month
+        else:
+            if today.month == 1:
+                return today.year - 1, 12
+            else:
+                return today.year, today.month - 1
+
+    @staticmethod
     def get_next_payroll_period() -> Tuple[int, int]:
         today = timezone.now().date()
         processing_day = SystemConfiguration.get_int_setting(
@@ -1566,8 +1581,6 @@ class PayrollUtilityHelper:
 
         data_string = json.dumps(data, sort_keys=True, default=str)
         return hashlib.md5(data_string.encode()).hexdigest()
-
-
 class PayrollCacheManager:
     @staticmethod
     def get_cache_key(prefix: str, *args) -> str:
@@ -1669,4 +1682,3 @@ def log_payroll_activity(user, action, details):
         )
     except Exception as e:
         logger.error(f"Failed to log payroll activity: {str(e)}")
-

@@ -1,0 +1,317 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Bank Transfer Details" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+{% endblock %}
+{% block content %}
+{% with title_sub="Payroll" title="Bank Transfer Details"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">Bank Transfer: {{ transfer.batch_reference }}</h4>
+                <div class="action-buttons">
+                    <a href="{% url 'payroll:bank_transfer_list' %}" class="btn btn-sm btn-outline-secondary" title="Back to List">
+                        <i class="bi bi-arrow-left"></i>
+                    </a>
+                    {% if can_download_file %}
+                    <a href="{% url 'payroll:bank_transfer_download_file' pk=transfer.pk %}" class="btn btn-sm btn-outline-info" title="Download File">
+                        <i class="bi bi-download"></i>
+                    </a>
+                    {% endif %}
+                </div>                
+            </div>
+            
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card border">
+                            <div class="card-header bg-soft-primary">
+                                <h5 class="card-title mb-0">Transfer Details</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Batch Reference</h6>
+                                        <p class="text-muted mb-0">{{ transfer.batch_reference }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Status</h6>
+                                        <div>
+                                            {% if transfer.status == 'PENDING' %}
+                                            <span class="badge bg-warning px-3 rounded-3">Pending</span>
+                                            {% elif transfer.status == 'GENERATED' %}
+                                            <span class="badge bg-info px-3 rounded-3">Generated</span>
+                                            {% elif transfer.status == 'SENT' %}
+                                            <span class="badge bg-primary px-3 rounded-3">Sent to Bank</span>
+                                            {% elif transfer.status == 'PROCESSED' %}
+                                            <span class="badge bg-success px-3 rounded-3">Processed</span>
+                                            {% elif transfer.status == 'COMPLETED' %}
+                                            <span class="badge bg-success px-3 rounded-3">Completed</span>
+                                            {% elif transfer.status == 'FAILED' %}
+                                            <span class="badge bg-danger px-3 rounded-3">Failed</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Payroll Period</h6>
+                                        <p class="text-muted mb-0">{{ period.period_name }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Period Status</h6>
+                                        <div>
+                                            <span class="badge bg-{% if period.status == 'APPROVED' %}info{% elif period.status == 'PAID' %}success{% else %}secondary{% endif %} px-3 rounded-3">
+                                                {{ period.get_status_display }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Total Employees</h6>
+                                        <p class="text-muted mb-0">{{ transfer.total_employees }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Total Amount</h6>
+                                        <p class="text-muted mb-0">LKR {{ transfer.total_amount|floatformat:2 }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">File Format</h6>
+                                        <p class="text-muted mb-0">{{ transfer.bank_file_format }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Created By</h6>
+                                        <p class="text-muted mb-0">{{ transfer.created_by.get_full_name }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Created At</h6>
+                                        <p class="text-muted mb-0">{{ transfer.created_at|date:"d/m/Y H:i" }}</p>
+                                    </div>
+                                    {% if transfer.generated_at %}
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Generated At</h6>
+                                        <p class="text-muted mb-0">{{ transfer.generated_at|date:"d/m/Y H:i" }}</p>
+                                    </div>
+                                    {% endif %}
+                                    {% if transfer.sent_at %}
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Sent At</h6>
+                                        <p class="text-muted mb-0">{{ transfer.sent_at|date:"d/m/Y H:i" }}</p>
+                                    </div>
+                                    {% endif %}
+                                    {% if transfer.processed_at %}
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Processed At</h6>
+                                        <p class="text-muted mb-0">{{ transfer.processed_at|date:"d/m/Y H:i" }}</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% if transfer.status == 'FAILED' and transfer.error_details %}
+                        <div class="card border mt-4">
+                            <div class="card-header bg-soft-danger">
+                                <h5 class="card-title mb-0">Error Details</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-danger mb-0">
+                                    {{ transfer.error_details }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if employees_with_issues %}
+                        <div class="card border mt-4">
+                            <div class="card-header bg-soft-warning">
+                                <h5 class="card-title mb-0">Employees with Missing Bank Details</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover text-nowrap">
+                                        <thead class="table-light border-0">
+                                            <tr>
+                                                <th class="text-muted">Employee Code</th>
+                                                <th class="text-muted">Employee Name</th>
+                                                <th class="text-muted">Issues</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for employee in employees_with_issues %}
+                                            <tr>
+                                                <td class="fw-semibold">{{ employee.employee_code }}</td>
+                                                <td class="fw-semibold">{{ employee.employee_name }}</td>
+                                                <td class="fw-semibold text-danger">{{ employee.issues|join:", " }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="card border mt-4">
+                            <div class="card-header bg-soft-info">
+                                <h5 class="card-title mb-0">Payslip Information</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Total Payslips</h6>
+                                        <p class="text-muted mb-0">{{ payslips_count }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Total Net Salary</h6>
+                                        <p class="text-muted mb-0">LKR {{ total_amount|floatformat:2 }}</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex gap-2 mt-3">
+                                    <a href="{% url 'payroll:period_detail' pk=period.id %}" class="btn btn-soft-primary">
+                                        <i class="ri-eye-line align-bottom me-1"></i> View Payroll Period
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4">
+                        <div class="card border">
+                            <div class="card-header bg-soft-primary">
+                                <h5 class="card-title mb-0">Actions</h5>
+                            </div>
+                            <div class="card-body">
+                                {% if can_generate_file %}
+                                <div class="mb-3">
+                                    <h6 class="fw-semibold mb-2">Generate Bank File</h6>
+                                    <p class="text-muted mb-3">Generate the bank transfer file in {{ transfer.bank_file_format }} format.</p>
+                                    <form method="post" action="{% url 'payroll:bank_transfer_generate_file' pk=transfer.pk %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-primary w-100" title="Generate Bank File">
+                                            <i class="bi bi-file-earmark-text"></i> Generate Bank File
+                                        </button>                                        
+                                    </form>
+                                </div>
+                                <hr>
+                                {% endif %}
+                                
+                                {% if can_mark_as_sent %}
+                                <div class="mb-3">
+                                    <h6 class="fw-semibold mb-2">Mark as Sent to Bank</h6>
+                                    <p class="text-muted mb-3">Mark this transfer as sent to the bank after uploading the file to your banking system.</p>
+                                    <form method="post" action="{% url 'payroll:bank_transfer_mark_as_sent' pk=transfer.pk %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-primary w-100">
+                                            <i class="ri-send-plane-line align-bottom me-1"></i> Mark as Sent to Bank
+                                        </button>
+                                    </form>
+                                </div>
+                                <hr>
+                                {% endif %}
+                                
+                                {% if can_mark_as_processed %}
+                                <div class="mb-3">
+                                    <h6 class="fw-semibold mb-2">Mark as Processed by Bank</h6>
+                                    <p class="text-muted mb-3">Mark this transfer as processed by the bank. This will also mark the payroll period and all payslips as PAID.</p>
+                                    <form method="post" action="{% url 'payroll:bank_transfer_mark_as_processed' pk=transfer.pk %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-success w-100">
+                                            <i class="ri-check-double-line align-bottom me-1"></i> Mark as Processed
+                                        </button>
+                                    </form>
+                                </div>
+                                <hr>
+                                {% endif %}
+                                
+                                {% if can_download_file %}
+                                <div>
+                                    <h6 class="fw-semibold mb-2">Download Bank File</h6>
+                                    <p class="text-muted mb-3">Download the generated bank transfer file.</p>
+                                    <a href="{% url 'payroll:bank_transfer_download_file' pk=transfer.pk %}" class="btn btn-info w-100">
+                                        <i class="ri-download-line align-bottom me-1"></i> Download File
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="card border mt-4">
+                            <div class="card-header bg-soft-info">
+                                <h5 class="card-title mb-0">Bank Transfer Process</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="verti-timeline list-unstyled">
+                                    <li class="event-list {% if transfer.status != 'PENDING' %}active{% endif %}">
+                                        <div class="event-timeline-dot">
+                                            <i class="ri-record-circle-fill {% if transfer.status != 'PENDING' %}text-success{% else %}text-primary{% endif %}"></i>
+                                        </div>
+                                        <div class="d-flex">
+                                            <div class="flex-grow-1">
+                                                <div>
+                                                    <h6 class="fw-semibold mb-0">Created</h6>
+                                                    <small class="text-muted">{{ transfer.created_at|date:"d/m/Y H:i" }}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="event-list {% if transfer.status in 'GENERATED,SENT,PROCESSED,COMPLETED' %}active{% endif %}">
+                                        <div class="event-timeline-dot">
+                                            <i class="ri-record-circle-fill {% if transfer.status in 'GENERATED,SENT,PROCESSED,COMPLETED' %}text-success{% else %}text-primary{% endif %}"></i>
+                                        </div>
+                                        <div class="d-flex">
+                                            <div class="flex-grow-1">
+                                                <div>
+                                                    <h6 class="fw-semibold mb-0">File Generated</h6>
+                                                    <small class="text-muted">{% if transfer.generated_at %}{{ transfer.generated_at|date:"d/m/Y H:i" }}{% else %}Pending{% endif %}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="event-list {% if transfer.status in 'SENT,PROCESSED,COMPLETED' %}active{% endif %}">
+                                        <div class="event-timeline-dot">
+                                            <i class="ri-record-circle-fill {% if transfer.status in 'SENT,PROCESSED,COMPLETED' %}text-success{% else %}text-primary{% endif %}"></i>
+                                        </div>
+                                        <div class="d-flex">
+                                            <div class="flex-grow-1">
+                                                <div>
+                                                    <h6 class="fw-semibold mb-0">Sent to Bank</h6>
+                                                    <small class="text-muted">{% if transfer.sent_at %}{{ transfer.sent_at|date:"d/m/Y H:i" }}{% else %}Pending{% endif %}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="event-list {% if transfer.status in 'PROCESSED,COMPLETED' %}active{% endif %}">
+                                        <div class="event-timeline-dot">
+                                            <i class="ri-record-circle-fill {% if transfer.status in 'PROCESSED,COMPLETED' %}text-success{% else %}text-primary{% endif %}"></i>
+                                        </div>
+                                        <div class="d-flex">
+                                            <div class="flex-grow-1">
+                                                <div>
+                                                    <h6 class="fw-semibold mb-0">Processed by Bank</h6>
+                                                    <small class="text-muted">{% if transfer.processed_at %}{{ transfer.processed_at|date:"d/m/Y H:i" }}{% else %}Pending{% endif %}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+{% endblock %}
+

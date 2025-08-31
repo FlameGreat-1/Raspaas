@@ -23,12 +23,13 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
-
+from django.utils.module_loading import import_string
+        
 import json
 import csv
 import datetime
 from datetime import date, timedelta, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import uuid
 import io
 import xlsxwriter
@@ -533,16 +534,16 @@ class Dashboard(LoginRequiredMixin, View):
 
     def dashboard_home(self, request):
         today = get_current_date()
-        
+
         attendance_stats = self.get_attendance_stats(today)
         department_stats = self.get_department_stats(today)
         recent_leaves = LeaveRequest.objects.filter(
             status__in=['PENDING', 'APPROVED'],
             start_date__gte=today
         ).order_by('start_date')[:5]
-        
+
         monthly_data = self.get_monthly_attendance_data(today.year, today.month)
-        
+
         context = {
             'today': today,
             'attendance_stats': attendance_stats,
@@ -550,23 +551,23 @@ class Dashboard(LoginRequiredMixin, View):
             'recent_leaves': recent_leaves,
             'monthly_data': monthly_data,
         }
-        
+
         return render(request, 'attendance/dashboard.html', context)
 
     def get_attendance_stats(self, date):
         attendance_records = Attendance.objects.filter(date=date)
-        
+
         total_employees = User.objects.filter(is_active=True).count()
         present_count = attendance_records.filter(status__in=['PRESENT', 'LATE', 'EARLY_DEPARTURE']).count()
         absent_count = attendance_records.filter(status='ABSENT').count()
         late_count = attendance_records.filter(status='LATE').count()
         leave_count = attendance_records.filter(status='LEAVE').count()
-        
+
         if total_employees > 0:
             attendance_percentage = (present_count / total_employees) * 100
         else:
             attendance_percentage = 0
-        
+
         work_hours_avg = attendance_records.exclude(
             status__in=['ABSENT', 'LEAVE', 'HOLIDAY']
         ).aggregate(
@@ -577,9 +578,9 @@ class Dashboard(LoginRequiredMixin, View):
                 )
             )
         )['avg_hours'] or timedelta(0)
-        
+
         avg_hours_decimal = Decimal(str(work_hours_avg.total_seconds() / 3600))
-        
+
         return {
             'total_employees': total_employees,
             'present_count': present_count,
@@ -592,32 +593,32 @@ class Dashboard(LoginRequiredMixin, View):
 
     def get_department_stats(self, date):
         departments = Department.objects.filter(is_active=True)
-        
+
         stats = []
         for dept in departments:
             employees = User.objects.filter(department=dept, is_active=True)
             employee_count = employees.count()
-            
+
             if employee_count == 0:
                 continue
-            
+
             attendance_records = Attendance.objects.filter(
                 employee__in=employees,
                 date=date
             )
-            
+
             present_count = attendance_records.filter(
                 status__in=['PRESENT', 'LATE', 'EARLY_DEPARTURE']
             ).count()
-            
+
             absent_count = attendance_records.filter(status='ABSENT').count()
             leave_count = attendance_records.filter(status='LEAVE').count()
-            
+
             if employee_count > 0:
                 attendance_percentage = (present_count / employee_count) * 100
             else:
                 attendance_percentage = 0
-            
+
             stats.append({
                 'department': dept,
                 'employee_count': employee_count,
@@ -626,41 +627,41 @@ class Dashboard(LoginRequiredMixin, View):
                 'leave_count': leave_count,
                 'attendance_percentage': round(attendance_percentage, 2),
             })
-        
+
         return stats
 
     def get_monthly_attendance_data(self, year, month):
         start_date = date(year, month, 1)
-        
+
         if month == 12:
             end_date = date(year + 1, 1, 1) - timedelta(days=1)
         else:
             end_date = date(year, month + 1, 1) - timedelta(days=1)
-        
+
         daily_stats = []
         current_date = start_date
-        
+
         while current_date <= end_date:
             if current_date <= get_current_date():
                 attendance_records = Attendance.objects.filter(date=current_date)
-                
+
                 total_employees = User.objects.filter(
                     is_active=True,
                     date_joined__date__lte=current_date
                 ).count()
-                
+
                 present_count = attendance_records.filter(
                     status__in=['PRESENT', 'LATE', 'EARLY_DEPARTURE']
                 ).count()
-                
+
                 absent_count = attendance_records.filter(status='ABSENT').count()
                 leave_count = attendance_records.filter(status='LEAVE').count()
-                
+
                 if total_employees > 0:
                     attendance_percentage = (present_count / total_employees) * 100
                 else:
                     attendance_percentage = 0
-                
+
                 daily_stats.append({
                     'date': current_date,
                     'day': current_date.strftime('%d'),
@@ -670,67 +671,67 @@ class Dashboard(LoginRequiredMixin, View):
                     'leave_count': leave_count,
                     'attendance_percentage': round(attendance_percentage, 2),
                 })
-            
+
             current_date += timedelta(days=1)
-        
+
         return daily_stats
 
     def reports_list(self, request):
         reports = AttendanceReport.objects.all().order_by('-generated_at')
-        
+
         paginator = Paginator(reports, 20)
         page_number = request.GET.get('page', 1)
         page_obj = paginator.get_page(page_number)
-        
+
         context = {
             'page_obj': page_obj,
             'report_types': AttendanceReport.REPORT_TYPES,
         }
-        
+
         return render(request, 'attendance/reports_list.html', context)
 
     def report_detail(self, request, report_id):
         report = get_object_or_404(AttendanceReport, id=report_id)
-        
+
         context = {
             'report': report,
         }
-        
+
         return render(request, 'attendance/report_detail.html', context)
-    
+
     def summaries_list(self, request):
         year = request.GET.get('year', get_current_date().year)
         month = request.GET.get('month', get_current_date().month)
         department_filter = request.GET.get('department', '')
         search_query = request.GET.get('search', '')
-        
+
         try:
             year = int(year)
             month = int(month)
         except ValueError:
             year = get_current_date().year
             month = get_current_date().month
-        
+
         summaries = MonthlyAttendanceSummary.objects.filter(year=year, month=month)
-        
+
         if department_filter:
             summaries = summaries.filter(employee__department_id=department_filter)
-        
+
         if search_query:
             summaries = summaries.filter(
                 Q(employee__first_name__icontains=search_query) |
                 Q(employee__last_name__icontains=search_query) |
                 Q(employee__employee_code__icontains=search_query)
             )
-        
+
         summaries = summaries.order_by('employee__employee_code')
-        
+
         paginator = Paginator(summaries, 25)
         page_number = request.GET.get('page', 1)
         page_obj = paginator.get_page(page_number)
-        
+
         departments = Department.objects.filter(is_active=True).order_by('name')
-        
+
         context = {
             'page_obj': page_obj,
             'departments': departments,
@@ -741,30 +742,30 @@ class Dashboard(LoginRequiredMixin, View):
             'months': range(1, 13),
             'years': range(get_current_date().year - 2, get_current_date().year + 1),
         }
-        
+
         return render(request, 'attendance/summaries_list.html', context)
 
     def summary_detail(self, request, summary_id):
         summary = get_object_or_404(MonthlyAttendanceSummary, id=summary_id)
-        
+
         start_date = date(summary.year, summary.month, 1)
         if summary.month == 12:
             end_date = date(summary.year + 1, 1, 1) - timedelta(days=1)
         else:
             end_date = date(summary.year, summary.month + 1, 1) - timedelta(days=1)
-        
+
         attendance_records = Attendance.objects.filter(
             employee=summary.employee,
             date__range=[start_date, end_date]
         ).order_by('date')
-        
+
         context = {
             'summary': summary,
             'attendance_records': attendance_records,
             'start_date': start_date,
             'end_date': end_date,
         }
-        
+
         return render(request, 'attendance/summary_detail.html', context)
 
     def post(self, request, *args, **kwargs):
@@ -783,15 +784,15 @@ class Dashboard(LoginRequiredMixin, View):
         start_date_str = request.POST.get('start_date')
         end_date_str = request.POST.get('end_date')
         name = request.POST.get('name', f'Attendance Report - {get_current_date()}')
-        
+
         try:
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-            
+
             if end_date < start_date:
                 messages.error(request, 'End date cannot be before start date')
                 return redirect('attendance:reports')
-            
+
             report = AttendanceReport(
                 name=name,
                 report_type=report_type,
@@ -799,47 +800,47 @@ class Dashboard(LoginRequiredMixin, View):
                 end_date=end_date,
                 generated_by=request.user
             )
-            
+
             if report_type in ['EMPLOYEE', 'CUSTOM']:
                 employee_ids = request.POST.getlist('employees')
                 if not employee_ids:
                     messages.error(request, 'Please select at least one employee')
                     return redirect('attendance:reports')
-                
+
                 report.save()
                 report.employees.set(employee_ids)
-            
+
             elif report_type == 'DEPARTMENT':
                 department_ids = request.POST.getlist('departments')
                 if not department_ids:
                     messages.error(request, 'Please select at least one department')
                     return redirect('attendance:reports')
-                
+
                 report.save()
                 report.departments.set(department_ids)
-            
+
             else:
                 report.save()
-            
+
             filters = {}
             for key, value in request.POST.items():
                 if key.startswith('filter_') and value:
                     filters[key[7:]] = value
-            
+
             if filters:
                 report.filters = filters
                 report.save(update_fields=['filters'])
-            
+
             self.process_report(report)
-            
+
             messages.success(request, f'Report "{name}" generated successfully')
             return redirect('attendance:report_detail', report_id=report.id)
-            
+
         except ValueError:
             messages.error(request, 'Invalid date format')
         except Exception as e:
             messages.error(request, f'Error generating report: {str(e)}')
-        
+
         return redirect('attendance:reports')
 
     def process_report(self, report):
@@ -855,38 +856,38 @@ class Dashboard(LoginRequiredMixin, View):
             self.process_department_report(report)
         elif report.report_type == 'CUSTOM':
             self.process_custom_report(report)
-        
+
         report.status = 'COMPLETED'
         report.completed_at = get_current_datetime()
         report.save(update_fields=['status', 'completed_at'])
 
     def process_daily_report(self, report):
         date_range = (report.end_date - report.start_date).days + 1
-        
+
         daily_data = []
         for i in range(date_range):
             current_date = report.start_date + timedelta(days=i)
-            
+
             attendance_records = Attendance.objects.filter(date=current_date)
-            
+
             total_employees = User.objects.filter(
                 is_active=True,
                 date_joined__date__lte=current_date
             ).count()
-            
+
             present_count = attendance_records.filter(
                 status__in=['PRESENT', 'LATE', 'EARLY_DEPARTURE']
             ).count()
-            
+
             absent_count = attendance_records.filter(status='ABSENT').count()
             late_count = attendance_records.filter(status='LATE').count()
             leave_count = attendance_records.filter(status='LEAVE').count()
-            
+
             if total_employees > 0:
                 attendance_percentage = (present_count / total_employees) * 100
             else:
                 attendance_percentage = 0
-            
+
             daily_data.append({
                 'date': current_date.strftime('%Y-%m-%d'),
                 'weekday': current_date.strftime('%A'),
@@ -897,7 +898,7 @@ class Dashboard(LoginRequiredMixin, View):
                 'leave_count': leave_count,
                 'attendance_percentage': round(attendance_percentage, 2),
             })
-        
+
         report.report_data = {
             'daily_data': daily_data,
             'summary': {
@@ -912,36 +913,36 @@ class Dashboard(LoginRequiredMixin, View):
     def process_weekly_report(self, report):
         date_range = (report.end_date - report.start_date).days + 1
         weeks = (date_range + 6) // 7
-        
+
         weekly_data = []
         for week in range(weeks):
             week_start = report.start_date + timedelta(days=week * 7)
             week_end = min(week_start + timedelta(days=6), report.end_date)
-            
+
             attendance_records = Attendance.objects.filter(
                 date__range=[week_start, week_end]
             )
-            
+
             total_employees = User.objects.filter(
                 is_active=True,
                 date_joined__date__lte=week_end
             ).count()
-            
+
             present_count = attendance_records.filter(
                 status__in=['PRESENT', 'LATE', 'EARLY_DEPARTURE']
             ).count()
-            
+
             absent_count = attendance_records.filter(status='ABSENT').count()
             late_count = attendance_records.filter(status='LATE').count()
             leave_count = attendance_records.filter(status='LEAVE').count()
-            
+
             working_days = (week_end - week_start).days + 1
-            
+
             if total_employees > 0 and working_days > 0:
                 attendance_percentage = (present_count / (total_employees * working_days)) * 100
             else:
                 attendance_percentage = 0
-            
+
             weekly_data.append({
                 'week_start': week_start.strftime('%Y-%m-%d'),
                 'week_end': week_end.strftime('%Y-%m-%d'),
@@ -953,7 +954,7 @@ class Dashboard(LoginRequiredMixin, View):
                 'leave_count': leave_count,
                 'attendance_percentage': round(attendance_percentage, 2),
             })
-        
+
         report.report_data = {
             'weekly_data': weekly_data,
             'summary': {
@@ -970,52 +971,52 @@ class Dashboard(LoginRequiredMixin, View):
         start_year = report.start_date.year
         end_month = report.end_date.month
         end_year = report.end_date.year
-        
+
         total_months = (end_year - start_year) * 12 + (end_month - start_month) + 1
-        
+
         monthly_data = []
         for i in range(total_months):
             year = start_year + (start_month + i - 1) // 12
             month = (start_month + i - 1) % 12 + 1
-            
+
             month_start = date(year, month, 1)
             if month == 12:
                 month_end = date(year + 1, 1, 1) - timedelta(days=1)
             else:
                 month_end = date(year, month + 1, 1) - timedelta(days=1)
-            
+
             month_end = min(month_end, report.end_date)
-            
+
             if month_start > report.end_date or month_end < report.start_date:
                 continue
-            
+
             if month_start < report.start_date:
                 month_start = report.start_date
-            
+
             attendance_records = Attendance.objects.filter(
                 date__range=[month_start, month_end]
             )
-            
+
             total_employees = User.objects.filter(
                 is_active=True,
                 date_joined__date__lte=month_end
             ).count()
-            
+
             present_count = attendance_records.filter(
                 status__in=['PRESENT', 'LATE', 'EARLY_DEPARTURE']
             ).count()
-            
+
             absent_count = attendance_records.filter(status='ABSENT').count()
             late_count = attendance_records.filter(status='LATE').count()
             leave_count = attendance_records.filter(status='LEAVE').count()
-            
+
             working_days = (month_end - month_start).days + 1
-            
+
             if total_employees > 0 and working_days > 0:
                 attendance_percentage = (present_count / (total_employees * working_days)) * 100
             else:
                 attendance_percentage = 0
-            
+
             monthly_data.append({
                 'year': year,
                 'month': month,
@@ -1028,7 +1029,7 @@ class Dashboard(LoginRequiredMixin, View):
                 'leave_count': leave_count,
                 'attendance_percentage': round(attendance_percentage, 2),
             })
-        
+
         report.report_data = {
             'monthly_data': monthly_data,
             'summary': {
@@ -1042,37 +1043,37 @@ class Dashboard(LoginRequiredMixin, View):
 
     def process_employee_report(self, report):
         employees = report.employees.all()
-        
+
         employee_data = []
         for employee in employees:
             attendance_records = Attendance.objects.filter(
                 employee=employee,
                 date__range=[report.start_date, report.end_date]
             )
-            
+
             total_days = (report.end_date - report.start_date).days + 1
-            
+
             present_count = attendance_records.filter(
                 status__in=['PRESENT', 'LATE', 'EARLY_DEPARTURE']
             ).count()
-            
+
             absent_count = attendance_records.filter(status='ABSENT').count()
             late_count = attendance_records.filter(status='LATE').count()
             leave_count = attendance_records.filter(status='LEAVE').count()
-            
+
             if total_days > 0:
                 attendance_percentage = (present_count / total_days) * 100
             else:
                 attendance_percentage = 0
-            
+
             total_work_time = attendance_records.aggregate(
                 total=Sum('work_time')
             )['total'] or timedelta(0)
-            
+
             total_overtime = attendance_records.aggregate(
                 total=Sum('overtime')
             )['total'] or timedelta(0)
-            
+
             employee_data.append({
                 'employee_id': str(employee.id),
                 'employee_code': employee.employee_code,
@@ -1087,7 +1088,7 @@ class Dashboard(LoginRequiredMixin, View):
                 'total_work_hours': round(total_work_time.total_seconds() / 3600, 2),
                 'total_overtime_hours': round(total_overtime.total_seconds() / 3600, 2),
             })
-        
+
         report.report_data = {
             'employee_data': employee_data,
             'summary': {
@@ -1101,43 +1102,43 @@ class Dashboard(LoginRequiredMixin, View):
 
     def process_department_report(self, report):
         departments = report.departments.all()
-        
+
         department_data = []
         for department in departments:
             employees = User.objects.filter(
                 department=department,
                 is_active=True
             )
-            
+
             attendance_records = Attendance.objects.filter(
                 employee__in=employees,
                 date__range=[report.start_date, report.end_date]
             )
-            
+
             total_days = (report.end_date - report.start_date).days + 1
             employee_count = employees.count()
-            
+
             present_count = attendance_records.filter(
                 status__in=['PRESENT', 'LATE', 'EARLY_DEPARTURE']
             ).count()
-            
+
             absent_count = attendance_records.filter(status='ABSENT').count()
             late_count = attendance_records.filter(status='LATE').count()
             leave_count = attendance_records.filter(status='LEAVE').count()
-            
+
             if employee_count > 0 and total_days > 0:
                 attendance_percentage = (present_count / (employee_count * total_days)) * 100
             else:
                 attendance_percentage = 0
-            
+
             total_work_time = attendance_records.aggregate(
                 total=Sum('work_time')
             )['total'] or timedelta(0)
-            
+
             total_overtime = attendance_records.aggregate(
                 total=Sum('overtime')
             )['total'] or timedelta(0)
-            
+
             department_data.append({
                 'department_id': department.id,
                 'department_name': department.name,
@@ -1151,7 +1152,7 @@ class Dashboard(LoginRequiredMixin, View):
                 'total_work_hours': round(total_work_time.total_seconds() / 3600, 2),
                 'total_overtime_hours': round(total_overtime.total_seconds() / 3600, 2),
             })
-        
+
         report.report_data = {
             'department_data': department_data,
             'summary': {
@@ -1166,7 +1167,7 @@ class Dashboard(LoginRequiredMixin, View):
     def process_custom_report(self, report):
         employees = report.employees.all()
         date_range = (report.end_date - report.start_date).days + 1
-        
+
         attendance_data = []
         for employee in employees:
             employee_data = {
@@ -1176,16 +1177,16 @@ class Dashboard(LoginRequiredMixin, View):
                 'department': employee.department.name if employee.department else '',
                 'attendance': []
             }
-            
+
             for i in range(date_range):
                 current_date = report.start_date + timedelta(days=i)
-                
+
                 try:
                     attendance = Attendance.objects.get(
                         employee=employee,
                         date=current_date
                     )
-                    
+
                     attendance_info = {
                         'date': current_date.strftime('%Y-%m-%d'),
                         'weekday': current_date.strftime('%A'),
@@ -1197,7 +1198,7 @@ class Dashboard(LoginRequiredMixin, View):
                         'late_minutes': attendance.late_minutes,
                         'early_departure_minutes': attendance.early_departure_minutes,
                     }
-                    
+
                 except Attendance.DoesNotExist:
                     attendance_info = {
                         'date': current_date.strftime('%Y-%m-%d'),
@@ -1210,11 +1211,11 @@ class Dashboard(LoginRequiredMixin, View):
                         'late_minutes': 0,
                         'early_departure_minutes': 0,
                     }
-                
+
                 employee_data['attendance'].append(attendance_info)
-            
+
             attendance_data.append(employee_data)
-        
+
         report.report_data = {
             'attendance_data': attendance_data,
             'date_range': {
@@ -1225,20 +1226,19 @@ class Dashboard(LoginRequiredMixin, View):
         }
         report.save(update_fields=['report_data'])
 
-    
     def generate_summaries(self, request):
-    
+
         year_str = request.POST.get('year', str(get_current_date().year))
         year = int(year_str.replace(',', ''))
-        
+
         month = int(request.POST.get('month', get_current_date().month))
-        
+
         employees = User.objects.filter(is_active=True)
-        
+
         department_id = request.POST.get('department')
         if department_id:
             employees = employees.filter(department_id=department_id)
-        
+
         generated_count = 0
         for employee in employees:
             try:
@@ -1248,17 +1248,16 @@ class Dashboard(LoginRequiredMixin, View):
                 generated_count += 1
             except Exception as e:
                 continue
-        
+
         messages.success(request, f'Generated {generated_count} monthly summaries for {month}/{year}')
         return redirect('attendance:summaries')
-
 
     def download_report(self, request):
         report_id = request.POST.get('report_id')
         format_type = request.POST.get('format', 'xlsx')
-        
+
         report = get_object_or_404(AttendanceReport, id=report_id)
-        
+
         if format_type == 'xlsx':
             return self.download_report_xlsx(report)
         elif format_type == 'csv':
@@ -1270,28 +1269,28 @@ class Dashboard(LoginRequiredMixin, View):
     def download_report_xlsx(self, report):
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output)
-        
+
         header_format = workbook.add_format({
             'bold': True,
             'bg_color': '#F0F0F0',
             'border': 1
         })
-        
+
         date_format = workbook.add_format({'num_format': 'yyyy-mm-dd'})
         time_format = workbook.add_format({'num_format': 'hh:mm:ss'})
         percent_format = workbook.add_format({'num_format': '0.00%'})
-        
+
         if report.report_type == 'DAILY':
             worksheet = workbook.add_worksheet('Daily Report')
-            
+
             headers = [
                 'Date', 'Weekday', 'Total Employees', 'Present', 'Absent',
                 'Late', 'On Leave', 'Attendance %'
             ]
-            
+
             for col, header in enumerate(headers):
                 worksheet.write(0, col, header, header_format)
-            
+
             for row, day_data in enumerate(report.report_data.get('daily_data', []), 1):
                 worksheet.write(row, 0, day_data['date'])
                 worksheet.write(row, 1, day_data['weekday'])
@@ -1301,18 +1300,18 @@ class Dashboard(LoginRequiredMixin, View):
                 worksheet.write(row, 5, day_data['late_count'])
                 worksheet.write(row, 6, day_data['leave_count'])
                 worksheet.write(row, 7, day_data['attendance_percentage'] / 100, percent_format)
-        
+
         elif report.report_type == 'WEEKLY':
             worksheet = workbook.add_worksheet('Weekly Report')
-            
+
             headers = [
                 'Week Start', 'Week End', 'Working Days', 'Total Employees',
                 'Present', 'Absent', 'Late', 'On Leave', 'Attendance %'
             ]
-            
+
             for col, header in enumerate(headers):
                 worksheet.write(0, col, header, header_format)
-            
+
             for row, week_data in enumerate(report.report_data.get('weekly_data', []), 1):
                 worksheet.write(row, 0, week_data['week_start'])
                 worksheet.write(row, 1, week_data['week_end'])
@@ -1323,18 +1322,18 @@ class Dashboard(LoginRequiredMixin, View):
                 worksheet.write(row, 6, week_data['late_count'])
                 worksheet.write(row, 7, week_data['leave_count'])
                 worksheet.write(row, 8, week_data['attendance_percentage'] / 100, percent_format)
-        
+
         elif report.report_type == 'MONTHLY':
             worksheet = workbook.add_worksheet('Monthly Report')
-            
+
             headers = [
                 'Year', 'Month', 'Working Days', 'Total Employees',
                 'Present', 'Absent', 'Late', 'On Leave', 'Attendance %'
             ]
-            
+
             for col, header in enumerate(headers):
                 worksheet.write(0, col, header, header_format)
-            
+
             for row, month_data in enumerate(report.report_data.get('monthly_data', []), 1):
                 worksheet.write(row, 0, month_data['year'])
                 worksheet.write(row, 1, month_data['month_name'])
@@ -1345,19 +1344,19 @@ class Dashboard(LoginRequiredMixin, View):
                 worksheet.write(row, 6, month_data['late_count'])
                 worksheet.write(row, 7, month_data['leave_count'])
                 worksheet.write(row, 8, month_data['attendance_percentage'] / 100, percent_format)
-        
+
         elif report.report_type == 'EMPLOYEE':
             worksheet = workbook.add_worksheet('Employee Report')
-            
+
             headers = [
                 'Employee Code', 'Employee Name', 'Department', 'Total Days',
                 'Present', 'Absent', 'Late', 'On Leave', 'Attendance %',
                 'Total Work Hours', 'Total Overtime Hours'
             ]
-            
+
             for col, header in enumerate(headers):
                 worksheet.write(0, col, header, header_format)
-            
+
             for row, emp_data in enumerate(report.report_data.get('employee_data', []), 1):
                 worksheet.write(row, 0, emp_data['employee_code'])
                 worksheet.write(row, 1, emp_data['employee_name'])
@@ -1370,19 +1369,19 @@ class Dashboard(LoginRequiredMixin, View):
                 worksheet.write(row, 8, emp_data['attendance_percentage'] / 100, percent_format)
                 worksheet.write(row, 9, emp_data['total_work_hours'])
                 worksheet.write(row, 10, emp_data['total_overtime_hours'])
-        
+
         elif report.report_type == 'DEPARTMENT':
             worksheet = workbook.add_worksheet('Department Report')
-            
+
             headers = [
                 'Department', 'Employee Count', 'Total Days',
                 'Present', 'Absent', 'Late', 'On Leave', 'Attendance %',
                 'Total Work Hours', 'Total Overtime Hours'
             ]
-            
+
             for col, header in enumerate(headers):
                 worksheet.write(0, col, header, header_format)
-            
+
             for row, dept_data in enumerate(report.report_data.get('department_data', []), 1):
                 worksheet.write(row, 0, dept_data['department_name'])
                 worksheet.write(row, 1, dept_data['employee_count'])
@@ -1394,19 +1393,19 @@ class Dashboard(LoginRequiredMixin, View):
                 worksheet.write(row, 7, dept_data['attendance_percentage'] / 100, percent_format)
                 worksheet.write(row, 8, dept_data['total_work_hours'])
                 worksheet.write(row, 9, dept_data['total_overtime_hours'])
-        
+
         elif report.report_type == 'CUSTOM':
             for employee_data in report.report_data.get('attendance_data', []):
                 worksheet = workbook.add_worksheet(employee_data['employee_name'][:31])
-                
+
                 headers = [
                     'Date', 'Weekday', 'Status', 'First In', 'Last Out',
                     'Work Hours', 'Overtime Hours', 'Late Minutes', 'Early Departure Minutes'
                 ]
-                
+
                 for col, header in enumerate(headers):
                     worksheet.write(0, col, header, header_format)
-                
+
                 for row, att_data in enumerate(employee_data['attendance'], 1):
                     worksheet.write(row, 0, att_data['date'])
                     worksheet.write(row, 1, att_data['weekday'])
@@ -1417,30 +1416,30 @@ class Dashboard(LoginRequiredMixin, View):
                     worksheet.write(row, 6, att_data['overtime_hours'])
                     worksheet.write(row, 7, att_data['late_minutes'])
                     worksheet.write(row, 8, att_data['early_departure_minutes'])
-        
+
         workbook.close()
         output.seek(0)
-        
+
         response = HttpResponse(
             output.read(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
         response['Content-Disposition'] = f'attachment; filename="{report.name}.xlsx"'
-        
+
         return response
 
     def download_report_csv(self, report):
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="{report.name}.csv"'
-        
+
         writer = csv.writer(response)
-        
+
         if report.report_type == 'DAILY':
             writer.writerow([
                 'Date', 'Weekday', 'Total Employees', 'Present', 'Absent',
                 'Late', 'On Leave', 'Attendance %'
             ])
-            
+
             for day_data in report.report_data.get('daily_data', []):
                 writer.writerow([
                     day_data['date'],
@@ -1452,13 +1451,13 @@ class Dashboard(LoginRequiredMixin, View):
                     day_data['leave_count'],
                     day_data['attendance_percentage']
                 ])
-        
+
         elif report.report_type == 'WEEKLY':
             writer.writerow([
                 'Week Start', 'Week End', 'Working Days', 'Total Employees',
                 'Present', 'Absent', 'Late', 'On Leave', 'Attendance %'
             ])
-            
+
             for week_data in report.report_data.get('weekly_data', []):
                 writer.writerow([
                     week_data['week_start'],
@@ -1477,7 +1476,7 @@ class Dashboard(LoginRequiredMixin, View):
                 'Year', 'Month', 'Working Days', 'Total Employees',
                 'Present', 'Absent', 'Late', 'On Leave', 'Attendance %'
             ])
-            
+
             for month_data in report.report_data.get('monthly_data', []):
                 writer.writerow([
                     month_data['year'],
@@ -1490,14 +1489,14 @@ class Dashboard(LoginRequiredMixin, View):
                     month_data['leave_count'],
                     month_data['attendance_percentage']
                 ])
-        
+
         elif report.report_type == 'EMPLOYEE':
             writer.writerow([
                 'Employee Code', 'Employee Name', 'Department', 'Total Days',
                 'Present', 'Absent', 'Late', 'On Leave', 'Attendance %',
                 'Total Work Hours', 'Total Overtime Hours'
             ])
-            
+
             for emp_data in report.report_data.get('employee_data', []):
                 writer.writerow([
                     emp_data['employee_code'],
@@ -1512,14 +1511,14 @@ class Dashboard(LoginRequiredMixin, View):
                     emp_data['total_work_hours'],
                     emp_data['total_overtime_hours']
                 ])
-        
+
         elif report.report_type == 'DEPARTMENT':
             writer.writerow([
                 'Department', 'Employee Count', 'Total Days',
                 'Present', 'Absent', 'Late', 'On Leave', 'Attendance %',
                 'Total Work Hours', 'Total Overtime Hours'
             ])
-            
+
             for dept_data in report.report_data.get('department_data', []):
                 writer.writerow([
                     dept_data['department_name'],
@@ -1533,17 +1532,17 @@ class Dashboard(LoginRequiredMixin, View):
                     dept_data['total_work_hours'],
                     dept_data['total_overtime_hours']
                 ])
-        
+
         elif report.report_type == 'CUSTOM':
             for employee_data in report.report_data.get('attendance_data', []):
                 writer.writerow([f"Employee: {employee_data['employee_name']} ({employee_data['employee_code']})"])
                 writer.writerow([])
-                
+
                 writer.writerow([
                     'Date', 'Weekday', 'Status', 'First In', 'Last Out',
                     'Work Hours', 'Overtime Hours', 'Late Minutes', 'Early Departure Minutes'
                 ])
-                
+
                 for att_data in employee_data['attendance']:
                     writer.writerow([
                         att_data['date'],
@@ -1556,123 +1555,126 @@ class Dashboard(LoginRequiredMixin, View):
                         att_data['late_minutes'],
                         att_data['early_departure_minutes']
                     ])
-                
+
                 writer.writerow([])
-        
+
         return response
 
 
 class Devices(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
-        if 'id' in kwargs:
-            return self.device_detail(request, kwargs['id'])
+        if "id" in kwargs:
+            return self.device_detail(request, kwargs["id"])
         else:
             return self.device_list(request)
 
     def device_list(self, request):
-        devices = AttendanceDevice.objects.all().order_by('device_name')
-        
-        status_filter = request.GET.get('status', '')
-        device_type_filter = request.GET.get('device_type', '')
-        search_query = request.GET.get('search', '')
-        
+        devices = AttendanceDevice.objects.all().order_by("device_name")
+
+        status_filter = request.GET.get("status", "")
+        device_type_filter = request.GET.get("device_type", "")
+        search_query = request.GET.get("search", "")
+
         if status_filter:
             devices = devices.filter(status=status_filter)
-        
+
         if device_type_filter:
             devices = devices.filter(device_type=device_type_filter)
-        
+
         if search_query:
             devices = devices.filter(
-                Q(device_name__icontains=search_query) |
-                Q(device_id__icontains=search_query) |
-                Q(location__icontains=search_query)
+                Q(device_name__icontains=search_query)
+                | Q(device_id__icontains=search_query)
+                | Q(location__icontains=search_query)
             )
-        
+
         paginator = Paginator(devices, 20)
-        page_number = request.GET.get('page', 1)
+        page_number = request.GET.get("page", 1)
         page_obj = paginator.get_page(page_number)
-        
-        status_choices = AttendanceDevice._meta.get_field('status').choices
-        device_type_choices = AttendanceDevice._meta.get_field('device_type').choices
-        departments = Department.objects.filter(is_active=True).order_by('name')
-        
+
+        status_choices = AttendanceDevice._meta.get_field("status").choices
+        device_type_choices = AttendanceDevice._meta.get_field("device_type").choices
+        departments = Department.objects.filter(is_active=True).order_by("name")
+
         context = {
-            'page_obj': page_obj,
-            'status_choices': status_choices,
-            'device_type_choices': device_type_choices,
-            'departments': departments,
-            'status_filter': status_filter,
-            'device_type_filter': device_type_filter,
-            'search_query': search_query,
+            "page_obj": page_obj,
+            "status_choices": status_choices,
+            "device_type_choices": device_type_choices,
+            "departments": departments,
+            "status_filter": status_filter,
+            "device_type_filter": device_type_filter,
+            "search_query": search_query,
         }
-        
-        return render(request, 'attendance/device_list.html', context)
+
+        return render(request, "attendance/device_list.html", context)
 
     def device_detail(self, request, device_id):
         device = get_object_or_404(AttendanceDevice, id=device_id)
-        
-        start_date = request.GET.get('start_date', '')
-        end_date = request.GET.get('end_date', '')
-        
+
+        start_date = request.GET.get("start_date", "")
+        end_date = request.GET.get("end_date", "")
+
         today = get_current_date()
         if not start_date:
-            start_date = (today - timedelta(days=7)).strftime('%Y-%m-%d')
+            start_date = (today - timedelta(days=7)).strftime("%Y-%m-%d")
         if not end_date:
-            end_date = today.strftime('%Y-%m-%d')
-        
+            end_date = today.strftime("%Y-%m-%d")
+
         try:
-            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
-            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+            start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+            end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
         except ValueError:
             start_date_obj = today - timedelta(days=7)
             end_date_obj = today
-        
+
         logs = AttendanceLog.objects.filter(
-            device=device,
-            timestamp__date__range=[start_date_obj, end_date_obj]
-        ).order_by('-timestamp')
-        
+            device=device, timestamp__date__range=[start_date_obj, end_date_obj]
+        ).order_by("-timestamp")
+
         paginator = Paginator(logs, 50)
-        page_number = request.GET.get('page', 1)
+        page_number = request.GET.get("page", 1)
         page_obj = paginator.get_page(page_number)
-        
+
         context = {
-            'device': device,
-            'page_obj': page_obj,
-            'start_date': start_date,
-            'end_date': end_date,
+            "device": device,
+            "page_obj": page_obj,
+            "start_date": start_date,
+            "end_date": end_date,
         }
-        
-        return render(request, 'attendance/device_detail.html', context)
+
+        return render(request, "attendance/device_detail.html", context)
 
     def post(self, request, *args, **kwargs):
-        if request.POST.get('action') == 'create':
+        if request.POST.get("action") == "create":
             return self.create_device(request)
-        elif request.POST.get('action') == 'update':
+        elif request.POST.get("action") == "update":
             return self.update_device(request)
-        elif request.POST.get('action') == 'sync':
+        elif request.POST.get("action") == "sync":
             return self.sync_device(request)
-        elif request.POST.get('action') == 'test_connection':
+        elif request.POST.get("action") == "sync_multiple":
+            return self.sync_multiple_devices(request)
+        elif request.POST.get("action") == "test_connection":
             return self.test_device_connection(request)
+        elif request.POST.get("action") == "toggle_status":
+            return self.toggle_device_status(request)
         else:
-            messages.error(request, 'Invalid action')
-            return redirect('attendance:device_list')
+            messages.error(request, "Invalid action")
+            return redirect("attendance:device_list")
 
     def create_device(self, request):
-        device_id = request.POST.get('device_id')
-        device_name = request.POST.get('device_name')
-        device_type = request.POST.get('device_type')
-        ip_address = request.POST.get('ip_address')
-        port = request.POST.get('port')
-        location = request.POST.get('location')
-        department_id = request.POST.get('department')
-        
+        device_id = request.POST.get("device_id")
+        device_name = request.POST.get("device_name")
+        device_type = request.POST.get("device_type")
+        ip_address = request.POST.get("ip_address")
+        port = request.POST.get("port")
+        location = request.POST.get("location")
+        department_id = request.POST.get("department")
+
         try:
             department = None
             if department_id:
                 department = Department.objects.get(id=department_id)
-            
+
             device = AttendanceDevice(
                 device_id=device_id,
                 device_name=device_name,
@@ -1681,108 +1683,187 @@ class Devices(LoginRequiredMixin, View):
                 port=int(port),
                 location=location,
                 department=department,
-                created_by=request.user
+                created_by=request.user,
             )
-            
+
             device.save()
-            
+
             messages.success(request, f'Device "{device_name}" created successfully')
-            return redirect('attendance:device_detail', id=device.id)
-            
+            return redirect("attendance:device_detail", id=device.id)
+
         except ValidationError as e:
-            messages.error(request, f'Validation error: {str(e)}')
+            messages.error(request, f"Validation error: {str(e)}")
         except Exception as e:
-            messages.error(request, f'Error creating device: {str(e)}')
-        
-        return redirect('attendance:device_list')
+            messages.error(request, f"Error creating device: {str(e)}")
+
+        return redirect("attendance:device_list")
 
     def update_device(self, request):
-        device_id = request.POST.get('device_id')
-        
+        device_id = request.POST.get("device_id")
+
         try:
             device = AttendanceDevice.objects.get(id=device_id)
-            
-            device.device_name = request.POST.get('device_name')
-            device.device_type = request.POST.get('device_type')
-            device.ip_address = request.POST.get('ip_address')
-            device.port = int(request.POST.get('port'))
-            device.location = request.POST.get('location')
-            device.status = request.POST.get('status')
-            
-            department_id = request.POST.get('department')
+
+            device.device_name = request.POST.get("device_name")
+            device.device_type = request.POST.get("device_type")
+            device.ip_address = request.POST.get("ip_address")
+            device.port = int(request.POST.get("port"))
+            device.location = request.POST.get("location")
+            device.status = request.POST.get("status")
+
+            department_id = request.POST.get("department")
             if department_id:
                 device.department = Department.objects.get(id=department_id)
             else:
                 device.department = None
-            
-            device.is_active = request.POST.get('is_active') == 'on'
-            
+
+            device.is_active = request.POST.get("is_active") == "on"
+
             device.save()
-            
-            messages.success(request, f'Device "{device.device_name}" updated successfully')
-            return redirect('attendance:device_detail', id=device.id)
-            
+
+            messages.success(
+                request, f'Device "{device.device_name}" updated successfully'
+            )
+            return redirect("attendance:device_detail", id=device.id)
+
         except AttendanceDevice.DoesNotExist:
-            messages.error(request, 'Device not found')
+            messages.error(request, "Device not found")
         except ValidationError as e:
-            messages.error(request, f'Validation error: {str(e)}')
+            messages.error(request, f"Validation error: {str(e)}")
         except Exception as e:
-            messages.error(request, f'Error updating device: {str(e)}')
-        
-        return redirect('attendance:device_list')
-    
+            messages.error(request, f"Error updating device: {str(e)}")
+
+        return redirect("attendance:device_list")
+
     def sync_device(self, request):
-        device_id = request.POST.get('device_id')
-        
+        device_id = request.POST.get("device_id")
+
         try:
             device = AttendanceDevice.objects.get(id=device_id)
-            
+
             from django.utils.module_loading import import_string
-            DeviceService = import_string('attendance.services.DeviceService')
-            
+
+            DeviceService = import_string("attendance.services.DeviceService")
+
             result = DeviceService.sync_device_data(device)
-            
-            if result.get('success'):
+
+            device.last_sync_time = timezone.now()
+            device.save(update_fields=["last_sync_time"])
+
+            if result.get("success"):
                 messages.success(
-                    request, 
-                    f'Successfully synced {result.get("records_synced", 0)} records from device "{device.device_name}"'
+                    request,
+                    f'Successfully synced {result.get("records_synced", 0)} records from device "{device.device_name}"',
                 )
             else:
                 messages.error(
-                    request, 
-                    f'Error syncing device: {result.get("error", "Unknown error")}'
+                    request,
+                    f'Error syncing device: {result.get("error", "Unknown error")}',
                 )
-            
-            return redirect('attendance:device_detail', id=device.id)
-            
+
+            return redirect("attendance:device_detail", id=device.id)
+
         except AttendanceDevice.DoesNotExist:
-            messages.error(request, 'Device not found')
+            messages.error(request, "Device not found")
         except Exception as e:
-            messages.error(request, f'Error syncing device: {str(e)}')
-        
-        return redirect('attendance:device_list')
+            messages.error(request, f"Error syncing device: {str(e)}")
+
+        return redirect("attendance:device_list")
+
+    def sync_multiple_devices(self, request):
+        sync_all = request.POST.get("sync_all") in ["true", "on", True, "True", "1", 1]
+        sync_employees = request.POST.get("sync_employees") in ["true", "on", True, "True", "1", 1]
+
+        if sync_all:
+            devices = AttendanceDevice.objects.filter(is_active=True)
+        else:
+            device_ids = request.POST.getlist("devices")
+            devices = AttendanceDevice.objects.filter(id__in=device_ids)
+
+        if not devices:
+            messages.error(request, "No devices selected for syncing")
+            return redirect("attendance:device_list")
+
+        DeviceService = import_string("attendance.services.DeviceService")
+
+        success_count = 0
+        error_count = 0
+        total_records = 0
+
+        for device in devices:
+            try:
+                result = DeviceService.sync_device_data(device)
+
+                device.last_sync_time = timezone.now()
+                device.save(update_fields=["last_sync_time"])
+
+                if result.get("success"):
+                    success_count += 1
+                    total_records += result.get("records_synced", 0)
+                else:
+                    error_count += 1
+            except Exception as e:
+                error_count += 1
+
+        if success_count > 0:
+            messages.success(
+                request,
+                f"Successfully synced {total_records} records from {success_count} devices",
+            )
+
+        if error_count > 0:
+            messages.warning(request, f"Failed to sync {error_count} devices")
+
+        return redirect("attendance:device_list")
 
     def test_device_connection(self, request):
-        device_id = request.POST.get('device_id')
-        
+        device_id = request.POST.get("device_id")
+
         try:
             device = AttendanceDevice.objects.get(id=device_id)
-            
+
             is_connected, message = device.test_connection()
-            
+
             if is_connected:
-                messages.success(request, f'Successfully connected to device "{device.device_name}"')
+                messages.success(
+                    request, f'Successfully connected to device "{device.device_name}"'
+                )
             else:
-                messages.error(request, f'Failed to connect to device: {message}')
-            
-            return redirect('attendance:device_detail', id=device.id)
-            
+                messages.error(request, f"Failed to connect to device: {message}")
+
+            return redirect("attendance:device_detail", id=device.id)
+
         except AttendanceDevice.DoesNotExist:
-            messages.error(request, 'Device not found')
+            messages.error(request, "Device not found")
         except Exception as e:
-            messages.error(request, f'Error testing connection: {str(e)}')
-        
-        return redirect('attendance:device_list')
+            messages.error(request, f"Error testing connection: {str(e)}")
+
+        return redirect("attendance:device_list")
+
+    def toggle_device_status(self, request):
+        device_id = request.POST.get("device_id")
+
+        try:
+            device = AttendanceDevice.objects.get(id=device_id)
+            device.is_active = not device.is_active
+            device.save(update_fields=["is_active"])
+
+            status = "activated" if device.is_active else "deactivated"
+            messages.success(
+                request, f'Device "{device.device_name}" {status} successfully'
+            )
+
+            if "id" in request.resolver_match.kwargs:
+                return redirect("attendance:device_detail", id=device.id)
+            else:
+                return redirect("attendance:device_list")
+
+        except AttendanceDevice.DoesNotExist:
+            messages.error(request, "Device not found")
+        except Exception as e:
+            messages.error(request, f"Error toggling device status: {str(e)}")
+
+        return redirect("attendance:device_list")
 
 
 class Corrections(LoginRequiredMixin, View):
@@ -2518,7 +2599,6 @@ class Shifts(LoginRequiredMixin, View):
 
         return redirect('attendance:employee_shift_list')
 
-
 class Leave(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         if 'request_id' in kwargs:
@@ -2527,250 +2607,20 @@ class Leave(LoginRequiredMixin, View):
             return self.leave_balance_detail(request, kwargs['balance_id'])
         elif 'type_id' in kwargs:
             return self.leave_type_detail(request, kwargs['type_id'])
-        elif 'employee_id' in kwargs and 'balances' in request.path:
-            return self.employee_leave_balances(request, kwargs['employee_id'])
         elif 'employee_id' in kwargs:
-            return self.employee_leave_requests(request, kwargs['employee_id'])
+            if '/balances/' in request.path:
+                return self.employee_leave_balances(request, kwargs['employee_id'])
+            elif '/leave/' in request.path or '/requests/' in request.path:
+                return self.employee_leave_requests(request, kwargs['employee_id'])
+            else:
+                return self.employee_leave_requests(request, kwargs['employee_id'])
         elif 'balances' in request.path:
             return self.leave_balance_list(request)
         elif 'types' in request.path:
             return self.leave_type_list(request)
         else:
             return self.leave_request_list(request)
-
-    def leave_request_list(self, request):
-        status_filter = request.GET.get('status', '')
-        leave_type_filter = request.GET.get('leave_type', '')
-        search_query = request.GET.get('search', '')
-        start_date = request.GET.get('start_date', '')
-        end_date = request.GET.get('end_date', '')
-        
-        leave_requests = LeaveRequest.objects.all()
-        
-        if status_filter:
-            leave_requests = leave_requests.filter(status=status_filter)
-        
-        if leave_type_filter:
-            leave_requests = leave_requests.filter(leave_type_id=leave_type_filter)
-        
-        if search_query:
-            leave_requests = leave_requests.filter(
-                Q(employee__first_name__icontains=search_query) |
-                Q(employee__last_name__icontains=search_query) |
-                Q(employee__employee_code__icontains=search_query) |
-                Q(reason__icontains=search_query)
-            )
-        
-        if start_date:
-            try:
-                start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
-                leave_requests = leave_requests.filter(start_date__gte=start_date_obj)
-            except ValueError:
-                pass
-        
-        if end_date:
-            try:
-                end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
-                leave_requests = leave_requests.filter(end_date__lte=end_date_obj)
-            except ValueError:
-                pass
-        
-        leave_requests = leave_requests.order_by('-applied_at')
-        
-        paginator = Paginator(leave_requests, 25)
-        page_number = request.GET.get('page', 1)
-        page_obj = paginator.get_page(page_number)
-        
-        status_choices = LeaveRequest._meta.get_field('status').choices
-        leave_types = LeaveType.objects.filter(is_active=True).order_by('name')
-        
-        context = {
-            'page_obj': page_obj,
-            'status_choices': status_choices,
-            'leave_types': leave_types,
-            'status_filter': status_filter,
-            'leave_type_filter': leave_type_filter,
-            'search_query': search_query,
-            'start_date': start_date,
-            'end_date': end_date,
-        }
-        
-        return render(request, 'attendance/leave_request_list.html', context)
-
-    def leave_request_detail(self, request, request_id):
-        leave_request = get_object_or_404(LeaveRequest, id=request_id)
-        
-        context = {
-            'leave_request': leave_request,
-        }
-        
-        return render(request, 'attendance/leave_request_detail.html', context)
-
-    def leave_type_list(self, request):
-        leave_types = LeaveType.objects.all()
-        
-        category_filter = request.GET.get('category', '')
-        search_query = request.GET.get('search', '')
-        
-        if category_filter:
-            leave_types = leave_types.filter(category=category_filter)
-        
-        if search_query:
-            leave_types = leave_types.filter(
-                Q(name__icontains=search_query) |
-                Q(code__icontains=search_query) |
-                Q(description__icontains=search_query)
-            )
-        
-        leave_types = leave_types.order_by('name')
-        
-        paginator = Paginator(leave_types, 25)
-        page_number = request.GET.get('page', 1)
-        page_obj = paginator.get_page(page_number)
-        
-        category_choices = LeaveType._meta.get_field('category').choices
-        
-        context = {
-            'page_obj': page_obj,
-            'category_choices': category_choices,
-            'category_filter': category_filter,
-            'search_query': search_query,
-        }
-        
-        return render(request, 'attendance/leave_type_list.html', context)
-
-    def leave_type_detail(self, request, type_id):
-        leave_type = get_object_or_404(LeaveType, id=type_id)
-        
-        context = {
-            'leave_type': leave_type,
-        }
-        
-        return render(request, 'attendance/leave_type_detail.html', context)
-
-    def leave_balance_list(self, request):
-        year = request.GET.get('year', get_current_date().year)
-        leave_type_filter = request.GET.get('leave_type', '')
-        search_query = request.GET.get('search', '')
-        
-        try:
-            year = int(year)
-        except ValueError:
-            year = get_current_date().year
-        
-        leave_balances = LeaveBalance.objects.filter(year=year)
-        
-        if leave_type_filter:
-            leave_balances = leave_balances.filter(leave_type_id=leave_type_filter)
-        
-        if search_query:
-            leave_balances = leave_balances.filter(
-                Q(employee__first_name__icontains=search_query) |
-                Q(employee__last_name__icontains=search_query) |
-                Q(employee__employee_code__icontains=search_query)
-            )
-        
-        leave_balances = leave_balances.order_by('employee__employee_code', 'leave_type__name')
-        
-        paginator = Paginator(leave_balances, 25)
-        page_number = request.GET.get('page', 1)
-        page_obj = paginator.get_page(page_number)
-        
-        leave_types = LeaveType.objects.filter(is_active=True).order_by('name')
-        
-        context = {
-            'page_obj': page_obj,
-            'leave_types': leave_types,
-            'year': year,
-            'leave_type_filter': leave_type_filter,
-            'search_query': search_query,
-            'years': range(get_current_date().year - 2, get_current_date().year + 2),
-        }
-        
-        return render(request, 'attendance/leave_balance_list.html', context)
-    
-    def leave_balance_detail(self, request, balance_id):
-        leave_balance = get_object_or_404(LeaveBalance, id=balance_id)
-        
-        leave_requests = LeaveRequest.objects.filter(
-            employee=leave_balance.employee,
-            leave_type=leave_balance.leave_type,
-            start_date__year=leave_balance.year
-        ).order_by('-applied_at')
-        
-        context = {
-            'leave_balance': leave_balance,
-            'leave_requests': leave_requests,
-        }
-        
-        return render(request, 'attendance/leave_balance_detail.html', context)
-
-    def employee_leave_requests(self, request, employee_id):
-        employee = get_object_or_404(User, id=employee_id)
-        
-        status_filter = request.GET.get('status', '')
-        leave_type_filter = request.GET.get('leave_type', '')
-        year_filter = request.GET.get('year', get_current_date().year)
-        
-        try:
-            year_filter = int(year_filter)
-        except ValueError:
-            year_filter = get_current_date().year
-        
-        leave_requests = LeaveRequest.objects.filter(employee=employee)
-        
-        if status_filter:
-            leave_requests = leave_requests.filter(status=status_filter)
-        
-        if leave_type_filter:
-            leave_requests = leave_requests.filter(leave_type_id=leave_type_filter)
-        
-        leave_requests = leave_requests.filter(
-            Q(start_date__year=year_filter) | Q(end_date__year=year_filter)
-        )
-        
-        leave_requests = leave_requests.order_by('-applied_at')
-        
-        status_choices = LeaveRequest._meta.get_field('status').choices
-        leave_types = LeaveType.objects.filter(is_active=True).order_by('name')
-        
-        context = {
-            'employee': employee,
-            'leave_requests': leave_requests,
-            'status_choices': status_choices,
-            'leave_types': leave_types,
-            'status_filter': status_filter,
-            'leave_type_filter': leave_type_filter,
-            'year_filter': year_filter,
-            'years': range(get_current_date().year - 2, get_current_date().year + 2),
-        }
-        
-        return render(request, 'attendance/employee_leave_requests.html', context)
-
-    def employee_leave_balances(self, request, employee_id):
-        employee = get_object_or_404(User, id=employee_id)
-        
-        year = request.GET.get('year', get_current_date().year)
-        
-        try:
-            year = int(year)
-        except ValueError:
-            year = get_current_date().year
-        
-        leave_balances = LeaveBalance.objects.filter(
-            employee=employee,
-            year=year
-        ).order_by('leave_type__name')
-        
-        context = {
-            'employee': employee,
-            'leave_balances': leave_balances,
-            'year': year,
-            'years': range(get_current_date().year - 2, get_current_date().year + 2),
-        }
-        
-        return render(request, 'attendance/employee_leave_balances.html', context)
-
+            
     def post(self, request, *args, **kwargs):
         if request.POST.get('action') == 'create_leave_type':
             return self.create_leave_type(request)
@@ -2787,10 +2637,422 @@ class Leave(LoginRequiredMixin, View):
         elif request.POST.get('action') == 'update_leave_balance':
             return self.update_leave_balance(request)
         elif request.POST.get('action') == 'initialize_leave_balances':
-            return self.initialize_leave_balances(request)
+            employee_id = request.POST.get('employee_id')
+            if employee_id:
+                
+                result = self.initialize_leave_balances(request)
+                return redirect('attendance:employee_leave_balances', employee_id=employee_id)
+            else:
+                return self.initialize_leave_balances(request)
         else:
-            messages.error(request, 'Invalid action')
+       
+            if 'employee_id' in kwargs:
+                employee_id = kwargs['employee_id']
+                if '/balances/' in request.path:
+                    messages.error(request, 'Invalid action')
+                    return redirect('attendance:employee_leave_balances', employee_id=employee_id)
+                else:
+                    messages.error(request, 'Invalid action')
+                    return redirect('attendance:employee_leave_requests', employee_id=employee_id)
+            else:
+                messages.error(request, 'Invalid action')
+                return redirect('attendance:leave_request_list')
+
+    def leave_request_list(self, request):
+        status_filter = request.GET.get('status', '')
+        leave_type_filter = request.GET.get('leave_type', '')
+        search_query = request.GET.get('search', '')
+        start_date = request.GET.get('start_date', '')
+        end_date = request.GET.get('end_date', '')
+
+        leave_requests = LeaveRequest.objects.all()
+
+        if status_filter:
+            leave_requests = leave_requests.filter(status=status_filter)
+
+        if leave_type_filter:
+            leave_requests = leave_requests.filter(leave_type_id=leave_type_filter)
+
+        if search_query:
+            leave_requests = leave_requests.filter(
+                Q(employee__first_name__icontains=search_query) |
+                Q(employee__last_name__icontains=search_query) |
+                Q(employee__employee_code__icontains=search_query) |
+                Q(reason__icontains=search_query)
+            )
+
+        if start_date:
+            try:
+                start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+                leave_requests = leave_requests.filter(start_date__gte=start_date_obj)
+            except ValueError:
+                pass
+
+        if end_date:
+            try:
+                end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+                leave_requests = leave_requests.filter(end_date__lte=end_date_obj)
+            except ValueError:
+                pass
+
+        leave_requests = leave_requests.order_by('-applied_at')
+
+        paginator = Paginator(leave_requests, 25)
+        page_number = request.GET.get('page', 1)
+        page_obj = paginator.get_page(page_number)
+
+        status_choices = LeaveRequest._meta.get_field('status').choices
+        leave_types = LeaveType.objects.filter(is_active=True).order_by('name')
+
+        employees = User.objects.filter(is_active=True)
+
+        context = {
+            'page_obj': page_obj,
+            'status_choices': status_choices,
+            'leave_types': leave_types,
+            'status_filter': status_filter,
+            'leave_type_filter': leave_type_filter,
+            'search_query': search_query,
+            'start_date': start_date,
+            'end_date': end_date,
+            'employees': employees,
+        }
+
+        return render(request, 'attendance/leave_request_list.html', context)
+
+    def leave_request_detail(self, request, request_id):
+        leave_request = get_object_or_404(LeaveRequest, id=request_id)
+        
+        try:
+            leave_balance = LeaveBalance.objects.get(
+                employee=leave_request.employee,
+                leave_type=leave_request.leave_type,
+                year=leave_request.start_date.year
+            )
+        except LeaveBalance.DoesNotExist:
+            leave_balance = None
+        
+        context = {
+            'leave_request': leave_request,
+            'leave_balance': leave_balance,
+        }
+
+        return render(request, 'attendance/leave_request_detail.html', context)
+
+    def leave_type_list(self, request):
+        leave_types = LeaveType.objects.all()
+
+        category_filter = request.GET.get('category', '')
+        search_query = request.GET.get('search', '')
+
+        if category_filter:
+            leave_types = leave_types.filter(category=category_filter)
+
+        if search_query:
+            leave_types = leave_types.filter(
+                Q(name__icontains=search_query) |
+                Q(code__icontains=search_query) |
+                Q(description__icontains=search_query)
+            )
+
+        leave_types = leave_types.order_by('name')
+
+        paginator = Paginator(leave_types, 25)
+        page_number = request.GET.get('page', 1)
+        page_obj = paginator.get_page(page_number)
+
+        category_choices = LeaveType._meta.get_field('category').choices
+
+        context = {
+            'page_obj': page_obj,
+            'category_choices': category_choices,
+            'category_filter': category_filter,
+            'search_query': search_query,
+        }
+
+        return render(request, 'attendance/leave_type_list.html', context)
+
+    def leave_type_detail(self, request, type_id):
+        
+        leave_type = get_object_or_404(LeaveType, id=type_id)
+        
+        year = request.GET.get('year', get_current_date().year)
+        try:
+            year = int(year)
+        except ValueError:
+            year = get_current_date().year
+        
+        search_query = request.GET.get('search', '')
+        
+        balances_query = LeaveBalance.objects.filter(
+            leave_type=leave_type,
+            year=year
+        ).select_related('employee').order_by('employee__employee_code')
+        
+        if search_query:
+            balances_query = balances_query.filter(
+                Q(employee__first_name__icontains=search_query) | 
+                Q(employee__last_name__icontains=search_query) |
+                Q(employee__employee_code__icontains=search_query)
+            )
+        
+        paginator = Paginator(balances_query, 10)
+        page = request.GET.get('page', 1)
+        employee_balances = paginator.get_page(page)
+        
+        recent_leave_requests = LeaveRequest.objects.filter(
+            leave_type=leave_type
+        ).order_by('-applied_at')[:5]
+
+        employees = User.objects.filter(is_active=True).order_by('first_name', 'last_name')
+    
+        leave_types = LeaveType.objects.filter(is_active=True).order_by('name')
+
+        context = {
+            'leave_type': leave_type,
+            'employee_balances': employee_balances,
+            'recent_leave_requests': recent_leave_requests,
+            'year': year,
+            'years': range(get_current_date().year - 2, get_current_date().year + 3),
+            'search_query': search_query,
+            'employees': employees,  
+            'leave_types': leave_types,
+        }
+        
+        return render(request, 'attendance/leave_type_detail.html', context)
+    
+    def leave_balance_list(self, request):
+        year = request.GET.get('year', get_current_date().year)
+        leave_type_filter = request.GET.get('leave_type', '')
+        search_query = request.GET.get('search', '')
+
+        try:
+            year = int(year)
+        except ValueError:
+            year = get_current_date().year
+
+        leave_balances = LeaveBalance.objects.filter(year=year)
+
+        if leave_type_filter:
+            leave_balances = leave_balances.filter(leave_type_id=leave_type_filter)
+
+        if search_query:
+            leave_balances = leave_balances.filter(
+                Q(employee__first_name__icontains=search_query) |
+                Q(employee__last_name__icontains=search_query) |
+                Q(employee__employee_code__icontains=search_query)
+            )
+
+        leave_balances = leave_balances.order_by('employee__employee_code', 'leave_type__name')
+
+        paginator = Paginator(leave_balances, 25)
+        page_number = request.GET.get('page', 1)
+        page_obj = paginator.get_page(page_number)
+
+        leave_types = LeaveType.objects.filter(is_active=True).order_by('name')
+        
+        employees = User.objects.filter(is_active=True) 
+
+        context = {
+            "page_obj": page_obj,
+            "leave_types": leave_types,
+            "year": year,
+            "leave_type_filter": leave_type_filter,
+            "search_query": search_query,
+            "years": range(get_current_date().year - 2, get_current_date().year + 2),
+            "employees": employees,
+        }
+
+        return render(request, 'attendance/leave_balance_list.html', context)
+
+    def leave_balance_detail(self, request, balance_id):
+        from accounts.models import AuditLog
+        
+        leave_balance = get_object_or_404(LeaveBalance, id=balance_id)
+
+        leave_requests = LeaveRequest.objects.filter(
+            employee=leave_balance.employee,
+            leave_type=leave_balance.leave_type,
+            start_date__year=leave_balance.year
+        ).order_by('-applied_at')
+        
+        other_balances = LeaveBalance.objects.filter(
+            employee=leave_balance.employee,
+            year=leave_balance.year
+        ).exclude(id=leave_balance.id)
+        
+        balance_adjustments = AuditLog.objects.filter(
+            action="LEAVE_CHANGE",
+            object_id=str(leave_balance.id),
+            model_name="LeaveBalance"
+        ).order_by('-timestamp')
+        
+        context = {
+            'leave_balance': leave_balance,
+            'leave_requests': leave_requests,
+            'other_balances': other_balances,
+            'balance_adjustments': balance_adjustments,
+        }
+
+        return render(request, 'attendance/leave_balance_detail.html', context)
+
+    def employee_leave_requests(self, request, employee_id):
+
+        employee = get_object_or_404(User, id=employee_id)
+
+        status_filter = request.GET.get('status', '')
+        leave_type_filter = request.GET.get('leave_type', '')
+        year_filter = request.GET.get('year', get_current_date().year)
+        search_query = request.GET.get('search', '')
+
+        try:
+            year_filter = int(year_filter)
+        except ValueError:
+            year_filter = get_current_date().year
+
+        leave_requests = LeaveRequest.objects.filter(employee=employee)
+
+        if status_filter:
+            leave_requests = leave_requests.filter(status=status_filter)
+
+        if leave_type_filter:
+            leave_requests = leave_requests.filter(leave_type_id=leave_type_filter)
+
+        leave_requests = leave_requests.filter(
+            Q(start_date__year=year_filter) | Q(end_date__year=year_filter)
+        )
+        
+        if search_query:
+            leave_requests = leave_requests.filter(
+                Q(leave_type__name__icontains=search_query) |
+                Q(reason__icontains=search_query)
+            )
+
+        leave_requests = leave_requests.order_by('-applied_at')
+        
+        paginator = Paginator(leave_requests, 10)  
+        page = request.GET.get('page', 1)
+        page_obj = paginator.get_page(page)
+
+        current_year = get_current_date().year
+        leave_balances = LeaveBalance.objects.filter(
+            employee=employee,
+            year=current_year
+        ).select_related('leave_type')
+
+        status_choices = LeaveRequest._meta.get_field('status').choices
+        leave_types = LeaveType.objects.filter(is_active=True).order_by('name')
+
+        context = {
+            'employee': employee,
+            'leave_requests': leave_requests,
+            'page_obj': page_obj,
+            'leave_balances': leave_balances,
+            'status_choices': status_choices,
+            'leave_types': leave_types,
+            'status_filter': status_filter,
+            'leave_type_filter': leave_type_filter,
+            'year_filter': year_filter,
+            'search_query': search_query,
+            'years': range(get_current_date().year - 2, get_current_date().year + 2),
+        }
+
+        return render(request, 'attendance/employee_leave_requests.html', context)
+
+    def employee_leave_balances(self, request, employee_id):
+        from django.core.paginator import Paginator
+        
+        employee = get_object_or_404(User, id=employee_id)
+
+        year = request.GET.get('year', get_current_date().year)
+        try:
+            year = int(year)
+        except ValueError:
+            year = get_current_date().year
+
+        search_query = request.GET.get('search', '')
+        
+        leave_balances_query = LeaveBalance.objects.filter(
+            employee=employee,
+            year=year
+        ).select_related('leave_type').order_by('leave_type__name')
+        
+        if search_query:
+            leave_balances_query = leave_balances_query.filter(
+                leave_type__name__icontains=search_query
+            )
+        
+        paginator = Paginator(leave_balances_query, 10)  
+        page = request.GET.get('page', 1)
+        page_obj = paginator.get_page(page)
+        
+        leave_types = LeaveType.objects.filter(is_active=True).order_by('name')
+        
+        recent_leave_requests = LeaveRequest.objects.filter(
+            employee=employee
+        ).order_by('-applied_at')[:5]
+
+        context = {
+            'employee': employee,
+            'leave_balances': leave_balances_query,
+            'page_obj': page_obj,  
+            'leave_types': leave_types,
+            'recent_leave_requests': recent_leave_requests,
+            'year': year,
+            'years': range(get_current_date().year - 2, get_current_date().year + 3),
+            'search_query': search_query,
+        }
+
+        return render(request, 'attendance/employee_leave_balances.html', context)
+
+    def create_leave_request(self, request):
+        employee_id = request.POST.get('employee')
+        leave_type_id = request.POST.get('leave_type')
+        start_date = request.POST.get('start_date')
+        end_date = request.POST.get('end_date')
+        reason = request.POST.get('reason')
+        is_half_day = request.POST.get('is_half_day') == 'on'
+        half_day_period = request.POST.get('half_day_period', 'MORNING')
+        emergency_contact = request.POST.get('emergency_contact_during_leave', '')
+        handover_notes = request.POST.get('handover_notes', '')
+
+        try:
+            employee = User.objects.get(id=employee_id)
+            leave_type = LeaveType.objects.get(id=leave_type_id)
+
+            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+            leave_request = LeaveRequest(
+                employee=employee,
+                leave_type=leave_type,
+                start_date=start_date_obj,
+                end_date=end_date_obj,
+                reason=reason,
+                is_half_day=is_half_day,
+                half_day_period=half_day_period if is_half_day else None,
+                emergency_contact_during_leave=emergency_contact,
+                handover_notes=handover_notes
+            )
+
+            if 'medical_certificate' in request.FILES:
+                leave_request.medical_certificate = request.FILES['medical_certificate']
+
+            leave_request.save()
+
+            messages.success(request, 'Leave request submitted successfully')
             return redirect('attendance:leave_request_list')
+
+        except User.DoesNotExist:
+            messages.error(request, 'Employee not found')
+        except LeaveType.DoesNotExist:
+            messages.error(request, 'Leave type not found')
+        except ValidationError as e:
+            messages.error(request, f'Validation error: {str(e)}')
+        except Exception as e:
+            messages.error(request, f'Error creating leave request: {str(e)}')
+
+        return redirect('attendance:leave_request_list')
 
     def create_leave_type(self, request):
         name = request.POST.get('name')
@@ -2806,7 +3068,7 @@ class Leave(LoginRequiredMixin, View):
         carry_forward_max_days = request.POST.get('carry_forward_max_days', '')
         applicable_after_probation_only = request.POST.get('applicable_after_probation_only') == 'on'
         gender_specific = request.POST.get('gender_specific')
-        
+
         try:
             leave_type = LeaveType(
                 name=name,
@@ -2822,68 +3084,262 @@ class Leave(LoginRequiredMixin, View):
                 gender_specific=gender_specific,
                 created_by=request.user
             )
-            
+
             if max_consecutive_days:
                 leave_type.max_consecutive_days = int(max_consecutive_days)
-            
+
             if carry_forward_allowed and carry_forward_max_days:
                 leave_type.carry_forward_max_days = int(carry_forward_max_days)
-            
+
             leave_type.save()
-            
+
             messages.success(request, f'Leave type "{name}" created successfully')
             return redirect('attendance:leave_type_detail', type_id=leave_type.id)
-            
+
         except ValidationError as e:
             messages.error(request, f'Validation error: {str(e)}')
         except Exception as e:
             messages.error(request, f'Error creating leave type: {str(e)}')
-        
+
         return redirect('attendance:leave_type_list')
+
+    def initialize_leave_balances(self, request):
+        year = request.POST.get('year', get_current_date().year)
+        leave_type_id = request.POST.get('leave_type')
+        employee_ids = request.POST.getlist('employees')
+
+        try:
+            year = int(year)
+            leave_type = LeaveType.objects.get(id=leave_type_id)
+
+            created_count = 0
+            for employee_id in employee_ids:
+                try:
+                    employee = User.objects.get(id=employee_id)
+
+                    balance_exists = LeaveBalance.objects.filter(
+                        employee=employee,
+                        leave_type=leave_type,
+                        year=year
+                    ).exists()
+
+                    if not balance_exists:
+                        LeaveBalance.objects.create(
+                            employee=employee,
+                            leave_type=leave_type,
+                            year=year,
+                            allocated_days=leave_type.days_allowed_per_year,
+                            updated_by=request.user
+                        )
+                        created_count += 1
+                except User.DoesNotExist:
+                    continue
+
+            if created_count > 0:
+                messages.success(request, f'Successfully initialized {created_count} leave balances')
+            else:
+                messages.info(request, 'No new leave balances were created')
+
+        except LeaveType.DoesNotExist:
+            messages.error(request, 'Leave type not found')
+        except ValueError:
+            messages.error(request, 'Invalid year')
+        except Exception as e:
+            messages.error(request, f'Error initializing leave balances: {str(e)}')
+
+        return redirect('attendance:leave_balance_list')
 
     def update_leave_type(self, request):
         leave_type_id = request.POST.get('leave_type_id')
-        
+
         try:
             leave_type = LeaveType.objects.get(id=leave_type_id)
-            
+
             leave_type.name = request.POST.get('name')
             leave_type.category = request.POST.get('category')
             leave_type.description = request.POST.get('description', '')
             leave_type.days_allowed_per_year = int(request.POST.get('days_allowed_per_year'))
-            
+
             max_consecutive_days = request.POST.get('max_consecutive_days', '')
             if max_consecutive_days:
                 leave_type.max_consecutive_days = int(max_consecutive_days)
             else:
                 leave_type.max_consecutive_days = None
-            
+
             leave_type.min_notice_days = int(request.POST.get('min_notice_days'))
             leave_type.requires_approval = request.POST.get('requires_approval') == 'on'
             leave_type.requires_medical_certificate = request.POST.get('requires_medical_certificate') == 'on'
             leave_type.is_paid = request.POST.get('is_paid') == 'on'
             leave_type.carry_forward_allowed = request.POST.get('carry_forward_allowed') == 'on'
-            
+
             carry_forward_max_days = request.POST.get('carry_forward_max_days', '')
             if carry_forward_max_days:
                 leave_type.carry_forward_max_days = int(carry_forward_max_days)
             else:
                 leave_type.carry_forward_max_days = None
-            
+
             leave_type.applicable_after_probation_only = request.POST.get('applicable_after_probation_only') == 'on'
             leave_type.gender_specific = request.POST.get('gender_specific')
             leave_type.is_active = request.POST.get('is_active') == 'on'
-            
+
             leave_type.save()
-            
+
             messages.success(request, f'Leave type "{leave_type.name}" updated successfully')
             return redirect('attendance:leave_type_detail', type_id=leave_type.id)
-            
+
         except LeaveType.DoesNotExist:
             messages.error(request, 'Leave type not found')
         except ValidationError as e:
             messages.error(request, f'Validation error: {str(e)}')
         except Exception as e:
             messages.error(request, f'Error updating leave type: {str(e)}')
-        
+
         return redirect('attendance:leave_type_list')
+
+    def approve_leave_request(self, request):
+        request_id = request.POST.get('leave_request_id')
+
+        try:
+            leave_request = LeaveRequest.objects.get(id=request_id)
+
+            if leave_request.status != 'PENDING':
+                messages.error(request, 'Only pending leave requests can be approved')
+                return redirect('attendance:leave_request_detail', request_id=leave_request.id)
+
+            leave_request.approve(request.user)
+
+            messages.success(request, f'Leave request for {leave_request.employee.get_full_name()} has been approved')
+
+        except LeaveRequest.DoesNotExist:
+            messages.error(request, 'Leave request not found')
+        except ValidationError as e:
+            messages.error(request, f'Validation error: {str(e)}')
+        except Exception as e:
+            messages.error(request, f'Error approving leave request: {str(e)}')
+
+        return redirect('attendance:leave_request_list')
+
+    def reject_leave_request(self, request):
+        request_id = request.POST.get('leave_request_id')
+        rejection_reason = request.POST.get('rejection_reason')
+
+        try:
+            leave_request = LeaveRequest.objects.get(id=request_id)
+
+            if leave_request.status != 'PENDING':
+                messages.error(request, 'Only pending leave requests can be rejected')
+                return redirect('attendance:leave_request_detail', request_id=leave_request.id)
+
+            if not rejection_reason:
+                messages.error(request, 'Rejection reason is required')
+                return redirect('attendance:leave_request_detail', request_id=leave_request.id)
+
+            leave_request.reject(request.user, rejection_reason)
+
+            messages.success(request, f'Leave request for {leave_request.employee.get_full_name()} has been rejected')
+
+        except LeaveRequest.DoesNotExist:
+            messages.error(request, 'Leave request not found')
+        except ValidationError as e:
+            messages.error(request, f'Validation error: {str(e)}')
+        except Exception as e:
+            messages.error(request, f'Error rejecting leave request: {str(e)}')
+
+        return redirect('attendance:leave_request_list')
+
+    def cancel_leave_request(self, request):
+        request_id = request.POST.get('leave_request_id')
+
+        try:
+            leave_request = LeaveRequest.objects.get(id=request_id)
+
+            if not leave_request.can_be_cancelled:
+                messages.error(request, 'This leave request cannot be cancelled')
+                return redirect('attendance:leave_request_detail', request_id=leave_request.id)
+
+            if leave_request.status == 'APPROVED':
+                try:
+                    leave_balance = LeaveBalance.objects.get(
+                        employee=leave_request.employee,
+                        leave_type=leave_request.leave_type,
+                        year=leave_request.start_date.year
+                    )
+                    leave_balance.add_leave(leave_request.total_days)
+                except LeaveBalance.DoesNotExist:
+                    pass
+
+            leave_request.status = 'CANCELLED'
+            leave_request.save(update_fields=['status'])
+
+            messages.success(request, 'Leave request has been cancelled')
+
+        except LeaveRequest.DoesNotExist:
+            messages.error(request, 'Leave request not found')
+        except Exception as e:
+            messages.error(request, f'Error cancelling leave request: {str(e)}')
+
+        return redirect('attendance:leave_request_list')
+
+    def update_leave_balance(self, request):
+        balance_id = request.POST.get('balance_id')
+        employee_id = request.POST.get('employee')
+        leave_type_id = request.POST.get('leave_type')
+        year = request.POST.get('year')
+        adjustment_days = request.POST.get('adjustment_days', '0')
+        adjustment_reason = request.POST.get('reason', '')
+        
+        try:
+            year = int(year)
+            adjustment = Decimal(adjustment_days)
+            
+            if balance_id:
+                leave_balance = LeaveBalance.objects.get(id=balance_id)
+            else:
+                employee = User.objects.get(id=employee_id)
+                leave_type = LeaveType.objects.get(id=leave_type_id)
+                
+                leave_balance, created = LeaveBalance.objects.get_or_create(
+                    employee=employee,
+                    leave_type=leave_type,
+                    year=year,
+                    defaults={
+                        'allocated_days': leave_type.days_allowed_per_year,
+                        'updated_by': request.user
+                    }
+                )
+            
+            previous_adjustment = leave_balance.adjustment_days
+            
+            leave_balance.adjustment_days = adjustment
+            leave_balance.updated_by = request.user
+            leave_balance.save(update_fields=['adjustment_days', 'updated_by', 'last_updated'])
+
+            AuditHelper.log_attendance_change(
+                user=request.user,
+                action="LEAVE_BALANCE_ADJUSTED",
+                employee=leave_balance.employee,
+                attendance_date=get_current_date(),
+                changes={
+                    'leave_type': leave_balance.leave_type.name,
+                    'previous_adjustment': float(previous_adjustment),
+                    'new_adjustment': float(adjustment),
+                    'reason': adjustment_reason
+                }
+            )
+            
+            messages.success(request, f'Leave balance for {leave_balance.employee.get_full_name()} has been updated')
+            
+        except User.DoesNotExist:
+            messages.error(request, 'Employee not found')
+        except LeaveType.DoesNotExist:
+            messages.error(request, 'Leave type not found')
+        except LeaveBalance.DoesNotExist:
+            messages.error(request, 'Leave balance not found')
+        except ValueError:
+            messages.error(request, 'Invalid year')
+        except (InvalidOperation, decimal.InvalidOperation):
+            messages.error(request, 'Invalid adjustment value')
+        except Exception as e:
+            messages.error(request, f'Error updating leave balance: {str(e)}')
+        
+        return redirect('attendance:leave_balance_list')

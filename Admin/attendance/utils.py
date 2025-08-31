@@ -588,12 +588,12 @@ class ExcelProcessor:
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = f"Attendance_{year}_{month:02d}"
-        
+
         headers = [
             'Division', 'ID', 'Name', 'In1', 'Out1', 'In2', 'Out2', 'In3', 'Out3',
             'In4', 'Out4', 'In5', 'Out5', 'In6', 'Out6', 'Total', 'Break', 'Work', 'Over'
         ]
-        
+
         header_font = Font(bold=True, size=12)
         header_alignment = Alignment(horizontal='center', vertical='center')
         border = Border(
@@ -602,54 +602,59 @@ class ExcelProcessor:
             top=Side(style='thin'),
             bottom=Side(style='thin')
         )
-        
+
         for col, header in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col, value=header)
             cell.font = header_font
             cell.alignment = header_alignment
             cell.border = border
-        
+
         for row, data in enumerate(employee_data, 2):
             ws.cell(row=row, column=1, value=data.get('division', ''))
             ws.cell(row=row, column=2, value=data.get('employee_id', ''))
             ws.cell(row=row, column=3, value=data.get('name', ''))
-            
+
             time_pairs = data.get('time_pairs', [])
             for i, (in_time, out_time) in enumerate(time_pairs):
                 in_col = 4 + (i * 2)
                 out_col = 5 + (i * 2)
-                
+
                 ws.cell(row=row, column=in_col, value=in_time.strftime('%H:%M:%S') if in_time else '')
                 ws.cell(row=row, column=out_col, value=out_time.strftime('%H:%M:%S') if out_time else '')
-            
+
             ws.cell(row=row, column=16, value=TimeCalculator.format_duration_to_excel_time(data.get('total_time', timedelta(0))))
             ws.cell(row=row, column=17, value=TimeCalculator.format_duration_to_excel_time(data.get('break_time', timedelta(0))))
             ws.cell(row=row, column=18, value=TimeCalculator.format_duration_to_excel_time(data.get('work_time', timedelta(0))))
             ws.cell(row=row, column=19, value=TimeCalculator.format_duration_to_excel_time(data.get('overtime', timedelta(0))))
-        
+
         for row in ws.iter_rows():
             for cell in row:
                 cell.border = border
                 cell.alignment = Alignment(horizontal='center', vertical='center')
-        
+
         for col in range(1, len(headers) + 1):
             ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 12
-        
+
         buffer = io.BytesIO()
         wb.save(buffer)
         buffer.seek(0)
         return buffer
 
+
 class DeviceManager:
     @staticmethod
-    def connect_to_realand_device(device_ip: str, device_port: int = 4370) -> Optional[socket.socket]:
+    def connect_to_realand_device(
+        device_ip: str, device_port: int = 4370, timeout: int = 30
+    ) -> Optional[socket.socket]:
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(30)
+            sock.settimeout(timeout)
             sock.connect((device_ip, device_port))
             return sock
         except (socket.error, socket.timeout) as e:
-            logger.error(f"Failed to connect to REALAND device {device_ip}:{device_port} - {e}")
+            logger.error(
+                f"Failed to connect to REALAND device {device_ip}:{device_port} - {e}"
+            )
             return None
 
     @staticmethod
@@ -666,64 +671,71 @@ class DeviceManager:
     def sync_employee_to_device(sock: socket.socket, employee: CustomUser) -> bool:
         try:
             employee_data = struct.pack(
-                '<I50s50s',
-                int(employee.employee_code.replace('EMP', '').replace('ADMIN', '999')),
-                employee.get_full_name().encode('utf-8')[:50].ljust(50, b'\x00'),
-                employee.employee_code.encode('utf-8')[:50].ljust(50, b'\x00')
+                "<I50s50s",
+                int(employee.employee_code.replace("EMP", "").replace("ADMIN", "999")),
+                employee.get_full_name().encode("utf-8")[:50].ljust(50, b"\x00"),
+                employee.employee_code.encode("utf-8")[:50].ljust(50, b"\x00"),
             )
-            
-            command = b'\x01' + employee_data
+
+            command = b"\x01" + employee_data
             response = DeviceManager.send_command_to_device(sock, command)
-            
+
             return response is not None and len(response) > 0
         except (struct.error, UnicodeEncodeError) as e:
-            logger.error(f"Failed to sync employee {employee.employee_code} to device: {e}")
+            logger.error(
+                f"Failed to sync employee {employee.employee_code} to device: {e}"
+            )
             return False
 
     @staticmethod
-    def get_attendance_logs_from_device(sock: socket.socket, start_date: date, end_date: date) -> List[Dict[str, Any]]:
+    def get_attendance_logs_from_device(
+        sock: socket.socket, start_date: date, end_date: date
+    ) -> List[Dict[str, Any]]:
         try:
             start_timestamp = int(datetime.combine(start_date, time.min).timestamp())
             end_timestamp = int(datetime.combine(end_date, time.max).timestamp())
-            
-            command = struct.pack('<BII', 0x02, start_timestamp, end_timestamp)
+
+            command = struct.pack("<BII", 0x02, start_timestamp, end_timestamp)
             response = DeviceManager.send_command_to_device(sock, command)
-            
+
             if not response or len(response) < 4:
                 return []
-            
-            record_count = struct.unpack('<I', response[:4])[0]
+
+            record_count = struct.unpack("<I", response[:4])[0]
             logs = []
-            
+
             for i in range(record_count):
                 offset = 4 + (i * 16)
                 if offset + 16 <= len(response):
-                    log_data = response[offset:offset + 16]
+                    log_data = response[offset : offset + 16]
                     parsed_log = DeviceDataProcessor.parse_realand_log_data(log_data)
                     if parsed_log:
                         logs.append(parsed_log)
-            
+
             return logs
         except (struct.error, ValueError) as e:
             logger.error(f"Failed to get attendance logs from device: {e}")
             return []
 
     @staticmethod
-    def test_device_connection(device_ip: str, device_port: int = 4370) -> Tuple[bool, str]:
-        sock = DeviceManager.connect_to_realand_device(device_ip, device_port)
+    def test_device_connection(
+        device_ip: str, device_port: int = 4370, timeout: int = 30
+    ) -> Tuple[bool, str]:
+        sock = DeviceManager.connect_to_realand_device(device_ip, device_port, timeout)
         if not sock:
             return False, f"Cannot connect to device at {device_ip}:{device_port}"
-        
+
         try:
-            ping_command = b'\x00\x00\x00\x00'
+            ping_command = b"\x00\x00\x00\x00"
             response = DeviceManager.send_command_to_device(sock, ping_command)
-            
+
             if response:
                 return True, "Device connection successful"
             else:
                 return False, "Device did not respond to ping"
         finally:
             sock.close()
+
 
 class ValidationHelper:
     @staticmethod

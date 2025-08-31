@@ -1,0 +1,429 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+{% load payroll_filters %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Department Summary Report" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Reports" title="Department Summary"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>Department Summary Report</h4>
+                <div class="action-buttons">
+                    {% if report_generated and can_export_pdf %}
+                    <a href="{% url 'payroll:export_department_summary_pdf' period.id %}" class="btn btn-sm btn-outline-primary" title="Export as PDF">
+                        <i class="bi bi-file-pdf"></i>
+                    </a>
+                    {% endif %}
+                    {% if report_generated and can_export_excel %}
+                    <a href="{% url 'payroll:export_department_summary_excel' period.id %}" class="btn btn-sm btn-outline-success" title="Export as Excel">
+                        <i class="bi bi-file-excel"></i>
+                    </a>
+                    {% endif %}
+                </div>                
+            </div>
+            <div class="card-body">
+                <form method="get" action="{% url 'payroll:department_summary_report' %}" class="mb-4">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="period_id" class="form-label">Select Payroll Period</label>
+                                <select class="form-select" id="period_id" name="period_id">
+                                    <option value="">-- Select Period --</option>
+                                    {% for p in periods %}
+                                    <option value="{{ p.id }}" {% if period and period.id == p.id %}selected{% endif %}>{{ p.period_name }} ({{ p.get_status_display }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">Generate Report</button>
+                        </div>
+                    </div>
+                </form>
+
+                {% if report_generated %}
+                <div class="report-header mb-4">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Payroll Period: {{ period.period_name }}</h5>
+                            <p class="text-muted">Status: 
+                                {% if period.status == 'DRAFT' %}
+                                <span class="badge bg-warning px-3 rounded-3">Draft</span>
+                                {% elif period.status == 'PROCESSING' %}
+                                <span class="badge bg-info px-3 rounded-3">Processing</span>
+                                {% elif period.status == 'COMPLETED' %}
+                                <span class="badge bg-primary px-3 rounded-3">Completed</span>
+                                {% elif period.status == 'APPROVED' %}
+                                <span class="badge bg-success px-3 rounded-3">Approved</span>
+                                {% elif period.status == 'PAID' %}
+                                <span class="badge bg-success px-3 rounded-3">Paid</span>
+                                {% else %}
+                                <span class="badge bg-secondary px-3 rounded-3">{{ period.status }}</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <p class="mb-1">Total Employees: <strong>{{ period.total_employees }}</strong></p>
+                            <p class="mb-1">Total Gross Salary: <strong>${{ period.total_gross_salary|floatformat:2 }}</strong></p>
+                            <p class="mb-1">Total Net Salary: <strong>${{ period.total_net_salary|floatformat:2 }}</strong></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="table-responsive" data-simplebar>
+                            <table class="table table-hover text-nowrap">
+                                <thead class="table-light border-0">
+                                    <tr>
+                                        <th class="text-muted">Department</th>
+                                        <th class="text-muted">Employees</th>
+                                        <th class="text-muted">Total Basic</th>
+                                        <th class="text-muted">Total Allowances</th>
+                                        <th class="text-muted">Total Overtime</th>
+                                        <th class="text-muted">Total Gross</th>
+                                        <th class="text-muted">Total Deductions</th>
+                                        <th class="text-muted">Total Net</th>
+                                        <th class="text-muted">Budget Utilization</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for dept_name, summary in department_summaries.items %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ dept_name }}</td>
+                                        <td class="fw-semibold">{{ summary.employee_count }}</td>
+                                        <td class="fw-semibold">${{ summary.total_basic_salary|floatformat:2 }}</td>
+                                        <td class="fw-semibold">${{ summary.total_allowances|floatformat:2 }}</td>
+                                        <td class="fw-semibold">${{ summary.total_overtime_pay|floatformat:2 }}</td>
+                                        <td class="fw-semibold">${{ summary.total_gross_salary|floatformat:2 }}</td>
+                                        <td class="fw-semibold">${{ summary.total_deductions|floatformat:2 }}</td>
+                                        <td class="fw-semibold">${{ summary.total_net_salary|floatformat:2 }}</td>
+                                        <td>
+                                            <div class="w-100">
+                                                <div class="d-flex justify-content-between align-items-center fs-13">
+                                                    <p class="text-{% if summary.budget_utilization_percentage > 90 %}danger{% elif summary.budget_utilization_percentage > 75 %}warning{% else %}success{% endif %} mb-1">{{ summary.budget_utilization_percentage|floatformat:1 }}%</p>
+                                                </div>
+                                                <div class="progress progress-sm">
+                                                    <div class="progress-bar bg-{% if summary.budget_utilization_percentage > 90 %}danger{% elif summary.budget_utilization_percentage > 75 %}warning{% else %}success{% endif %}" style="width: {{ summary.budget_utilization_percentage }}%"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="9" class="text-center py-3">No department summaries available for this period</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>EPF/ETF Contributions</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" data-simplebar>
+                                    <table class="table table-hover text-nowrap">
+                                        <thead class="table-light border-0">
+                                            <tr>
+                                                <th class="text-muted">Department</th>
+                                                <th class="text-muted">EPF Employee</th>
+                                                <th class="text-muted">EPF Employer</th>
+                                                <th class="text-muted">ETF</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for dept_name, summary in department_summaries.items %}
+                                            <tr>
+                                                <td class="fw-semibold">{{ dept_name }}</td>
+                                                <td class="fw-semibold">${{ summary.total_epf_employee|floatformat:2 }}</td>
+                                                <td class="fw-semibold">${{ summary.total_epf_employer|floatformat:2 }}</td>
+                                                <td class="fw-semibold">${{ summary.total_etf_contribution|floatformat:2 }}</td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="4" class="text-center py-3">No data available</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Performance Metrics</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" data-simplebar>
+                                    <table class="table table-hover text-nowrap">
+                                        <thead class="table-light border-0">
+                                            <tr>
+                                                <th class="text-muted">Department</th>
+                                                <th class="text-muted">Efficiency Score</th>
+                                                <th class="text-muted">Compliance Score</th>
+                                                <th class="text-muted">Avg. Attendance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for dept_name, summary in department_summaries.items %}
+                                            <tr>
+                                                <td class="fw-semibold">{{ dept_name }}</td>
+                                                <td>
+                                                    <div class="w-100">
+                                                        <div class="d-flex justify-content-between align-items-center fs-13">
+                                                            <p class="text-{% if summary.performance_metrics.department_efficiency_score < 70 %}danger{% elif summary.performance_metrics.department_efficiency_score < 85 %}warning{% else %}success{% endif %} mb-1">{{ summary.performance_metrics.department_efficiency_score|floatformat:1 }}</p>
+                                                        </div>
+                                                        <div class="progress progress-sm">
+                                                            <div class="progress-bar bg-{% if summary.performance_metrics.department_efficiency_score < 70 %}danger{% elif summary.performance_metrics.department_efficiency_score < 85 %}warning{% else %}success{% endif %}" style="width: {{ summary.performance_metrics.department_efficiency_score }}%"></div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="w-100">
+                                                        <div class="d-flex justify-content-between align-items-center fs-13">
+                                                            <p class="text-{% if summary.performance_metrics.policy_compliance_score < 70 %}danger{% elif summary.performance_metrics.policy_compliance_score < 85 %}warning{% else %}success{% endif %} mb-1">{{ summary.performance_metrics.policy_compliance_score|floatformat:1 }}</p>
+                                                        </div>
+                                                        <div class="progress progress-sm">
+                                                            <div class="progress-bar bg-{% if summary.performance_metrics.policy_compliance_score < 70 %}danger{% elif summary.performance_metrics.policy_compliance_score < 85 %}warning{% else %}success{% endif %}" style="width: {{ summary.performance_metrics.policy_compliance_score }}%"></div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="fw-semibold">{{ summary.performance_metrics.avg_attendance_percentage|floatformat:1 }}%</td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="4" class="text-center py-3">No data available</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Role Breakdown</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" data-simplebar>
+                                    <table class="table table-hover text-nowrap">
+                                        <thead class="table-light border-0">
+                                            <tr>
+                                                <th class="text-muted">Department</th>
+                                                <th class="text-muted">Role</th>
+                                                <th class="text-muted">Count</th>
+                                                <th class="text-muted">Total Gross</th>
+                                                <th class="text-muted">Total Net</th>
+                                                <th class="text-muted">Avg. Gross</th>
+                                                <th class="text-muted">Avg. Net</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for dept_name, summary in department_summaries.items %}
+                                                {% for role_name, role_data in summary.role_breakdown.items %}
+                                                <tr>
+                                                    <td class="fw-semibold">{{ dept_name }}</td>
+                                                    <td class="fw-semibold">{{ role_name }}</td>
+                                                    <td class="fw-semibold">{{ role_data.count }}</td>
+                                                    <td class="fw-semibold">${{ role_data.total_gross|floatformat:2 }}</td>
+                                                    <td class="fw-semibold">${{ role_data.total_net|floatformat:2 }}</td>
+                                                    <td class="fw-semibold">${{ role_data.avg_gross|floatformat:2 }}</td>
+                                                    <td class="fw-semibold">${{ role_data.avg_net|floatformat:2 }}</td>
+                                                </tr>
+                                                {% empty %}
+                                                <tr>
+                                                    <td colspan="7" class="text-center py-3">No role breakdown data available</td>
+                                                </tr>
+                                                {% endfor %}
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="7" class="text-center py-3">No department data available</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="ri-information-line me-2"></i> Please select a payroll period to generate the department summary report.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="/static/assets/libs/apexcharts/apexcharts.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if report_generated %}
+        var budgetOptions = {
+            series: [{
+                name: 'Budget Utilization',
+                data: [
+                    {% for dept_name, summary in department_summaries.items %}
+                    {{ summary.budget_utilization_percentage|floatformat:1 }}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            }],
+            chart: {
+                type: 'bar',
+                height: 350,
+                toolbar: {
+                    show: false
+                }
+            },
+            plotOptions: {
+                bar: {
+                    horizontal: true,
+                    barHeight: '70%',
+                    distributed: true,
+                    dataLabels: {
+                        position: 'top'
+                    },
+                }
+            },
+            colors: [
+                {% for dept_name, summary in department_summaries.items %}
+                '{% if summary.budget_utilization_percentage > 90 %}#fa5c7c{% elif summary.budget_utilization_percentage > 75 %}#f7b84b{% else %}#1abc9c{% endif %}'{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ],
+            dataLabels: {
+                enabled: true,
+                formatter: function(val) {
+                    return val + "%";
+                },
+                offsetX: 20,
+                style: {
+                    fontSize: '12px',
+                    colors: ['#fff']
+                }
+            },
+            xaxis: {
+                categories: [
+                    {% for dept_name, summary in department_summaries.items %}
+                    '{{ dept_name }}'{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                labels: {
+                    formatter: function(val) {
+                        return val + "%";
+                    }
+                }
+            },
+            yaxis: {
+                labels: {
+                    show: true
+                }
+            },
+            tooltip: {
+                y: {
+                    formatter: function(val) {
+                        return val + "%";
+                    }
+                }
+            }
+        };
+        
+        var budgetChart = new ApexCharts(document.querySelector("#budgetUtilizationChart"), budgetOptions);
+        budgetChart.render();
+        
+        var performanceOptions = {
+            series: [
+                {
+                    name: 'Efficiency Score',
+                    data: [
+                        {% for dept_name, summary in department_summaries.items %}
+                        {{ summary.performance_metrics.department_efficiency_score|floatformat:1 }}{% if not forloop.last %},{% endif %}
+                        {% endfor %}
+                    ]
+                },
+                {
+                    name: 'Compliance Score',
+                    data: [
+                        {% for dept_name, summary in department_summaries.items %}
+                        {{ summary.performance_metrics.policy_compliance_score|floatformat:1 }}{% if not forloop.last %},{% endif %}
+                        {% endfor %}
+                    ]
+                },
+                {
+                    name: 'Attendance',
+                    data: [
+                        {% for dept_name, summary in department_summaries.items %}
+                        {{ summary.performance_metrics.avg_attendance_percentage|floatformat:1 }}{% if not forloop.last %},{% endif %}
+                        {% endfor %}
+                    ]
+                }
+            ],
+            chart: {
+                type: 'radar',
+                height: 350,
+                toolbar: {
+                    show: false
+                }
+            },
+            xaxis: {
+                categories: [
+                    {% for dept_name, summary in department_summaries.items %}
+                    '{{ dept_name }}'{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            },
+            yaxis: {
+                max: 100,
+                min: 0
+            },
+            colors: ['#6658dd', '#1abc9c', '#f7b84b'],
+            markers: {
+                size: 4,
+                colors: ['#6658dd', '#1abc9c', '#f7b84b'],
+                strokeWidth: 2,
+            },
+            tooltip: {
+                y: {
+                    formatter: function(val) {
+                        return val.toFixed(1);
+                    }
+                }
+            }
+        };
+        
+        var performanceChart = new ApexCharts(document.querySelector("#performanceMetricsChart"), performanceOptions);
+        performanceChart.render();
+        {% endif %}
+    });
+</script>
+{% endblock %}

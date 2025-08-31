@@ -1,0 +1,274 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Bulk Approve Salary Advances" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+{% endblock %}
+{% block content %}
+{% with title_sub="Payroll" title="Bulk Approve Salary Advances"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">Bulk Approve Salary Advances</h4>
+                <div>
+                    <a href="{% url 'payroll:advance_list' %}" class="btn btn-light">
+                        <i class="ri-arrow-left-line align-bottom me-1"></i> Back to List
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if pending_advances %}
+                <form method="post" action="{% url 'payroll:bulk_advance_approve' %}">
+                    {% csrf_token %}
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="alert alert-info" role="alert">
+                                <h5 class="alert-heading"><i class="ri-information-line me-2"></i> Bulk Approval</h5>
+                                <p class="mb-0">Select the advances you want to approve. This action will approve all selected advances at once.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="selectAll">Select All</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAll">Deselect All</button>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <div class="form-group mb-0">
+                                        <select id="departmentFilter" class="form-select form-select-sm">
+                                            <option value="">All Departments</option>
+                                            {% for dept in departments %}
+                                            <option value="{{ dept.name }}">{{ dept.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="form-group mb-0">
+                                        <select id="advanceTypeFilter" class="form-select form-select-sm">
+                                            <option value="">All Advance Types</option>
+                                            {% for type in advance_types %}
+                                            <option value="{{ type }}">{{ type }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle" id="advancesTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="40">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="checkAll">
+                                        </div>
+                                    </th>
+                                    <th class="text-muted">Reference</th>
+                                    <th class="text-muted">Employee</th>
+                                    <th class="text-muted">Department</th>
+                                    <th class="text-muted">Type</th>
+                                    <th class="text-muted">Amount</th>
+                                    <th class="text-muted">Installments</th>
+                                    <th class="text-muted">Requested Date</th>
+                                    <th class="text-muted">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for advance in pending_advances %}
+                                <tr data-department="{{ advance.employee.department.name }}" data-advance-type="{{ advance.advance_type }}">
+                                    <td>
+                                        <div class="form-check">
+                                            <input class="form-check-input advance-checkbox" type="checkbox" name="advance_ids" value="{{ advance.id }}">
+                                        </div>
+                                    </td>
+                                    <td class="fw-semibold">{{ advance.reference_number }}</td>
+                                    <td class="fw-semibold">
+                                        {{ advance.employee.get_full_name }}
+                                        <div class="text-muted small">{{ advance.employee.employee_code }}</div>
+                                    </td>
+                                    <td>{{ advance.employee.department.name }}</td>
+                                    <td>{{ advance.get_advance_type_display }}</td>
+                                    <td class="fw-semibold">LKR {{ advance.amount|floatformat:2 }}</td>
+                                    <td>{{ advance.installments }}</td>
+                                    <td>{{ advance.requested_date|date:"d M Y" }}</td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <a href="{% url 'payroll:advance_detail' pk=advance.pk %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </div>
+                                    </td>                                    
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="alert alert-warning" role="alert">
+                                <div class="d-flex">
+                                    <div class="flex-shrink-0">
+                                        <i class="ri-alert-line fs-4 align-middle me-2"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="alert-heading">Confirmation Required</h5>
+                                        <p class="mb-0">You are about to approve multiple salary advances. This action cannot be undone. Please review all selected advances carefully before proceeding.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <button type="submit" class="btn btn-success" id="approveBtn" disabled>
+                                <i class="ri-check-double-line align-bottom me-1"></i> Approve Selected Advances
+                            </button>
+                            <a href="{% url 'payroll:advance_list' %}" class="btn btn-light">
+                                <i class="ri-close-line align-bottom me-1"></i> Cancel
+                            </a>
+                        </div>
+                    </div>
+                </form>
+                {% else %}
+                <div class="text-center py-5">
+                    <div class="d-flex flex-column align-items-center">
+                        <i class="ri-file-search-line fs-1 text-muted mb-2"></i>
+                        <h5>No pending advances found</h5>
+                        <p class="text-muted">There are no pending salary advances that require approval.</p>
+                        <a href="{% url 'payroll:advance_list' %}" class="btn btn-primary mt-2">
+                            <i class="ri-arrow-left-line align-bottom me-1"></i> Back to Advances
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkAll = document.getElementById('checkAll');
+        const advanceCheckboxes = document.querySelectorAll('.advance-checkbox');
+        const approveBtn = document.getElementById('approveBtn');
+        const selectAllBtn = document.getElementById('selectAll');
+        const deselectAllBtn = document.getElementById('deselectAll');
+        const departmentFilter = document.getElementById('departmentFilter');
+        const advanceTypeFilter = document.getElementById('advanceTypeFilter');
+        const advancesTable = document.getElementById('advancesTable');
+        
+        // Check/uncheck all checkboxes
+        checkAll.addEventListener('change', function() {
+            const isChecked = this.checked;
+            advanceCheckboxes.forEach(checkbox => {
+                const row = checkbox.closest('tr');
+                if (row.style.display !== 'none') {
+                    checkbox.checked = isChecked;
+                }
+            });
+            updateApproveButton();
+        });
+        
+        // Select all button
+        selectAllBtn.addEventListener('click', function() {
+            advanceCheckboxes.forEach(checkbox => {
+                const row = checkbox.closest('tr');
+                if (row.style.display !== 'none') {
+                    checkbox.checked = true;
+                }
+            });
+            updateCheckAllStatus();
+            updateApproveButton();
+        });
+        
+        // Deselect all button
+        deselectAllBtn.addEventListener('click', function() {
+            advanceCheckboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            checkAll.checked = false;
+            updateApproveButton();
+        });
+        
+        // Individual checkbox change
+        advanceCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                updateCheckAllStatus();
+                updateApproveButton();
+            });
+        });
+        
+        // Department filter
+        departmentFilter.addEventListener('change', function() {
+            filterTable();
+        });
+        
+        // Advance type filter
+        advanceTypeFilter.addEventListener('change', function() {
+            filterTable();
+        });
+        
+        // Update check all status
+        function updateCheckAllStatus() {
+            const visibleCheckboxes = Array.from(advanceCheckboxes).filter(checkbox => {
+                const row = checkbox.closest('tr');
+                return row.style.display !== 'none';
+            });
+            
+            const allChecked = visibleCheckboxes.length > 0 && visibleCheckboxes.every(checkbox => checkbox.checked);
+            checkAll.checked = allChecked;
+        }
+        
+        // Update approve button state
+        function updateApproveButton() {
+            const anyChecked = Array.from(advanceCheckboxes).some(checkbox => checkbox.checked);
+            approveBtn.disabled = !anyChecked;
+        }
+        
+        // Filter table
+        function filterTable() {
+            const departmentValue = departmentFilter.value;
+            const advanceTypeValue = advanceTypeFilter.value;
+            
+            const rows = advancesTable.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const department = row.getAttribute('data-department');
+                const advanceType = row.getAttribute('data-advance-type');
+                
+                const departmentMatch = !departmentValue || department === departmentValue;
+                const advanceTypeMatch = !advanceTypeValue || advanceType === advanceTypeValue;
+                
+                if (departmentMatch && advanceTypeMatch) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            updateCheckAllStatus();
+        }
+        
+        // Initial update
+        updateApproveButton();
+    });
+</script>
+{% endblock %}

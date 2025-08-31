@@ -1,0 +1,410 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+{% load payroll_filters %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Tax Report" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Reports" title="Tax Report"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>Tax Report</h4>
+                <div class="action-buttons">
+                    {% if report_generated and can_export_pdf %}
+                    <a href="{% url 'payroll:export_tax_report_pdf' selected_year selected_report_type %}" class="btn btn-sm btn-outline-primary" title="Export as PDF">
+                        <i class="bi bi-file-pdf"></i>
+                    </a>
+                    {% endif %}
+                    {% if report_generated and can_export_excel %}
+                    <a href="{% url 'payroll:export_tax_report_excel' selected_year selected_report_type %}" class="btn btn-sm btn-outline-success" title="Export as Excel">
+                        <i class="bi bi-file-excel"></i>
+                    </a>
+                    {% endif %}
+                </div>                
+            </div>
+            <div class="card-body">
+                <form method="get" action="{% url 'payroll:tax_report' %}" class="mb-4">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="year" class="form-label">Select Year</label>
+                                <select class="form-select" id="year" name="year">
+                                    <option value="">-- Select Year --</option>
+                                    {% for year_value, year_label in years %}
+                                    <option value="{{ year_value }}" {% if selected_year|stringformat:"i" == year_value %}selected{% endif %}>{{ year_label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="report_type" class="form-label">Report Type</label>
+                                <select class="form-select" id="report_type" name="report_type">
+                                    {% for type_value, type_label in report_types %}
+                                    <option value="{{ type_value }}" {% if selected_report_type == type_value %}selected{% endif %}>{{ type_label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">Generate Report</button>
+                        </div>
+                    </div>
+                </form>
+
+                {% if report_generated %}
+                <div class="report-header mb-4">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Tax Report: {{ selected_year }} - {{ selected_report_type|title }}</h5>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <p class="mb-1">Total Employees: <strong>{{ tax_report.total_employees }}</strong></p>
+                            <p class="mb-1">Total Gross Salary: <strong>${{ tax_report.total_gross_salary|floatformat:2 }}</strong></p>
+                            <p class="mb-1">Total Income Tax: <strong>${{ tax_report.total_income_tax|floatformat:2 }}</strong></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Tax Summary</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" data-simplebar>
+                                    <table class="table table-hover text-nowrap">
+                                        <thead class="table-light border-0">
+                                            <tr>
+                                                <th class="text-muted">Category</th>
+                                                <th class="text-muted">Amount</th>
+                                                <th class="text-muted">Percentage</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="fw-semibold">Total Gross Salary</td>
+                                                <td class="fw-semibold">${{ tax_report.total_gross_salary|floatformat:2 }}</td>
+                                                <td class="fw-semibold">100%</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Total EPF Employee</td>
+                                                <td class="fw-semibold">${{ tax_report.total_epf_employee|floatformat:2 }}</td>
+                                                <td class="fw-semibold">{{ tax_report.total_epf_employee|floatformat:2|default:"0.00"|div:tax_report.total_gross_salary|floatformat:4|mul:100 }}%</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Total EPF Employer</td>
+                                                <td class="fw-semibold">${{ tax_report.total_epf_employer|floatformat:2 }}</td>
+                                                <td class="fw-semibold">{{ tax_report.total_epf_employer|floatformat:2|default:"0.00"|div:tax_report.total_gross_salary|floatformat:4|mul:100 }}%</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Total ETF</td>
+                                                <td class="fw-semibold">${{ tax_report.total_etf|floatformat:2 }}</td>
+                                                <td class="fw-semibold">{{ tax_report.total_etf|floatformat:2|default:"0.00"|div:tax_report.total_gross_salary|floatformat:4|mul:100 }}%</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Total Income Tax</td>
+                                                <td class="fw-semibold">${{ tax_report.total_income_tax|floatformat:2 }}</td>
+                                                <td class="fw-semibold">{{ tax_report.total_income_tax|floatformat:2|default:"0.00"|div:tax_report.total_gross_salary|floatformat:4|mul:100 }}%</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Tax Distribution</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="taxDistributionChart" style="height: 300px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Employee Tax Breakdown</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" data-simplebar>
+                                    <table class="table table-hover text-nowrap">
+                                        <thead class="table-light border-0">
+                                            <tr>
+                                                <th class="text-muted">Employee Code</th>
+                                                <th class="text-muted">Employee Name</th>
+                                                <th class="text-muted">Annual Gross</th>
+                                                <th class="text-muted">EPF Employee</th>
+                                                <th class="text-muted">EPF Employer</th>
+                                                <th class="text-muted">ETF</th>
+                                                <th class="text-muted">Income Tax</th>
+                                                <th class="text-muted">Tax Rate</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for employee in tax_report.employee_breakdown %}
+                                            <tr>
+                                                <td class="fw-semibold">{{ employee.employee_code }}</td>
+                                                <td class="fw-semibold">{{ employee.employee_name }}</td>
+                                                <td class="fw-semibold">${{ employee.annual_gross|floatformat:2 }}</td>
+                                                <td class="fw-semibold">${{ employee.annual_epf_employee|floatformat:2 }}</td>
+                                                <td class="fw-semibold">${{ employee.annual_epf_employer|floatformat:2 }}</td>
+                                                <td class="fw-semibold">${{ employee.annual_etf|floatformat:2 }}</td>
+                                                <td class="fw-semibold">${{ employee.annual_income_tax|floatformat:2 }}</td>
+                                                <td class="fw-semibold">
+                                                    {% if employee.annual_gross > 0 %}
+                                                    {{ employee.annual_income_tax|div:employee.annual_gross|mul:100|floatformat:2 }}%
+                                                    {% else %}
+                                                    0.00%
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="8" class="text-center py-3">No employee tax data available</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Tax Statistics</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive" data-simplebar>
+                                    <table class="table table-hover text-nowrap">
+                                        <thead class="table-light border-0">
+                                            <tr>
+                                                <th class="text-muted">Statistic</th>
+                                                <th class="text-muted">Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="fw-semibold">Average Annual Gross</td>
+                                                <td class="fw-semibold">
+                                                    ${% if tax_report.total_employees > 0 %}
+                                                    {{ tax_report.total_gross_salary|div:tax_report.total_employees|floatformat:2 }}
+                                                    {% else %}
+                                                    0.00
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Average Income Tax</td>
+                                                <td class="fw-semibold">
+                                                    ${% if tax_report.total_employees > 0 %}
+                                                    {{ tax_report.total_income_tax|div:tax_report.total_employees|floatformat:2 }}
+                                                    {% else %}
+                                                    0.00
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Average Tax Rate</td>
+                                                <td class="fw-semibold">
+                                                    {% if tax_report.total_gross_salary > 0 %}
+                                                    {{ tax_report.total_income_tax|div:tax_report.total_gross_salary|mul:100|floatformat:2 }}%
+                                                    {% else %}
+                                                    0.00%
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Total EPF Contribution</td>
+                                                <td class="fw-semibold">${{ tax_report.total_epf_employee|add:tax_report.total_epf_employer|floatformat:2 }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="fw-semibold">Total Retirement Funds</td>
+                                                <td class="fw-semibold">${{ tax_report.total_epf_employee|add:tax_report.total_epf_employer|add:tax_report.total_etf|floatformat:2 }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Tax Bracket Distribution</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="taxBracketChart" style="height: 300px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="ri-information-line me-2"></i> Please select a year to generate the tax report.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block javascript %}
+<script src="/static/assets/libs/apexcharts/apexcharts.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if report_generated %}
+        // Tax Distribution Chart
+        var taxDistributionOptions = {
+            series: [
+                {{ tax_report.total_income_tax|floatformat:2 }},
+                {{ tax_report.total_epf_employee|floatformat:2 }},
+                {{ tax_report.total_epf_employer|floatformat:2 }},
+                {{ tax_report.total_etf|floatformat:2 }},
+                {{ tax_report.total_gross_salary|sub:tax_report.total_income_tax|sub:tax_report.total_epf_employee|floatformat:2 }}
+            ],
+            chart: {
+                type: 'donut',
+                height: 300
+            },
+            labels: ['Income Tax', 'EPF Employee', 'EPF Employer', 'ETF', 'Net After Tax & EPF'],
+            colors: ['#f1556c', '#6658dd', '#4fc6e1', '#1abc9c', '#50a5f1'],
+            legend: {
+                position: 'bottom'
+            },
+            dataLabels: {
+                enabled: false
+            },
+            responsive: [{
+                breakpoint: 480,
+                options: {
+                    chart: {
+                        height: 250
+                    },
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }]
+        };
+        
+        var taxDistributionChart = new ApexCharts(document.querySelector("#taxDistributionChart"), taxDistributionOptions);
+        taxDistributionChart.render();
+        
+        // Calculate tax brackets from employee data
+        var brackets = {
+            '0-5%': 0,
+            '5-10%': 0,
+            '10-15%': 0,
+            '15-20%': 0,
+            '20%+': 0
+        };
+        
+        {% for employee in tax_report.employee_breakdown %}
+        var taxRate = 0;
+        {% if employee.annual_gross > 0 %}
+        taxRate = ({{ employee.annual_income_tax }} / {{ employee.annual_gross }}) * 100;
+        {% endif %}
+        
+        if (taxRate < 5) {
+            brackets['0-5%']++;
+        } else if (taxRate < 10) {
+            brackets['5-10%']++;
+        } else if (taxRate < 15) {
+            brackets['10-15%']++;
+        } else if (taxRate < 20) {
+            brackets['15-20%']++;
+        } else {
+            brackets['20%+']++;
+        }
+        {% endfor %}
+        
+        // Tax Bracket Chart
+        var taxBracketOptions = {
+            series: [{
+                name: 'Employees',
+                data: [
+                    brackets['0-5%'],
+                    brackets['5-10%'],
+                    brackets['10-15%'],
+                    brackets['15-20%'],
+                    brackets['20%+']
+                ]
+            }],
+            chart: {
+                type: 'bar',
+                height: 300,
+                toolbar: {
+                    show: false
+                }
+            },
+            plotOptions: {
+                bar: {
+                    horizontal: false,
+                    columnWidth: '55%',
+                    endingShape: 'rounded'
+                },
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                show: true,
+                width: 2,
+                colors: ['transparent']
+            },
+            xaxis: {
+                categories: ['0-5%', '5-10%', '10-15%', '15-20%', '20%+'],
+                title: {
+                    text: 'Tax Rate Brackets'
+                }
+            },
+            yaxis: {
+                title: {
+                    text: 'Number of Employees'
+                }
+            },
+            fill: {
+                opacity: 1,
+                colors: ['#6658dd']
+            },
+            tooltip: {
+                y: {
+                    formatter: function (val) {
+                        return val + " employees"
+                    }
+                }
+            }
+        };
+        
+        var taxBracketChart = new ApexCharts(document.querySelector("#taxBracketChart"), taxBracketOptions);
+        taxBracketChart.render();
+        {% endif %}
+    });
+</script>
+{% endblock %}
+

@@ -1,0 +1,264 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Bank Transfers" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Payroll" title="Bank Transfers"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="row">
+            <div class="col-xxl col-sm-4">
+                <div class="card overflow-hidden">
+                    <div class="card-body bg-primary-subtle position-relative z-1">
+                        <div class="d-flex gap-2">
+                            <div class="school-icon bg-primary d-flex justify-content-center align-items-center fs-4">
+                                <i class="ri-bank-line" id="hexagon"></i>
+                            </div>
+                            <div class="text-center">
+                                <span class="d-block fw-semibold mb-2 fs-5">Pending</span>
+                                <h4 class="mb-0 fw-semibold">{{ pending_count }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xxl col-sm-4">
+                <div class="card overflow-hidden">
+                    <div class="card-body bg-info-subtle position-relative z-1">
+                        <div class="d-flex gap-2">
+                            <div class="school-icon bg-info d-flex justify-content-center align-items-center fs-4">
+                                <i class="ri-file-list-3-line" id="hexagon"></i>
+                            </div>
+                            <div class="text-center">
+                                <span class="d-block fw-semibold mb-2 fs-5">Generated</span>
+                                <h4 class="mb-0 fw-semibold">{{ generated_count }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xxl col-sm-4">
+                <div class="card overflow-hidden">
+                    <div class="card-body bg-success-subtle position-relative z-1">
+                        <div class="d-flex gap-2">
+                            <div class="school-icon bg-success d-flex justify-content-center align-items-center fs-4">
+                                <i class="ri-send-plane-line" id="hexagon"></i>
+                            </div>
+                            <div class="text-center">
+                                <span class="d-block fw-semibold mb-2 fs-5">Sent</span>
+                                <h4 class="mb-0 fw-semibold">{{ sent_count }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">Bank Transfers</h4>
+                <div class="d-flex gap-2">
+                    {% if can_create_transfer %}
+                    <a href="{% url 'payroll:bank_transfer_create' %}" class="btn btn-primary">
+                        <i class="ri-add-line align-bottom"></i> Create Bank Transfer
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <form method="get" class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="">All Statuses</option>
+                            {% for status in statuses %}
+                            <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>
+                                {{ status|title }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="period_id" class="form-label">Payroll Period</label>
+                        <select class="form-select" id="period_id" name="period_id">
+                            <option value="">All Periods</option>
+                            {% for period in periods %}
+                            <option value="{{ period.id }}" {% if period_id == period.id|stringformat:"s" %}selected{% endif %}>
+                                {{ period.period_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="date_from" class="form-label">Date From</label>
+                        <input type="date" class="form-control" id="date_from" name="date_from" value="{{ date_from }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="date_to" class="form-label">Date To</label>
+                        <input type="date" class="form-control" id="date_to" name="date_to" value="{{ date_to }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="search" class="form-label">Search</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="search" name="search" placeholder="Search..." value="{{ search_query }}">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="ri-search-line"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <div class="table-responsive">
+                    <table class="table table-hover text-nowrap">
+                        <thead class="table-light border-0">
+                            <tr>
+                                <th class="text-muted">Batch Reference</th>
+                                <th class="text-muted">Payroll Period</th>
+                                <th class="text-muted">Total Amount</th>
+                                <th class="text-muted">Employees</th>
+                                <th class="text-muted">Status</th>
+                                <th class="text-muted">Created At</th>
+                                <th class="text-muted">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transfer in transfers %}
+                            <tr>
+                                <td class="fw-semibold">{{ transfer.batch_reference }}</td>
+                                <td class="fw-semibold">{{ transfer.payroll_period.period_name }}</td>
+                                <td class="fw-semibold">{{ transfer.total_amount|floatformat:2 }}</td>
+                                <td class="fw-semibold">{{ transfer.total_employees }}</td>
+                                <td class="py-3">
+                                    {% if transfer.status == 'PENDING' %}
+                                    <span class="badge bg-warning px-3 rounded-3">Pending</span>
+                                    {% elif transfer.status == 'GENERATED' %}
+                                    <span class="badge bg-info px-3 rounded-3">Generated</span>
+                                    {% elif transfer.status == 'SENT' %}
+                                    <span class="badge bg-primary px-3 rounded-3">Sent to Bank</span>
+                                    {% elif transfer.status == 'PROCESSED' %}
+                                    <span class="badge bg-success px-3 rounded-3">Processed</span>
+                                    {% elif transfer.status == 'COMPLETED' %}
+                                    <span class="badge bg-success px-3 rounded-3">Completed</span>
+                                    {% elif transfer.status == 'FAILED' %}
+                                    <span class="badge bg-danger px-3 rounded-3">Failed</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-semibold">{{ transfer.created_at|date:"d/m/Y H:i" }}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'payroll:bank_transfer_detail' pk=transfer.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        {% if transfer.status in 'GENERATED,SENT,PROCESSED,COMPLETED' and transfer.bank_file_path %}
+                                        <a href="{% url 'payroll:bank_transfer_download_file' pk=transfer.id %}" class="btn btn-sm btn-outline-info" title="Download File">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>                                
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <div class="d-flex flex-column align-items-center">
+                                        <i class="ri-bank-line fs-1 text-muted mb-3"></i>
+                                        <h5>No bank transfers found</h5>
+                                        <p class="text-muted">No bank transfers match your search criteria.</p>
+                                        {% if can_create_transfer %}
+                                        <a href="{% url 'payroll:bank_transfer_create' %}" class="btn btn-primary mt-2">
+                                            <i class="ri-add-line align-bottom"></i> Create Bank Transfer
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                {% if transfers.paginator.num_pages > 1 %}
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <div>
+                        Showing {{ transfers.start_index }} to {{ transfers.end_index }} of {{ transfers.paginator.count }} entries
+                    </div>
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination mb-0">
+                            {% if transfers.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}{% if period_id %}&period_id={{ period_id }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ transfers.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if period_id %}&period_id={{ period_id }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for num in transfers.paginator.page_range %}
+                                {% if transfers.number == num %}
+                                <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > transfers.number|add:'-3' and num < transfers.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if period_id %}&period_id={{ period_id }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if transfers.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ transfers.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if period_id %}&period_id={{ period_id }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ transfers.paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if period_id %}&period_id={{ period_id }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="/static/assets/libs/gridjs/gridjs.umd.js"></script>
+<script src="/static/assets/libs/air-datepicker/air-datepicker.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const statusSelect = document.getElementById('status');
+        const periodSelect = document.getElementById('period_id');
+        const dateFromInput = document.getElementById('date_from');
+        const dateToInput = document.getElementById('date_to');
+        
+        statusSelect.addEventListener('change', function() {
+            this.form.submit();
+        });
+        
+        periodSelect.addEventListener('change', function() {
+            this.form.submit();
+        });
+    });
+</script>
+{% endblock %}
+

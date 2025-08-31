@@ -1,0 +1,268 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Payslips" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Payroll Management" title="Payslips"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0">Filter Payslips</h4>
+                <div>
+                    {% if can_calculate_payslips %}
+                    <a href="{% url 'payroll:bulk_calculate' %}" class="btn btn-primary btn-sm">
+                        <i class="ri-calculator-line me-1"></i> Bulk Calculate
+                    </a>
+                    {% endif %}
+                    {% if can_approve_payslips %}
+                    <a href="{% url 'payroll:bulk_approve' %}" class="btn btn-success btn-sm ms-2">
+                        <i class="ri-check-double-line me-1"></i> Bulk Approve
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <form method="get" action="{% url 'payroll:payslip_list' %}" id="filter-form">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="period_id" class="form-label">Payroll Period</label>
+                            <select class="form-select" id="period_id" name="period_id">
+                                <option value="">All Periods</option>
+                                {% for period in periods %}
+                                <option value="{{ period.id }}" {% if period_id == period.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ period.period_name }} ({{ period.get_status_display }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="department_id" class="form-label">Department</label>
+                            <select class="form-select" id="department_id" name="department_id">
+                                <option value="">All Departments</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept.id }}" {% if department_id == dept.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ dept.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="role_id" class="form-label">Role</label>
+                            <select class="form-select" id="role_id" name="role_id">
+                                <option value="">All Roles</option>
+                                {% for role in roles %}
+                                <option value="{{ role.id }}" {% if role_id == role.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ role.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">All Statuses</option>
+                                {% for status_option in statuses %}
+                                <option value="{{ status_option }}" {% if status_filter == status_option %}selected{% endif %}>
+                                    {{ status_option }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="search" class="form-label">Search</label>
+                            <input type="text" class="form-control" id="search" name="search" placeholder="Search by name, employee code or reference number" value="{{ search_query }}">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="sort_by" class="form-label">Sort By</label>
+                            <select class="form-select" id="sort_by" name="sort_by">
+                                <option value="-payroll_period__year,-payroll_period__month" {% if sort_by == '-payroll_period__year,-payroll_period__month' %}selected{% endif %}>Latest Period First</option>
+                                <option value="payroll_period__year,payroll_period__month" {% if sort_by == 'payroll_period__year,payroll_period__month' %}selected{% endif %}>Oldest Period First</option>
+                                <option value="employee__employee_code" {% if sort_by == 'employee__employee_code' %}selected{% endif %}>Employee Code (Asc)</option>
+                                <option value="-employee__employee_code" {% if sort_by == '-employee__employee_code' %}selected{% endif %}>Employee Code (Desc)</option>
+                                <option value="employee__first_name" {% if sort_by == 'employee__first_name' %}selected{% endif %}>Employee Name (A-Z)</option>
+                                <option value="-employee__first_name" {% if sort_by == '-employee__first_name' %}selected{% endif %}>Employee Name (Z-A)</option>
+                                <option value="gross_salary" {% if sort_by == 'gross_salary' %}selected{% endif %}>Gross Salary (Low-High)</option>
+                                <option value="-gross_salary" {% if sort_by == '-gross_salary' %}selected{% endif %}>Gross Salary (High-Low)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="ri-filter-3-line me-1"></i> Apply Filters
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Payslips</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover text-nowrap">
+                        <thead class="table-light border-0">
+                            <tr>
+                                <th class="text-muted">Period</th>
+                                <th class="text-muted">Employee</th>
+                                <th class="text-muted">Reference</th>
+                                <th class="text-muted">Basic Salary</th>
+                                <th class="text-muted">Gross Salary</th>
+                                <th class="text-muted">Deductions</th>
+                                <th class="text-muted">Net Salary</th>
+                                <th class="text-muted">Status</th>
+                                <th class="text-muted">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payslip in payslips %}
+                            <tr>
+                                <td class="fw-semibold">{{ payslip.payroll_period.period_name }}</td>
+                                <td class="fw-semibold">
+                                    <a href="{% url 'employees:employee_detail' payslip.employee.id %}">
+                                        {{ payslip.employee.get_full_name }} ({{ payslip.employee.employee_code }})
+                                    </a>
+                                </td>
+                                <td class="fw-semibold">{{ payslip.reference_number }}</td>
+                                <td class="fw-semibold">{{ payslip.basic_salary|floatformat:2 }}</td>
+                                <td class="fw-semibold">{{ payslip.gross_salary|floatformat:2 }}</td>
+                                <td class="fw-semibold">{{ payslip.total_deductions|floatformat:2 }}</td>
+                                <td class="fw-semibold">{{ payslip.net_salary|floatformat:2 }}</td>
+                                <td>
+                                    {% if payslip.status == 'DRAFT' %}
+                                    <span class="badge bg-secondary px-3 rounded-3">Draft</span>
+                                    {% elif payslip.status == 'CALCULATED' %}
+                                    <span class="badge bg-info px-3 rounded-3">Calculated</span>
+                                    {% elif payslip.status == 'APPROVED' %}
+                                    <span class="badge bg-success px-3 rounded-3">Approved</span>
+                                    {% elif payslip.status == 'PAID' %}
+                                    <span class="badge bg-primary px-3 rounded-3">Paid</span>
+                                    {% elif payslip.status == 'CANCELLED' %}
+                                    <span class="badge bg-danger px-3 rounded-3">Cancelled</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <a href="{% url 'payroll:payslip_detail' payslip.id %}" class="btn btn-sm btn-info">
+                                            <i class="ri-eye-line"></i>
+                                        </a>
+                                        {% if payslip.status in 'CALCULATED,APPROVED,PAID' %}
+                                        <a href="{% url 'payroll:print_payslip' payslip.id %}" class="btn btn-sm btn-secondary" target="_blank">
+                                            <i class="ri-printer-line"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-center py-4">No payslips found matching the criteria.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if is_paginated %}
+                <div class="mt-4">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page=1" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ num }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block javascript %}
+<script src="/static/assets/libs/gridjs/gridjs.umd.js"></script>
+<script src="/static/assets/libs/air-datepicker/air-datepicker.js"></script>
+<script src="/static/assets/libs/air-datepicker/datepicker.en.js"></script>
+<script src="/static/assets/js/app.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-submit form when select fields change
+        const autoSubmitFields = ['period_id', 'department_id', 'role_id', 'status', 'sort_by'];
+        
+        autoSubmitFields.forEach(function(fieldId) {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.addEventListener('change', function() {
+                    document.getElementById('filter-form').submit();
+                });
+            }
+        });
+        
+        // Format currency values
+        document.querySelectorAll('.currency-value').forEach(function(element) {
+            const value = parseFloat(element.textContent);
+            if (!isNaN(value)) {
+                element.textContent = new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'LKR'
+                }).format(value);
+            }
+        });
+    });
+</script>
+{% endblock %}
+

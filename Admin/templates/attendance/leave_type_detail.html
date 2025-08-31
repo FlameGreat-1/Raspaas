@@ -1,0 +1,765 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Leave Type Details" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Attendance" title="Leave Type Details" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex align-items-center">
+                    <h4 class="card-title mb-0 flex-grow-1">Leave Type Information</h4>
+                    <div class="flex-shrink-0">
+                        <div class="action-buttons">
+                            <a href="{% url 'attendance:leave_type_list' %}" class="btn btn-sm btn-outline-secondary" title="Back to List">
+                                <i class="ri-arrow-left-line"></i>
+                            </a>
+                            <a href="#" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editLeaveTypeModal" title="Edit">
+                                <i class="ri-pencil-line"></i>
+                            </a>
+                            {% if leave_type.is_active %}
+                            <a href="#" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deactivateLeaveTypeModal" title="Deactivate">
+                                <i class="ri-close-circle-line"></i>
+                            </a>
+                            {% else %}
+                            <a href="#" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#activateLeaveTypeModal" title="Activate">
+                                <i class="ri-checkbox-circle-line"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>                    
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12 mb-4">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-lg bg-primary text-white rounded-circle me-3 d-flex align-items-center justify-content-center fs-24">
+                                <i class="ri-calendar-check-line"></i>
+                            </div>
+                            <div>
+                                <h4 class="mb-1">{{ leave_type.name }}</h4>
+                                <p class="text-muted mb-0">
+                                    <span class="badge {% if leave_type.is_active %}bg-success{% else %}bg-danger{% endif %} px-3 rounded-3 me-2">
+                                        {% if leave_type.is_active %}Active{% else %}Inactive{% endif %}
+                                    </span>
+                                    <span class="me-2">Code: {{ leave_type.code }}</span>
+                                    {% if leave_type.category == 'ANNUAL' %}
+                                    <span class="badge bg-success px-3 rounded-3">Annual</span>
+                                    {% elif leave_type.category == 'SICK' %}
+                                    <span class="badge bg-danger px-3 rounded-3">Sick</span>
+                                    {% elif leave_type.category == 'MATERNITY' %}
+                                    <span class="badge bg-info px-3 rounded-3">Maternity</span>
+                                    {% elif leave_type.category == 'PATERNITY' %}
+                                    <span class="badge bg-primary px-3 rounded-3">Paternity</span>
+                                    {% elif leave_type.category == 'EMERGENCY' %}
+                                    <span class="badge bg-warning px-3 rounded-3">Emergency</span>
+                                    {% elif leave_type.category == 'STUDY' %}
+                                    <span class="badge bg-secondary px-3 rounded-3">Study</span>
+                                    {% elif leave_type.category == 'UNPAID' %}
+                                    <span class="badge bg-dark px-3 rounded-3">Unpaid</span>
+                                    {% elif leave_type.category == 'COMPENSATORY' %}
+                                    <span class="badge bg-purple px-3 rounded-3">Compensatory</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if leave_type.description %}
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <h5 class="mb-3">Description</h5>
+                        <div class="border rounded p-3 bg-light">
+                            <p class="mb-0">{{ leave_type.description }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="row">
+                    <div class="col-lg-12">
+                        <h5 class="mb-3">Leave Type Details</h5>
+                        <div class="table-responsive">
+                            <table class="table table-borderless mb-0">
+                                <tbody>
+                                    <tr>
+                                        <th class="ps-0" scope="row" width="30%">Days Allowed Per Year:</th>
+                                        <td class="text-muted">{{ leave_type.days_allowed_per_year }} days</td>
+                                    </tr>
+                                    {% if leave_type.max_consecutive_days %}
+                                    <tr>
+                                        <th class="ps-0" scope="row">Max Consecutive Days:</th>
+                                        <td class="text-muted">{{ leave_type.max_consecutive_days }} days</td>
+                                    </tr>
+                                    {% endif %}
+                                    <tr>
+                                        <th class="ps-0" scope="row">Minimum Notice Days:</th>
+                                        <td class="text-muted">{{ leave_type.min_notice_days }} day(s)</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Requires Approval:</th>
+                                        <td>
+                                            {% if leave_type.requires_approval %}
+                                            <span class="badge bg-success-subtle text-success px-3 rounded-3">Yes</span>
+                                            {% else %}
+                                            <span class="badge bg-danger-subtle text-danger px-3 rounded-3">No</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Requires Medical Certificate:</th>
+                                        <td>
+                                            {% if leave_type.requires_medical_certificate %}
+                                            <span class="badge bg-success-subtle text-success px-3 rounded-3">Yes</span>
+                                            {% else %}
+                                            <span class="badge bg-danger-subtle text-danger px-3 rounded-3">No</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Is Paid Leave:</th>
+                                        <td>
+                                            {% if leave_type.is_paid %}
+                                            <span class="badge bg-success-subtle text-success px-3 rounded-3">Yes</span>
+                                            {% else %}
+                                            <span class="badge bg-danger-subtle text-danger px-3 rounded-3">No</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Carry Forward Allowed:</th>
+                                        <td>
+                                            {% if leave_type.carry_forward_allowed %}
+                                            <span class="badge bg-success-subtle text-success px-3 rounded-3">Yes</span>
+                                            {% else %}
+                                            <span class="badge bg-danger-subtle text-danger px-3 rounded-3">No</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% if leave_type.carry_forward_allowed and leave_type.carry_forward_max_days %}
+                                    <tr>
+                                        <th class="ps-0" scope="row">Carry Forward Max Days:</th>
+                                        <td class="text-muted">{{ leave_type.carry_forward_max_days }} days</td>
+                                    </tr>
+                                    {% endif %}
+                                    <tr>
+                                        <th class="ps-0" scope="row">Applicable After Probation Only:</th>
+                                        <td>
+                                            {% if leave_type.applicable_after_probation_only %}
+                                            <span class="badge bg-success-subtle text-success px-3 rounded-3">Yes</span>
+                                            {% else %}
+                                            <span class="badge bg-danger-subtle text-danger px-3 rounded-3">No</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Gender Specific:</th>
+                                        <td class="text-muted">
+                                            {% if leave_type.gender_specific == 'M' %}
+                                            Male Only
+                                            {% elif leave_type.gender_specific == 'F' %}
+                                            Female Only
+                                            {% else %}
+                                            All Genders
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Created At:</th>
+                                        <td class="text-muted">{{ leave_type.created_at|date:"d M Y H:i" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="ps-0" scope="row">Last Updated:</th>
+                                        <td class="text-muted">{{ leave_type.updated_at|date:"d M Y H:i" }}</td>
+                                    </tr>
+                                    {% if leave_type.created_by %}
+                                    <tr>
+                                        <th class="ps-0" scope="row">Created By:</th>
+                                        <td class="text-muted">{{ leave_type.created_by.get_full_name }}</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex align-items-center">
+                    <h4 class="card-title mb-0 flex-grow-1">Employee Leave Balances</h4>
+                    <div class="flex-shrink-0">
+                        <div class="action-buttons">
+                            <a href="#" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#adjustLeaveBalanceModal" title="Adjust Balance">
+                                <i class="ri-add-line"></i>
+                            </a>
+                            <a href="#" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#initializeLeaveBalancesModal" title="Initialize Balances">
+                                <i class="ri-refresh-line"></i>
+                            </a>
+                        </div>
+                    </div>                    
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <form method="get" class="row g-3">
+                            <div class="col-md-3">
+                                <select name="year" class="form-select" onchange="this.form.submit()">
+                                    {% for year_option in years %}
+                                    <option value="{{ year_option }}" {% if year == year_option %}selected{% endif %}>{{ year_option }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-7">
+                                <div class="input-group">
+                                    <input type="text" name="search" class="form-control" placeholder="Search by employee name or ID..." value="{{ search_query }}">
+                                    <button class="btn btn-primary" type="submit">
+                                        <i class="ri-search-line"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <a href="{% url 'attendance:leave_type_detail' type_id=leave_type.id %}" class="btn btn-outline-secondary w-100">
+                                    <i class="ri-refresh-line"></i> Reset
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover text-nowrap">
+                        <thead class="table-light border-0">
+                            <tr>
+                                <th class="text-muted">Employee</th>
+                                <th class="text-muted">Allocated</th>
+                                <th class="text-muted">Used</th>
+                                <th class="text-muted">Carried Forward</th>
+                                <th class="text-muted">Adjustments</th>
+                                <th class="text-muted">Available</th>
+                                <th class="text-muted">Utilization</th>
+                                <th class="text-muted">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for balance in employee_balances %}
+                            <tr>
+                                <td class="fw-semibold">
+                                    {% if balance.employee.profile_image %}
+                                    <img src="{{ balance.employee.profile_image.url }}" class="avatar-sm rounded-circle me-2" alt="{{ balance.employee.get_full_name }}">
+                                    {% else %}
+                                    <div class="avatar-sm bg-primary text-white rounded-circle me-2 d-inline-flex align-items-center justify-content-center">
+                                        {{ balance.employee.first_name|first }}{{ balance.employee.last_name|first }}
+                                    </div>
+                                    {% endif %}
+                                    <a href="{% url 'attendance:employee_leave_balances' employee_id=balance.employee.id %}">
+                                        {{ balance.employee.get_full_name }}
+                                    </a>
+                                </td>
+                                <td class="fw-semibold">{{ balance.allocated_days }}</td>
+                                <td class="fw-semibold">{{ balance.used_days }}</td>
+                                <td class="fw-semibold">{{ balance.carried_forward_days }}</td>
+                                <td class="fw-semibold {% if balance.adjustment_days > 0 %}text-success{% elif balance.adjustment_days < 0 %}text-danger{% endif %}">
+                                    {{ balance.adjustment_days }}
+                                </td>
+                                <td class="fw-semibold text-success">{{ balance.available_days }}</td>
+                                <td>
+                                    <div class="w-100">
+                                        <div class="d-flex justify-content-between align-items-center fs-13">
+                                            <p class="text-muted mb-1">{{ balance.utilization_percentage }}%</p>
+                                        </div>
+                                        <div class="progress progress-sm">
+                                            <div class="progress-bar {% if balance.utilization_percentage > 80 %}bg-danger{% elif balance.utilization_percentage > 50 %}bg-warning{% else %}bg-success{% endif %}" style="width: {{ balance.utilization_percentage }}%"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'attendance:leave_balance_detail' balance_id=balance.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="ri-eye-line"></i>
+                                        </a>
+                                        <a href="#" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#adjustLeaveBalanceModal" 
+                                            data-employee-id="{{ balance.employee.id }}" 
+                                            data-employee-name="{{ balance.employee.get_full_name }}"
+                                            data-leave-type-id="{{ balance.leave_type.id }}"
+                                            data-leave-type-name="{{ balance.leave_type.name }}"
+                                            data-balance-id="{{ balance.id }}" title="Adjust Balance">
+                                            <i class="ri-edit-line"></i>
+                                        </a>
+                                    </div>
+                                </td>                                                                                       
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <div class="d-flex justify-content-center align-items-center flex-column">
+                                        <i class="ri-file-list-3-line fs-1 text-muted mb-2"></i>
+                                        <h5>No leave balances found</h5>
+                                        <p class="text-muted">No employees have a balance for this leave type in the selected year.</p>
+                                        <button type="button" class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#initializeLeaveBalancesModal">
+                                            <i class="ri-refresh-line align-bottom me-1"></i> Initialize Balances
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if employee_balances.has_other_pages %}
+                <div class="d-flex justify-content-end mt-3">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination">
+                            {% if employee_balances.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if year %}&year={{ year }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ employee_balances.previous_page_number }}{% if year %}&year={{ year }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for num in employee_balances.paginator.page_range %}
+                                {% if employee_balances.number == num %}
+                                <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > employee_balances.number|add:'-3' and num < employee_balances.number|add:'3' %}
+                                <li class="page-item"><a class="page-link" href="?page={{ num }}{% if year %}&year={{ year }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a></li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if employee_balances.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ employee_balances.next_page_number }}{% if year %}&year={{ year }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ employee_balances.paginator.num_pages }}{% if year %}&year={{ year }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Leave Requests</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <select id="leaveStatusFilter" class="form-select">
+                            <option value="">All Status</option>
+                            <option value="PENDING">Pending</option>
+                            <option value="APPROVED">Approved</option>
+                            <option value="REJECTED">Rejected</option>
+                            <option value="CANCELLED">Cancelled</option>
+                            <option value="WITHDRAWN">Withdrawn</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="leaveRequestsList">
+                    {% for request in recent_leave_requests %}
+                    <div class="leave-request-item" data-status="{{ request.status }}">
+                        <div class="d-flex mb-4">
+                            <div class="flex-shrink-0">
+                                {% if request.employee.profile_image %}
+                                <img src="{{ request.employee.profile_image.url }}" class="avatar-md rounded-circle" alt="{{ request.employee.get_full_name }}">
+                                {% else %}
+                                <div class="avatar-md bg-primary text-white rounded-circle d-flex align-items-center justify-content-center">
+                                    {{ request.employee.first_name|first }}{{ request.employee.last_name|first }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h5 class="mb-1">{{ request.employee.get_full_name }}</h5>
+                                <p class="text-muted mb-1">
+                                    {% if request.is_half_day %}
+                                    {{ request.start_date|date:"d M Y" }} ({{ request.half_day_period }})
+                                    {% else %}
+                                    {{ request.start_date|date:"d M Y" }} - {{ request.end_date|date:"d M Y" }}
+                                    {% endif %}
+                                    <span class="ms-2 badge {% if request.status == 'PENDING' %}bg-warning{% elif request.status == 'APPROVED' %}bg-success{% elif request.status == 'REJECTED' %}bg-danger{% elif request.status == 'CANCELLED' %}bg-secondary{% else %}bg-info{% endif %} px-2 rounded-3">{{ request.status|title }}</span>
+                                </p>
+                                <p class="text-muted mb-0 small">Applied on {{ request.applied_at|date:"d M Y H:i" }}</p>
+                                <div class="mt-2">
+                                    <a href="{% url 'attendance:leave_request_detail' request_id=request.id %}" class="btn btn-sm btn-primary">View Details</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-4">
+                        <i class="ri-calendar-event-line fs-1 text-muted mb-2"></i>
+                        <h5>No leave requests found</h5>
+                        <p class="text-muted">No leave requests have been submitted for this leave type.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if recent_leave_requests %}
+                <div class="text-center mt-3">
+                    <a href="{% url 'attendance:leave_request_list' %}?leave_type={{ leave_type.id }}" class="btn btn-outline-primary">View All Requests</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Edit Leave Type Modal -->
+<div class="modal fade" id="editLeaveTypeModal" tabindex="-1" aria-labelledby="editLeaveTypeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editLeaveTypeModalLabel">Edit Leave Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_leave_type">
+                <input type="hidden" name="leave_type_id" value="{{ leave_type.id }}">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="name" class="form-label">Name</label>
+                            <input type="text" name="name" id="name" class="form-control" value="{{ leave_type.name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="category" class="form-label">Category</label>
+                            <select name="category" id="category" class="form-select" required>
+                                {% for category_code, category_label in leave_type.LEAVE_CATEGORIES %}
+                                <option value="{{ category_code }}" {% if leave_type.category == category_code %}selected{% endif %}>{{ category_label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-12">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea name="description" id="description" class="form-control" rows="3">{{ leave_type.description }}</textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="days_allowed_per_year" class="form-label">Days Allowed Per Year</label>
+                            <input type="number" name="days_allowed_per_year" id="days_allowed_per_year" class="form-control" min="1" value="{{ leave_type.days_allowed_per_year }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="max_consecutive_days" class="form-label">Max Consecutive Days</label>
+                            <input type="number" name="max_consecutive_days" id="max_consecutive_days" class="form-control" min="1" value="{{ leave_type.max_consecutive_days|default:'' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="min_notice_days" class="form-label">Min Notice Days</label>
+                            <input type="number" name="min_notice_days" id="min_notice_days" class="form-control" min="0" value="{{ leave_type.min_notice_days }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="requires_approval" id="requires_approval" {% if leave_type.requires_approval %}checked{% endif %}>
+                                <label class="form-check-label" for="requires_approval">
+                                    Requires Approval
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="requires_medical_certificate" id="requires_medical_certificate" {% if leave_type.requires_medical_certificate %}checked{% endif %}>
+                                <label class="form-check-label" for="requires_medical_certificate">
+                                    Requires Medical Certificate
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="is_paid" id="is_paid" {% if leave_type.is_paid %}checked{% endif %}>
+                                <label class="form-check-label" for="is_paid">
+                                    Is Paid Leave
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="carry_forward_allowed" id="carry_forward_allowed" {% if leave_type.carry_forward_allowed %}checked{% endif %}>
+                                <label class="form-check-label" for="carry_forward_allowed">
+                                    Carry Forward Allowed
+                                </label>
+                            </div>
+                            <div class="mb-3" id="carry_forward_max_days_container" {% if not leave_type.carry_forward_allowed %}style="display: none;"{% endif %}>
+                                <label for="carry_forward_max_days" class="form-label">Carry Forward Max Days</label>
+                                <input type="number" name="carry_forward_max_days" id="carry_forward_max_days" class="form-control" min="1" value="{{ leave_type.carry_forward_max_days|default:'' }}">
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="applicable_after_probation_only" id="applicable_after_probation_only" {% if leave_type.applicable_after_probation_only %}checked{% endif %}>
+                                <label class="form-check-label" for="applicable_after_probation_only">
+                                    Applicable After Probation Only
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="gender_specific" class="form-label">Gender Specific</label>
+                            <select name="gender_specific" id="gender_specific" class="form-select" required>
+                                <option value="A" {% if leave_type.gender_specific == 'A' %}selected{% endif %}>All</option>
+                                <option value="M" {% if leave_type.gender_specific == 'M' %}selected{% endif %}>Male Only</option>
+                                <option value="F" {% if leave_type.gender_specific == 'F' %}selected{% endif %}>Female Only</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="is_active" {% if leave_type.is_active %}checked{% endif %}>
+                                <label class="form-check-label" for="is_active">
+                                    Is Active
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Leave Type</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Adjust Leave Balance Modal -->
+<div class="modal fade" id="adjustLeaveBalanceModal" tabindex="-1" aria-labelledby="adjustLeaveBalanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="adjustLeaveBalanceModalLabel">Adjust Leave Balance</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_leave_balance">
+                <input type="hidden" name="leave_type_id" value="{{ leave_type.id }}">
+                <input type="hidden" name="employee_id" id="adjust_employee_id">
+                <input type="hidden" name="balance_id" id="adjust_balance_id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Employee</label>
+                        <input type="text" class="form-control" id="adjust_employee_name" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Leave Type</label>
+                        <input type="text" class="form-control" value="{{ leave_type.name }}" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="adjustment_days" class="form-label">Adjustment Days</label>
+                        <input type="number" name="adjustment_days" id="adjustment_days" class="form-control" step="0.5" required>
+                        <div class="form-text">Use positive values to add days, negative values to deduct days.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">Reason for Adjustment</label>
+                        <textarea name="reason" id="reason" class="form-control" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Adjustment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Initialize Leave Balances Modal -->
+<div class="modal fade" id="initializeLeaveBalancesModal" tabindex="-1" aria-labelledby="initializeLeaveBalancesModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="initializeLeaveBalancesModalLabel">Initialize Leave Balances</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="initialize_leave_balances">
+                <input type="hidden" name="leave_type_id" value="{{ leave_type.id }}">
+                <div class="modal-body">
+                    <p>This will initialize leave balances for all active employees for this leave type.</p>
+                    <div class="mb-3">
+                        <label for="init_year" class="form-label">Year</label>
+                        <select name="year" id="init_year" class="form-select" required>
+                            {% for year_option in years %}
+                            <option value="{{ year_option }}" {% if year == year_option %}selected{% endif %}>{{ year_option }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Initialize Balances</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Activate Leave Type Modal -->
+<div class="modal fade" id="activateLeaveTypeModal" tabindex="-1" aria-labelledby="activateLeaveTypeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="activateLeaveTypeModalLabel">Activate Leave Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_leave_type">
+                <input type="hidden" name="leave_type_id" value="{{ leave_type.id }}">
+                <input type="hidden" name="toggle_status_only" value="true">
+                <input type="hidden" name="is_active" value="on">
+                <div class="modal-body">
+                    <p>Are you sure you want to activate the leave type "{{ leave_type.name }}"?</p>
+                    <p>This will make it available for employees to apply for this type of leave.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Activate</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Deactivate Leave Type Modal -->
+<div class="modal fade" id="deactivateLeaveTypeModal" tabindex="-1" aria-labelledby="deactivateLeaveTypeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deactivateLeaveTypeModalLabel">Deactivate Leave Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_leave_type">
+                <input type="hidden" name="leave_type_id" value="{{ leave_type.id }}">
+                <input type="hidden" name="toggle_status_only" value="true">
+                <input type="hidden" name="is_active" value="off">
+                <div class="modal-body">
+                    <p>Are you sure you want to deactivate the leave type "{{ leave_type.name }}"?</p>
+                    <p>This will prevent employees from applying for this type of leave.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Deactivate</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        $('#carry_forward_allowed').change(function() {
+            if(this.checked) {
+                $('#carry_forward_max_days_container').show();
+            } else {
+                $('#carry_forward_max_days_container').hide();
+                $('#carry_forward_max_days').val('');
+            }
+        });
+        
+        $('#days_allowed_per_year, #max_consecutive_days').on('change', function() {
+            var daysAllowed = parseInt($('#days_allowed_per_year').val()) || 0;
+            var maxConsecutive = parseInt($('#max_consecutive_days').val()) || 0;
+            
+            if(maxConsecutive > daysAllowed) {
+                alert('Max consecutive days cannot exceed days allowed per year');
+                $('#max_consecutive_days').val(daysAllowed);
+            }
+        });
+        
+        $('#days_allowed_per_year, #carry_forward_max_days').on('change', function() {
+            var daysAllowed = parseInt($('#days_allowed_per_year').val()) || 0;
+            var carryMax = parseInt($('#carry_forward_max_days').val()) || 0;
+            
+            if(carryMax > daysAllowed) {
+                alert('Carry forward max days cannot exceed days allowed per year');
+                $('#carry_forward_max_days').val(daysAllowed);
+            }
+        });
+        
+        $('#leaveStatusFilter').change(function() {
+            var status = $(this).val();
+            
+            if(status) {
+                $('.leave-request-item').hide();
+                $('.leave-request-item[data-status="' + status + '"]').show();
+            } else {
+                $('.leave-request-item').show();
+            }
+        });
+        
+        $('.select2').select2({
+            dropdownParent: $('#adjustLeaveBalanceModal')
+        });
+        
+        $('#adjustLeaveBalanceModal').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget);
+            var employeeId = button.data('employee-id');
+            var employeeName = button.data('employee-name');
+            var leaveTypeId = button.data('leave-type-id');
+            var leaveTypeName = button.data('leave-type-name');
+            var balanceId = button.data('balance-id');
+            
+            if (employeeId) {
+                $('#adjust_employee_id').val(employeeId);
+                if ($('#employee_select option[value="' + employeeId + '"]').length === 0) {
+                    var newOption = new Option(employeeName, employeeId, true, true);
+                    $('#employee_select').append(newOption);
+                }
+                $('#employee_select').val(employeeId).trigger('change');
+                $('#employee_select').prop('disabled', true);
+            } else {
+                $('#adjust_employee_id').val('');
+                $('#employee_select').val('').trigger('change');
+                $('#employee_select').prop('disabled', false);
+            }
+            
+            if (leaveTypeId) {
+                $('#adjust_leave_type_id').val(leaveTypeId);
+                if ($('#leave_type_select option[value="' + leaveTypeId + '"]').length === 0) {
+                    var newOption = new Option(leaveTypeName, leaveTypeId, true, true);
+                    $('#leave_type_select').append(newOption);
+                }
+                $('#leave_type_select').val(leaveTypeId).trigger('change');
+                $('#leave_type_select').prop('disabled', true);
+            } else {
+                $('#adjust_leave_type_id').val('');
+                $('#leave_type_select').val('').trigger('change');
+                $('#leave_type_select').prop('disabled', false);
+            }
+            
+            $('#adjust_balance_id').val(balanceId || '');
+            $('#adjustment_days').val('');
+            $('#reason').val('');
+        });
+    });
+</script>
+{% block js %}
+{% endblock %}

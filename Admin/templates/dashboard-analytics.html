@@ -226,16 +226,15 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <div class="dropdown dropdown-menu-end">
-                                                <button class="btn p-0" type="button" data-bs-toggle="dropdown">
-                                                    <i class="bi bi-three-dots-vertical"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="{% url 'accounts:employee_detail' employee.user.pk %}">View</a></li>
-                                                    <li><a class="dropdown-item" href="{% url 'accounts:employee_update' employee.user.pk %}">Edit</a></li>
-                                                </ul>
+                                            <div class="action-buttons">
+                                                <a href="{% url 'accounts:employee_detail' employee.user.pk %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                                    <i class="ri-eye-line"></i>
+                                                </a>
+                                                <a href="{% url 'accounts:employee_update' employee.user.pk %}" class="btn btn-sm btn-outline-info" title="Edit Employee">
+                                                    <i class="ri-edit-line"></i>
+                                                </a>
                                             </div>
-                                        </td>
+                                        </td>                                        
                                     </tr>
                                     {% empty %}
                                     <tr>

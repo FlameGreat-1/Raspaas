@@ -1,0 +1,134 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Bulk Approve Payslips" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Payroll Management" title="Bulk Approve Payslips"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0">Bulk Approve Payslips</h4>
+                <div>
+                    <a href="{% url 'payroll:payslip_list' %}" class="btn btn-secondary btn-sm">
+                        <i class="ri-arrow-left-line me-1"></i> Back to Payslips
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div class="alert alert-info" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i class="ri-information-line me-2 fs-4"></i>
+                                <div>
+                                    <h5 class="alert-heading mb-1">Bulk Approval Information</h5>
+                                    <p class="mb-0">This will approve all calculated payslips for the selected period. Make sure all payslips have been reviewed before proceeding.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <form method="post" action="{% url 'payroll:bulk_approve' %}">
+                            {% csrf_token %}
+                            <div class="card border">
+                                <div class="card-body">
+                                    <div class="mb-4">
+                                        <label for="period_id" class="form-label">Payroll Period <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="period_id" name="period_id" required>
+                                            <option value="">Select Payroll Period</option>
+                                            {% for period in periods %}
+                                            <option value="{{ period.id }}">
+                                                {{ period.period_name }} ({{ period.get_status_display }})
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="form-text">Only periods in Processing or Completed status can be selected.</div>
+                                    </div>
+                                    
+                                    <div class="mb-4">
+                                        <label for="department_id" class="form-label">Department (Optional)</label>
+                                        <select class="form-select" id="department_id" name="department_id">
+                                            <option value="">All Departments</option>
+                                            {% for dept in departments %}
+                                            <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="form-text">Leave blank to approve for all departments.</div>
+                                    </div>
+                                    
+                                    <div class="mb-4">
+                                        <label for="role_id" class="form-label">Role (Optional)</label>
+                                        <select class="form-select" id="role_id" name="role_id">
+                                            <option value="">All Roles</option>
+                                            {% for role in roles %}
+                                            <option value="{{ role.id }}">{{ role.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="form-text">Leave blank to approve for all roles.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-warning mt-4" role="alert">
+                                <div class="d-flex">
+                                    <i class="ri-alert-line me-2 fs-4"></i>
+                                    <div>
+                                        <p class="mb-0"><strong>Important:</strong> Approving payslips is a significant action that confirms the salary calculations are correct. Once approved, payslips will be ready for payment processing.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-center mt-4">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="ri-check-double-line me-1"></i> Approve Payslips
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="/static/assets/libs/gridjs/gridjs.umd.js"></script>
+<script src="/static/assets/js/app.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const periodSelect = document.getElementById('period_id');
+        const submitButton = document.querySelector('button[type="submit"]');
+        
+        // Validate form before submission
+        document.querySelector('form').addEventListener('submit', function(e) {
+            if (!periodSelect.value) {
+                e.preventDefault();
+                alert('Please select a payroll period.');
+                periodSelect.focus();
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to approve all calculated payslips for the selected criteria? This action cannot be undone.')) {
+                e.preventDefault();
+                return;
+            }
+            
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="ri-loader-4-line me-1 spin"></i> Processing...';
+        });
+    });
+</script>
+{% endblock %}
+

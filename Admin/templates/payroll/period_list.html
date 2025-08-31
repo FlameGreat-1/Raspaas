@@ -1,0 +1,236 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Payroll Periods" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Payroll" title="Payroll Periods"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">Payroll Periods</h4>
+                <div class="d-flex gap-2">
+                    {% if can_create_period %}
+                    <a href="{% url 'payroll:period_create' %}" class="btn btn-primary">
+                        <i class="ri-add-line align-bottom me-1"></i> Create Period
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <form method="get" class="row g-3">
+                            <div class="col-md-3">
+                                <div class="search-box">
+                                    <input type="text" name="search" class="form-control search" placeholder="Search period..." value="{{ search_query }}">
+                                    <i class="ri-search-line search-icon"></i>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" name="year">
+                                    <option value="">All Years</option>
+                                    {% for year in years %}
+                                    <option value="{{ year }}" {% if year_filter == year|stringformat:"i" %}selected{% endif %}>{{ year }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" name="status">
+                                    <option value="">All Statuses</option>
+                                    {% for status in statuses %}
+                                    <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>{{ status }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="submit" class="btn btn-primary w-100">Filter</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover table-nowrap align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Period Name</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Start Date</th>
+                                <th scope="col">End Date</th>
+                                <th scope="col">Processing Date</th>
+                                <th scope="col">Employees</th>
+                                <th scope="col">Total Gross</th>
+                                <th scope="col">Total Net</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for period in periods %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'payroll:period_detail' pk=period.id %}" class="fw-semibold">
+                                        {{ period.period_name }}
+                                    </a>
+                                </td>
+                                <td>
+                                    {% if period.status == 'DRAFT' %}
+                                    <span class="badge bg-warning text-dark">Draft</span>
+                                    {% elif period.status == 'PROCESSING' %}
+                                    <span class="badge bg-info">Processing</span>
+                                    {% elif period.status == 'COMPLETED' %}
+                                    <span class="badge bg-primary">Completed</span>
+                                    {% elif period.status == 'APPROVED' %}
+                                    <span class="badge bg-success">Approved</span>
+                                    {% elif period.status == 'PAID' %}
+                                    <span class="badge bg-success">Paid</span>
+                                    {% elif period.status == 'CANCELLED' %}
+                                    <span class="badge bg-danger">Cancelled</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ period.start_date|date:"M d, Y" }}</td>
+                                <td>{{ period.end_date|date:"M d, Y" }}</td>
+                                <td>{{ period.processing_date|date:"M d, Y" }}</td>
+                                <td>{{ period.total_employees }}</td>
+                                <td>{{ period.total_gross_salary|floatformat:2 }}</td>
+                                <td>{{ period.total_net_salary|floatformat:2 }}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'payroll:period_detail' pk=period.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        {% if period.status in 'DRAFT,PROCESSING' %}
+                                        <a href="{% url 'payroll:period_update' pk=period.id %}" class="btn btn-sm btn-outline-warning" title="Edit Period">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        {% endif %}
+                                        
+                                        {% if period.status == 'DRAFT' %}
+                                        <form action="{% url 'payroll:period_process' pk=period.id %}" method="post" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-info" title="Process Payroll">
+                                                <i class="bi bi-play-fill"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        
+                                        {% if period.status == 'PROCESSING' %}
+                                        <form action="{% url 'payroll:period_complete' pk=period.id %}" method="post" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Mark as Completed">
+                                                <i class="bi bi-check-circle"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        
+                                        {% if period.status == 'COMPLETED' %}
+                                        <form action="{% url 'payroll:period_approve' pk=period.id %}" method="post" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Approve Payroll">
+                                                <i class="bi bi-check2-all"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                        
+                                        {% if period.status not in 'PAID,CANCELLED' %}
+                                        <form action="{% url 'payroll:period_cancel' pk=period.id %}" method="post" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancel Period">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-center py-4">
+                                    <div class="d-flex justify-content-center align-items-center flex-column">
+                                        <i class="ri-calendar-line fs-1 text-muted mb-2"></i>
+                                        <h5 class="mb-1">No Payroll Periods Found</h5>
+                                        <p class="text-muted">
+                                            {% if search_query or status_filter or year_filter %}
+                                            No periods match your search criteria. Try adjusting your filters.
+                                            {% else %}
+                                            No payroll periods have been created yet.
+                                            {% endif %}
+                                        </p>
+                                        {% if can_create_period %}
+                                        <a href="{% url 'payroll:period_create' %}" class="btn btn-sm btn-primary mt-2">
+                                            <i class="ri-add-line align-bottom me-1"></i> Create Period
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if periods.paginator.num_pages > 1 %}
+                <div class="d-flex justify-content-end mt-3">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination">
+                            {% if periods.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ periods.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for num in periods.paginator.page_range %}
+                                {% if periods.number == num %}
+                                <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > periods.number|add:'-3' and num < periods.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if periods.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ periods.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ periods.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+{% block javascript %}
+<script src="/static/assets/libs/gridjs/gridjs.umd.js"></script>
+<script src="/static/assets/libs/air-datepicker/air-datepicker.js"></script>
+{% endblock %}
