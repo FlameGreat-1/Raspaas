@@ -139,7 +139,7 @@
                             <tr>
                                 <td class="fw-semibold">{{ payslip.payroll_period.period_name }}</td>
                                 <td class="fw-semibold">
-                                    <a href="{% url 'employees:employee_detail' payslip.employee.id %}">
+                                    <a href="{% url 'accounts:employee_detail' payslip.employee.id %}">
                                         {{ payslip.employee.get_full_name }} ({{ payslip.employee.employee_code }})
                                     </a>
                                 </td>

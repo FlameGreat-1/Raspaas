@@ -10,10 +10,6 @@ urlpatterns = [
     path('system-stats/', views.system_statistics_view, name='system_statistics'),
     
     # Employee Management URLs
-    path('employees/', views.EmployeeListView.as_view(), name='employee_list'),
-    path('employees/create/', views.EmployeeCreateView.as_view(), name='employee_create'),
-    path('employees/<int:pk>/', views.EmployeeDetailView.as_view(), name='employee_detail'),
-    path('employees/<int:pk>/edit/', views.EmployeeUpdateView.as_view(), name='employee_update'),
     path('employees/search/', views.advanced_search_view, name='advanced_search'),
     path('employees/hierarchy/', views.employee_hierarchy_view, name='employee_hierarchy'),
     
@@ -30,6 +26,10 @@ urlpatterns = [
     # Department Management URLs
     path('departments/', views.DepartmentListView.as_view(), name='department_list'),
     path('departments/<int:pk>/', views.DepartmentDetailView.as_view(), name='department_detail'),
+    path('departments/create/', views.DepartmentCreateView.as_view(), name='department_create'),
+    path('departments/<int:pk>/edit/', views.DepartmentUpdateView.as_view(), name='department_update'),
+    path('departments/<int:pk>/delete/', views.department_delete_view, name='department_delete'),
+    path('departments/export/', views.department_export_view, name='department_export'),
     
     # Role Management URLs
     path('roles/', views.RoleListView.as_view(), name='role_list'),

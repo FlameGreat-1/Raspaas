@@ -553,27 +553,29 @@ def ensure_employee_attendance_records(employee):
             )
         current_date += timedelta(days=1)
 
-
 def update_employee_shift_from_contract(contract):
     if contract.working_hours and contract.working_hours != Decimal("8.00"):
         try:
-            shift = Shift.objects.get(
+            shift = Shift.objects.filter(
                 working_hours=contract.working_hours, is_active=True
-            )
+            ).first()
 
-            EmployeeShift.objects.get_or_create(
-                employee=contract.employee,
-                effective_from=contract.start_date,
-                defaults={
-                    "shift": shift,
-                    "effective_to": contract.end_date,
-                    "assigned_by": contract.created_by,
-                    "notes": f"Auto-assigned from contract {contract.contract_number}",
-                },
-            )
-        except Shift.DoesNotExist:
+            if shift:
+                EmployeeShift.objects.get_or_create(
+                    employee=contract.employee,
+                    effective_from=contract.start_date,
+                    defaults={
+                        "shift": shift,
+                        "effective_to": contract.end_date,
+                        "assigned_by": contract.created_by,
+                        "notes": f"Auto-assigned from contract {contract.contract_number}",
+                    },
+                )
+            else:
+                pass
+        except Exception as e:
+            print(f"Error assigning shift from contract: {e}")
             pass
-
 
 def invalidate_department_caches(department):
     department_employees = department.employees.all()

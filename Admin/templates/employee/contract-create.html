@@ -413,7 +413,7 @@
                         <a href="{% url 'employee:contract_detail' contract.pk %}" class="btn btn-outline-primary btn-sm">
                             <i class="ri-eye-line me-1"></i>View Contract
                         </a>
-                        <a href="{% url 'employee:employee_detail' contract.employee.employee_profile.pk %}" class="btn btn-outline-secondary btn-sm">
+                        <a href="{% url 'accounts:employee_detail' contract.employee.employee_profile.pk %}" class="btn btn-outline-secondary btn-sm">
                             <i class="ri-user-line me-1"></i>View Employee
                         </a>
                         {% endif %}

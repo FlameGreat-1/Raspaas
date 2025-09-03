@@ -184,7 +184,9 @@ class EmployeeProfile(models.Model):
                 raise ValidationError("Confirmation date cannot be before hire date")
 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        bypass_validation = kwargs.pop("bypass_validation", False)
+        if not bypass_validation:
+            self.full_clean()
         super().save(*args, **kwargs)
 
     def soft_delete(self):

@@ -134,17 +134,6 @@
                                     <span class="pe-nav-sub-content">Student</span>
                                     <i class="ri-arrow-down-s-line pe-nav-arrow"></i>
                                 </a>
-                                <ul class="pe-slide-menu collapse" id="collapseStudents">
-                                    <li class="pe-slide-item">
-                                        <a href="{% url 'employee:employee_list' %}" class="pe-nav-link">
-                                            Employees List
-                                        </a>
-                                    </li>
-                                    <li class="pe-slide-item">
-                                        <a href="{% url 'accounts:employee_create' %}" class="pe-nav-link">
-                                            Employee Registration
-                                        </a>
-                                    </li>
                                 </ul>
                             </li>
                             <li class="pe-slide-item pe-has-sub">
@@ -165,7 +154,7 @@
                                 </ul>
                             </li>
                             <li class="pe-slide-item">
-                                <a href="{% url 'accounts:department_list' %}" class="pe-nav-link">
+                                <a href="{% url 'employee:department_list' %}" class="pe-nav-link">
                                     Dept. List
                                 </a>
                             </li>                            

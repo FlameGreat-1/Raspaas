@@ -56,17 +56,7 @@
 
                             </a>
                         </li>
-                        <li class="pe-slide-item">
-                            <a href="apps-chat.html" class="pe-nav-link">
-                                Chat
-                            </a>
-                        </li>
-                        <li class="pe-slide-item">
-                            <a href="apps-email.html" class="pe-nav-link">
-                              
-                                Email
-                            </a>
-                        </li>
+            
                         <li class="pe-slide-item">
                             <a href="{% url 'accounts:system_config' %}" class="pe-nav-link">
                                 System Configuration
@@ -182,7 +172,7 @@
                                     </a>
                                     <ul class="pe-slide-menu collapse" id="collapseStudents">
                                         <li class="pe-slide-item">
-                                            <a href="{% url 'employee:employee_list' %}" class="pe-nav-link">
+                                            <a href="{% url 'accounts:employee_list' %}" class="pe-nav-link">
                                                 All Employees
                                             </a>
                                         </li>
@@ -191,6 +181,11 @@
                                                 Registration
                                             </a>
                                         </li>
+                                        <li class="pe-slide-item">
+                                            <a href="{% url 'accounts:role_list' %}" class="pe-nav-link"> 
+                                                Roles
+                                            </a>
+                                        </li> 
                                     </ul>
                                 </li>
                                 <li class="pe-slide-item">
@@ -239,17 +234,7 @@
                     <ul class="pe-slide-menu collapse" id="collapseAuth">
                         <li class="slide pe-nav-content1">
                             <a href="javascript:void(0)">Accounts</a>
-                        </li>
-                        <li class="pe-slide-item">
-                            <a href="{% url 'accounts:department_list' %}" class="pe-nav-link">
-                                Department
-                            </a>
-                        </li>  
-                        <li class="pe-slide-item">
-                            <a href="{% url 'accounts:role_list' %}" class="pe-nav-link"> 
-                                Roles
-                            </a>
-                        </li>    
+                        </li>   
                         <li class="pe-slide-item">
                             <a href="{% url 'accounts:password_change' %}" class="pe-nav-link">
                                 Change Password

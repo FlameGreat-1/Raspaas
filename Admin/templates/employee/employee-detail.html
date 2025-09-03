@@ -161,6 +161,116 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
+                    <i class="ri-map-pin-line me-2 text-primary"></i>Address Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-12">
+                        <label class="form-label text-muted small">Address Line 1</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.user.address_line1 %}
+                                <i class="ri-home-line me-2 text-muted"></i>{{ employee.user.address_line1 }}
+                            {% else %}
+                                <span class="text-muted">Not provided</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% if employee.user.address_line2 %}
+                    <div class="col-md-12">
+                        <label class="form-label text-muted small">Address Line 2</label>
+                        <p class="fw-medium mb-0">
+                            <i class="ri-home-line me-2 text-muted"></i>{{ employee.user.address_line2 }}
+                        </p>
+                    </div>
+                    {% endif %}
+                    <div class="col-md-4">
+                        <label class="form-label text-muted small">City</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.user.city %}
+                                <i class="ri-building-4-line me-2 text-muted"></i>{{ employee.user.city }}
+                            {% else %}
+                                <span class="text-muted">Not provided</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-muted small">State</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.user.state %}
+                                <i class="ri-map-2-line me-2 text-muted"></i>{{ employee.user.state }}
+                            {% else %}
+                                <span class="text-muted">Not provided</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-muted small">Postal Code</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.user.postal_code %}
+                                <i class="ri-mail-send-line me-2 text-muted"></i>{{ employee.user.postal_code }}
+                            {% else %}
+                                <span class="text-muted">Not provided</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label text-muted small">Country</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.user.country %}
+                                <i class="ri-earth-line me-2 text-muted"></i>{{ employee.user.country }}
+                            {% else %}
+                                <span class="text-muted">Not provided</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>   
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-phone-line me-2 text-primary"></i>Emergency Contact
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Emergency Contact Name</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.user.emergency_contact_name %}
+                                <i class="ri-user-line me-2 text-muted"></i>{{ employee.user.emergency_contact_name }}
+                            {% else %}
+                                <span class="text-muted">Not provided</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Emergency Contact Phone</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.user.emergency_contact_phone %}
+                                <i class="ri-phone-line me-2 text-muted"></i>{{ employee.user.emergency_contact_phone }}
+                            {% else %}
+                                <span class="text-muted">Not provided</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Relationship</label>
+                        <p class="fw-medium mb-0">
+                            {% if employee.user.emergency_contact_relationship %}
+                                <i class="ri-heart-line me-2 text-muted"></i>{{ employee.user.emergency_contact_relationship }}
+                            {% else %}
+                                <span class="text-muted">Not provided</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>             
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
                     <i class="ri-briefcase-line me-2 text-primary"></i>Employment Information
                 </h5>
             </div>

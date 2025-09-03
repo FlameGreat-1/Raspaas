@@ -11,7 +11,6 @@ from django.urls import path
 from accounts.models import CustomUser, Department
 from .models import EmployeeProfile, Education, Contract
 from .forms import (
-    EmployeeProfileForm,
     EducationForm,
     ContractForm,
     BulkEmployeeImportForm,
@@ -134,7 +133,6 @@ class ContractInline(admin.TabularInline):
 
 
 class EmployeeProfileAdmin(admin.ModelAdmin):
-    form = EmployeeProfileForm
     list_display = [
         "get_employee_code",
         "get_full_name",

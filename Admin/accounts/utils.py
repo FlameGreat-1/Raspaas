@@ -18,6 +18,7 @@ from typing import Dict, List, Optional, Tuple
 import logging
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
+from django.templatetags.static import static
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -256,23 +257,25 @@ def send_password_reset_email(user, token: PasswordResetToken, request):
         logger.error(f"Failed to send password reset email: {e}")
         return False
 
-
 def send_welcome_email(user, temporary_password: str, request):
     try:
         login_url = request.build_absolute_uri("/accounts/login/")
+        logo_url = request.build_absolute_uri(static('assets/images/logo-md.png'))
 
         context = {
-            "user": user,
-            "temporary_password": temporary_password,
+            "employee": user,
+            "temp_password": temporary_password,
             "login_url": login_url,
-            "company_name": SystemConfiguration.get_setting("COMPANY_NAME", "HR System"),
+            "company_name": SystemConfiguration.get_setting("COMPANY_NAME", "Operon"),
+            "logo_url": logo_url,
+            "current_year": datetime.now().year
         }
 
         html_message = render_to_string("accounts/emails/welcome.html", context)
         plain_message = strip_tags(html_message)
 
         email = EmailMultiAlternatives(
-            subject="Welcome to HR System",
+            subject=f"Welcome to {context['company_name']} - Your Account Details",
             body=plain_message,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[user.email],

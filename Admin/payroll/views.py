@@ -548,9 +548,9 @@ class PayslipViews:
                     'attended_days': monthly_summary.attended_days,
                     'absent_days': monthly_summary.absent_days,
                     'leave_days': monthly_summary.leave_days,
-                    'late_arrivals': monthly_summary.late_arrivals,
-                    'early_departures': monthly_summary.early_departures,
-                    'overtime_hours': monthly_summary.overtime_hours,
+                    'late_arrivals': monthly_summary.late_days,
+                    'early_departures': monthly_summary.early_days,
+                    'overtime_hours': monthly_summary.total_overtime,
                     'attendance_percentage': monthly_summary.attendance_percentage,
                     'punctuality_score': monthly_summary.punctuality_score,
                 }

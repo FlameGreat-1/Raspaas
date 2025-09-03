@@ -25,10 +25,10 @@ from attendance.models import (
     get_employee_work_schedule,
 )
 from attendance.utils import (
-    TimeCalculator,
     EmployeeDataManager,
     MonthlyCalculator,
     AttendanceCalculator,
+    TimeCalculator,
 )
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import date, timedelta
@@ -2016,9 +2016,6 @@ def validate_payroll_system_integrity():
             "Checking Attendance system integration"
         )
         try:
-            from attendance.models import MonthlyAttendanceSummary
-            from attendance.utils import TimeCalculator
-
             validation_results["checks_performed"].append(
                 "Attendance system integration: OK"
             )

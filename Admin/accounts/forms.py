@@ -9,8 +9,11 @@ from django.contrib.auth import authenticate, get_user_model
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.core.validators import RegexValidator, EmailValidator
+from django.contrib.admin.widgets import AdminDateWidget
 from decimal import Decimal
 from .models import Department, Role, AuditLog, SystemConfiguration, CustomUser
+from employees.models import EmployeeProfile
+
 from .utils import validate_password_strength
 import re
 from datetime import datetime, timedelta
@@ -63,7 +66,6 @@ class CustomLoginForm(AuthenticationForm):
 
         if username and password:
             try:
-                # Try to find user by username, email, or employee_code
                 from django.db.models import Q
 
                 user = User.objects.get(
@@ -135,9 +137,89 @@ class EmployeeRegistrationForm(forms.ModelForm):
                 "class": "form-control",
                 "placeholder": "Basic Salary (LKR)",
                 "step": "0.01",
+                "min": "0.01",
             }
         ),
         help_text="Employee's basic monthly salary in LKR",
+    )
+    employment_status = forms.ChoiceField(
+        choices=EmployeeProfile.EMPLOYMENT_STATUS_CHOICES,
+        initial="PROBATION",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    grade_level = forms.ChoiceField(
+        choices=EmployeeProfile.GRADE_LEVELS,
+        initial="ENTRY",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    probation_end_date = forms.DateField(
+        required=False,
+        widget=AdminDateWidget(attrs={"class": "form-control"}),
+        help_text="Required for probation status employees",
+    )
+    confirmation_date = forms.DateField(
+        required=False,
+        widget=AdminDateWidget(attrs={"class": "form-control"}),
+        help_text="Date when employee was confirmed",
+    )
+    bank_name = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    bank_account_number = forms.CharField(
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Enter 8-20 digit account number",
+            }
+        ),
+        help_text="Bank account number for salary payments",
+    )
+    bank_branch = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    tax_identification_number = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "Enter unique tax ID"}
+        ),
+        help_text="Unique tax identification number",
+    )
+    marital_status = forms.ChoiceField(
+        choices=EmployeeProfile.MARITAL_STATUS_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    spouse_name = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Enter spouse name if married",
+            }
+        ),
+    )
+    number_of_children = forms.IntegerField(
+        initial=0,
+        required=False,
+        widget=forms.NumberInput(attrs={"class": "form-control", "min": "0"}),
+    )
+    work_location = forms.CharField(
+        max_length=255,
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Enter work location/office",
+            }
+        ),
     )
 
     class Meta:
@@ -164,7 +246,6 @@ class EmployeeRegistrationForm(forms.ModelForm):
             "job_title",
             "hire_date",
             "manager",
-            "basic_salary",
         ]
         widgets = {
             "first_name": forms.TextInput(
@@ -242,13 +323,6 @@ class EmployeeRegistrationForm(forms.ModelForm):
                 attrs={"class": "form-control", "type": "date"}
             ),
             "manager": forms.Select(attrs={"class": "form-select"}),
-            "basic_salary": forms.NumberInput(
-                attrs={
-                    "class": "form-control",
-                    "placeholder": "Basic Salary (LKR)",
-                    "step": "0.01",
-                }
-            ),
         }
 
     def __init__(self, *args, **kwargs):
@@ -265,6 +339,9 @@ class EmployeeRegistrationForm(forms.ModelForm):
         self.fields["department"].required = True
         self.fields["role"].required = True
         self.fields["basic_salary"].required = True
+
+        if self.data.get("employment_status") == "PROBATION":
+            self.fields["probation_end_date"].required = True
 
     def clean_email(self):
         email = self.cleaned_data.get("email")
@@ -315,8 +392,10 @@ class EmployeeRegistrationForm(forms.ModelForm):
         if salary:
             if salary <= 0:
                 raise ValidationError("Basic salary must be greater than zero.")
-            if salary > 10000000:
-                raise ValidationError("Basic salary seems too high. Please verify.")
+            if salary > Decimal("1000000.00"):
+                raise ValidationError(
+                    "Basic salary seems unusually high. Please verify."
+                )
         return salary
 
     def clean_password1(self):
@@ -334,12 +413,88 @@ class EmployeeRegistrationForm(forms.ModelForm):
             raise ValidationError("Passwords do not match.")
         return password2
 
+    def clean_probation_end_date(self):
+        probation_end_date = self.cleaned_data.get("probation_end_date")
+        employment_status = self.cleaned_data.get("employment_status")
+        hire_date = self.cleaned_data.get("hire_date")
+
+        if employment_status == "PROBATION":
+            if not probation_end_date:
+                raise ValidationError(
+                    "Probation end date is required for probation status."
+                )
+
+            if probation_end_date <= timezone.now().date():
+                raise ValidationError("Probation end date must be in the future.")
+
+            if hire_date and probation_end_date <= hire_date:
+                raise ValidationError("Probation end date must be after hire date.")
+
+        return probation_end_date
+
+    def clean_confirmation_date(self):
+        confirmation_date = self.cleaned_data.get("confirmation_date")
+        hire_date = self.cleaned_data.get("hire_date")
+
+        if confirmation_date:
+            if confirmation_date > timezone.now().date():
+                raise ValidationError("Confirmation date cannot be in the future.")
+
+            if hire_date and confirmation_date < hire_date:
+                raise ValidationError("Confirmation date cannot be before hire date.")
+
+        return confirmation_date
+
+    def clean_tax_identification_number(self):
+        tax_id = self.cleaned_data.get("tax_identification_number")
+        if tax_id:
+            if EmployeeProfile.objects.filter(
+                tax_identification_number=tax_id
+            ).exists():
+                raise ValidationError(
+                    "This tax identification number is already in use."
+                )
+        return tax_id
+
+    def clean_spouse_name(self):
+        spouse_name = self.cleaned_data.get("spouse_name")
+        marital_status = self.cleaned_data.get("marital_status")
+
+        if marital_status == "MARRIED" and not spouse_name:
+            raise ValidationError("Spouse name is required for married employees.")
+
+        if marital_status != "MARRIED" and spouse_name:
+            return None
+
+        return spouse_name
+
     def clean(self):
         cleaned_data = super().clean()
         manager = cleaned_data.get("manager")
+        probation_end_date = cleaned_data.get("probation_end_date")
+        confirmation_date = cleaned_data.get("confirmation_date")
+        employment_status = cleaned_data.get("employment_status")
 
         if manager and self.instance and manager == self.instance:
             raise ValidationError("Employee cannot be their own manager.")
+
+        if (
+            probation_end_date
+            and confirmation_date
+            and confirmation_date <= probation_end_date
+        ):
+            raise ValidationError(
+                {
+                    "confirmation_date": "Confirmation date must be after probation end date."
+                }
+            )
+
+        if employment_status == "PROBATION" and not probation_end_date:
+            raise ValidationError(
+                {
+                    "probation_end_date": "Probation end date is required for probation status."
+                }
+            )
 
         return cleaned_data
 
@@ -359,13 +514,26 @@ class EmployeeRegistrationForm(forms.ModelForm):
 
             EmployeeProfile.objects.create(
                 user=user,
+                employment_status=self.cleaned_data.get("employment_status"),
+                grade_level=self.cleaned_data.get("grade_level"),
                 basic_salary=self.cleaned_data.get("basic_salary"),
+                probation_end_date=self.cleaned_data.get("probation_end_date"),
+                confirmation_date=self.cleaned_data.get("confirmation_date"),
+                bank_name=self.cleaned_data.get("bank_name"),
+                bank_account_number=self.cleaned_data.get("bank_account_number"),
+                bank_branch=self.cleaned_data.get("bank_branch"),
+                tax_identification_number=self.cleaned_data.get(
+                    "tax_identification_number"
+                ),
+                marital_status=self.cleaned_data.get("marital_status"),
+                spouse_name=self.cleaned_data.get("spouse_name"),
+                number_of_children=self.cleaned_data.get("number_of_children") or 0,
+                work_location=self.cleaned_data.get("work_location"),
                 is_active=True,
                 created_by=self.created_by,
             )
 
         return user
-
 
 class EmployeeUpdateForm(forms.ModelForm):
     basic_salary = forms.DecimalField(
@@ -376,9 +544,89 @@ class EmployeeUpdateForm(forms.ModelForm):
                 "class": "form-control",
                 "placeholder": "Basic Salary (LKR)",
                 "step": "0.01",
+                "min": "0.01",
             }
         ),
         help_text="Employee's basic monthly salary in LKR",
+    )
+    employment_status = forms.ChoiceField(
+        choices=EmployeeProfile.EMPLOYMENT_STATUS_CHOICES,
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    grade_level = forms.ChoiceField(
+        choices=EmployeeProfile.GRADE_LEVELS,
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    probation_end_date = forms.DateField(
+        required=False,
+        widget=AdminDateWidget(attrs={"class": "form-control"}),
+        help_text="Required for probation status employees",
+    )
+    confirmation_date = forms.DateField(
+        required=False,
+        widget=AdminDateWidget(attrs={"class": "form-control"}),
+        help_text="Date when employee was confirmed",
+    )
+    bank_name = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    bank_account_number = forms.CharField(
+        max_length=50,
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Enter 8-20 digit account number",
+            }
+        ),
+        help_text="Bank account number for salary payments",
+    )
+    bank_branch = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    tax_identification_number = forms.CharField(
+        max_length=20,
+        required=False,
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "Enter unique tax ID"}
+        ),
+        help_text="Unique tax identification number",
+    )
+    marital_status = forms.ChoiceField(
+        choices=EmployeeProfile.MARITAL_STATUS_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    spouse_name = forms.CharField(
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Enter spouse name if married",
+            }
+        ),
+    )
+    number_of_children = forms.IntegerField(
+        initial=0,
+        required=False,
+        widget=forms.NumberInput(
+            attrs={"class": "form-control", "min": "0"}
+        ),
+    )
+    work_location = forms.CharField(
+        max_length=255,
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Enter work location/office",
+            }
+        ),
     )
 
     class Meta:
@@ -406,7 +654,6 @@ class EmployeeUpdateForm(forms.ModelForm):
             "hire_date",
             "manager",
             "status",
-            "basic_salary",
         ]
         widgets = {
             "first_name": forms.TextInput(attrs={"class": "form-control"}),
@@ -437,13 +684,6 @@ class EmployeeUpdateForm(forms.ModelForm):
             ),
             "manager": forms.Select(attrs={"class": "form-select"}),
             "status": forms.Select(attrs={"class": "form-select"}),
-            "basic_salary": forms.NumberInput(
-                attrs={
-                    "class": "form-control",
-                    "placeholder": "Basic Salary (LKR)",
-                    "step": "0.01",
-                }
-            ),
         }
 
     def __init__(self, *args, **kwargs):
@@ -457,9 +697,23 @@ class EmployeeUpdateForm(forms.ModelForm):
         self.fields["manager"].empty_label = "Select Manager (Optional)"
 
         if self.instance and hasattr(self.instance, "employee_profile"):
-            self.fields["basic_salary"].initial = (
-                self.instance.employee_profile.basic_salary
-            )
+            profile = self.instance.employee_profile
+            self.fields["basic_salary"].initial = profile.basic_salary
+            self.fields["employment_status"].initial = profile.employment_status
+            self.fields["grade_level"].initial = profile.grade_level
+            self.fields["probation_end_date"].initial = profile.probation_end_date
+            self.fields["confirmation_date"].initial = profile.confirmation_date
+            self.fields["bank_name"].initial = profile.bank_name
+            self.fields["bank_account_number"].initial = profile.bank_account_number
+            self.fields["bank_branch"].initial = profile.bank_branch
+            self.fields["tax_identification_number"].initial = profile.tax_identification_number
+            self.fields["marital_status"].initial = profile.marital_status
+            self.fields["spouse_name"].initial = profile.spouse_name
+            self.fields["number_of_children"].initial = profile.number_of_children
+            self.fields["work_location"].initial = profile.work_location
+            
+        if self.data.get("employment_status") == "PROBATION":
+            self.fields["probation_end_date"].required = True
 
     def clean_email(self):
         email = self.cleaned_data.get("email")
@@ -514,16 +768,82 @@ class EmployeeUpdateForm(forms.ModelForm):
         if salary:
             if salary <= 0:
                 raise ValidationError("Basic salary must be greater than zero.")
-            if salary > 10000000:
-                raise ValidationError("Basic salary seems too high. Please verify.")
+            if salary > Decimal("1000000.00"):
+                raise ValidationError("Basic salary seems unusually high. Please verify.")
         return salary
+        
+    def clean_probation_end_date(self):
+        probation_end_date = self.cleaned_data.get("probation_end_date")
+        employment_status = self.cleaned_data.get("employment_status")
+        hire_date = self.cleaned_data.get("hire_date")
+
+        if employment_status == "PROBATION":
+            if not probation_end_date:
+                raise ValidationError("Probation end date is required for probation status.")
+
+            if probation_end_date <= timezone.now().date():
+                raise ValidationError("Probation end date must be in the future.")
+
+            if hire_date and probation_end_date <= hire_date:
+                raise ValidationError("Probation end date must be after hire date.")
+
+        return probation_end_date
+
+    def clean_confirmation_date(self):
+        confirmation_date = self.cleaned_data.get("confirmation_date")
+        hire_date = self.cleaned_data.get("hire_date")
+
+        if confirmation_date:
+            if confirmation_date > timezone.now().date():
+                raise ValidationError("Confirmation date cannot be in the future.")
+
+            if hire_date and confirmation_date < hire_date:
+                raise ValidationError("Confirmation date cannot be before hire date.")
+
+        return confirmation_date
+        
+    def clean_tax_identification_number(self):
+        tax_id = self.cleaned_data.get("tax_identification_number")
+        if tax_id:
+            existing_tax_id = EmployeeProfile.objects.filter(tax_identification_number=tax_id)
+            if self.instance and hasattr(self.instance, "employee_profile"):
+                existing_tax_id = existing_tax_id.exclude(pk=self.instance.employee_profile.pk)
+                
+            if existing_tax_id.exists():
+                raise ValidationError("This tax identification number is already in use.")
+        return tax_id
+        
+    def clean_spouse_name(self):
+        spouse_name = self.cleaned_data.get("spouse_name")
+        marital_status = self.cleaned_data.get("marital_status")
+
+        if marital_status == "MARRIED" and not spouse_name:
+            raise ValidationError("Spouse name is required for married employees.")
+
+        if marital_status != "MARRIED" and spouse_name:
+            return None
+
+        return spouse_name
 
     def clean(self):
         cleaned_data = super().clean()
         manager = cleaned_data.get("manager")
+        probation_end_date = cleaned_data.get("probation_end_date")
+        confirmation_date = cleaned_data.get("confirmation_date")
+        employment_status = cleaned_data.get("employment_status")
 
         if manager and self.instance and manager == self.instance:
             raise ValidationError("Employee cannot be their own manager.")
+            
+        if probation_end_date and confirmation_date and confirmation_date <= probation_end_date:
+            raise ValidationError({
+                "confirmation_date": "Confirmation date must be after probation end date."
+            })
+            
+        if employment_status == "PROBATION" and not probation_end_date:
+            raise ValidationError({
+                "probation_end_date": "Probation end date is required for probation status."
+            })
 
         return cleaned_data
 
@@ -531,18 +851,32 @@ class EmployeeUpdateForm(forms.ModelForm):
         user = super().save(commit=commit)
 
         if commit and hasattr(user, "employee_profile"):
-            basic_salary = self.cleaned_data.get("basic_salary")
-            user_status = self.cleaned_data.get("status")
-
-            if basic_salary:
-                user.employee_profile.basic_salary = basic_salary
-
-            user.employee_profile.is_active = user_status == "ACTIVE"
-
-            user.employee_profile.save(update_fields=["basic_salary", "is_active"])
+            profile = user.employee_profile
+            profile.basic_salary = self.cleaned_data.get("basic_salary")
+            profile.employment_status = self.cleaned_data.get("employment_status")
+            profile.grade_level = self.cleaned_data.get("grade_level")
+            profile.probation_end_date = self.cleaned_data.get("probation_end_date")
+            profile.confirmation_date = self.cleaned_data.get("confirmation_date")
+            profile.bank_name = self.cleaned_data.get("bank_name")
+            profile.bank_account_number = self.cleaned_data.get("bank_account_number")
+            profile.bank_branch = self.cleaned_data.get("bank_branch")
+            profile.tax_identification_number = self.cleaned_data.get("tax_identification_number")
+            profile.marital_status = self.cleaned_data.get("marital_status")
+            profile.spouse_name = self.cleaned_data.get("spouse_name")
+            profile.number_of_children = self.cleaned_data.get("number_of_children") or 0
+            profile.work_location = self.cleaned_data.get("work_location")
+            profile.is_active = user.status == "ACTIVE"
+            
+            profile.save(update_fields=[
+                'basic_salary', 'employment_status', 'grade_level', 
+                'probation_end_date', 'confirmation_date', 'bank_name',
+                'bank_account_number', 'bank_branch', 'tax_identification_number',
+                'marital_status', 'spouse_name', 'number_of_children',
+                'work_location', 'is_active'
+            ])
 
         return user
-
+ 
 class CustomPasswordChangeForm(PasswordChangeForm):
     old_password = forms.CharField(
         label="Current Password",
@@ -671,73 +1005,6 @@ class CustomSetPasswordForm(SetPasswordForm):
         if commit:
             user.save()
         return user
-
-class DepartmentForm(forms.ModelForm):
-    class Meta:
-        model = Department
-        fields = ["name", "code", "description", "manager", "parent_department", "budget", "location"]
-        widgets = {
-            "name": forms.TextInput(
-                attrs={"class": "form-control", "placeholder": "Department Name"}
-            ),
-            "code": forms.TextInput(
-                attrs={"class": "form-control", "placeholder": "Department Code"}
-            ),
-            "description": forms.Textarea(
-                attrs={
-                    "class": "form-control",
-                    "rows": 3,
-                    "placeholder": "Department Description",
-                }
-            ),
-            "manager": forms.Select(attrs={"class": "form-select"}),
-            "parent_department": forms.Select(attrs={"class": "form-select"}),
-            "budget": forms.NumberInput(
-                attrs={"class": "form-control", "placeholder": "Annual Budget"}
-            ),
-            "location": forms.TextInput(
-                attrs={"class": "form-control", "placeholder": "Department Location"}
-            ),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["manager"].queryset = User.active.all()
-        self.fields["parent_department"].queryset = Department.active.exclude(
-            id=self.instance.id if self.instance else None
-        )
-        self.fields["manager"].empty_label = "Select Manager (Optional)"
-        self.fields["parent_department"].empty_label = (
-            "Select Parent Department (Optional)"
-        )
-        self.fields["budget"].required = False
-        self.fields["location"].required = False
-
-    def clean_code(self):
-        code = self.cleaned_data.get("code")
-        if code:
-            code = code.upper()
-            if self.instance and self.instance.pk:
-                if (
-                    Department.objects.filter(code=code)
-                    .exclude(pk=self.instance.pk)
-                    .exists()
-                ):
-                    raise ValidationError("Department code already exists.")
-            else:
-                if Department.objects.filter(code=code).exists():
-                    raise ValidationError("Department code already exists.")
-        return code
-
-    def clean(self):
-        cleaned_data = super().clean()
-        parent_department = cleaned_data.get("parent_department")
-
-        if parent_department and self.instance:
-            if parent_department == self.instance:
-                raise ValidationError("Department cannot be its own parent.")
-
-        return cleaned_data
 
 class RoleForm(forms.ModelForm):
     class Meta:

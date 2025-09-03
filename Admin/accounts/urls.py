@@ -41,15 +41,7 @@ urlpatterns = [
     path('employees/bulk-action/', views.bulk_employee_action, name='bulk_employee_action'),
     path('employees/import-status/<str:task_id>/', views.employee_import_status, name='employee_import_status'),
     path('bulk-notification/', views.bulk_notification_view, name='bulk_notification'),
-    
-    # Department Management URLs
-    path('departments/', views.DepartmentListView.as_view(), name='department_list'),
-    path('departments/create/', views.DepartmentCreateView.as_view(), name='department_create'),
-    path('departments/<int:department_id>/', views.DepartmentDetailView.as_view(), name='department_detail'),
-    path('departments/<int:department_id>/edit/', views.DepartmentUpdateView.as_view(), name='department_update'),
-    path('departments/<int:department_id>/delete/', views.department_delete_view, name='department_delete'),
-    path('departments/export/', views.department_export_view, name='department_export'),
-    
+        
     # Role Management URLs
     path('roles/', views.RoleListView.as_view(), name='role_list'),
     path('roles/create/', views.RoleCreateView.as_view(), name='role_create'),

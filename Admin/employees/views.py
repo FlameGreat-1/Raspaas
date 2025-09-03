@@ -18,9 +18,10 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.contrib.auth import get_user_model
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.core.exceptions import PermissionDenied
 from django.conf import settings
 import json
 import csv
@@ -31,8 +32,7 @@ from accounts.models import CustomUser, Department, Role, SystemConfiguration
 from accounts.utils import log_user_activity
 from .models import EmployeeProfile, Education, Contract
 from .forms import (
-    EmployeeProfileForm,
-    EmployeeUpdateForm,
+    DepartmentForm,
     EducationForm,
     ContractForm,
     BulkEmployeeImportForm,
@@ -51,7 +51,7 @@ from .utils import (
     CalculationUtils,
 )
 from accounts.analytics import UnifiedAnalytics
-
+from accounts.utils import UserUtilities, log_user_activity, ExcelUtilities
 User = get_user_model()
 
 
@@ -115,216 +115,81 @@ def system_statistics_view(request):
 
     return render(request, "employee/employees-analytics.html", context)
 
-class EmployeeListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
-    model = EmployeeProfile
-    template_name = "employee/employee-list.html"
-    context_object_name = "employees"
-    paginate_by = 25
-
-    def test_func(self):
-        return is_hr_staff(self.request.user)
-
-    def get_queryset(self):
-        queryset = EmployeeProfile.active.select_related(
-            "user", "user__department", "user__role"
-        ).order_by("user__employee_code")
-
-        search_query = self.request.GET.get("search")
-        department = self.request.GET.get("department")
-        employment_status = self.request.GET.get("employment_status")
-        grade_level = self.request.GET.get("grade_level")
-
-        if search_query:
-            queryset = EmployeeUtils.search_employees(
-                search_query, department, employment_status, grade_level
-            )
-        else:
-            if department:
-                queryset = queryset.filter(user__department_id=department)
-            if employment_status:
-                queryset = queryset.filter(employment_status=employment_status)
-            if grade_level:
-                queryset = queryset.filter(grade_level=grade_level)
-
-        return queryset
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["search_form"] = EmployeeSearchForm(self.request.GET)
-        context["departments"] = Department.active.all()
-        context["employment_statuses"] = EmployeeProfile.EMPLOYMENT_STATUS_CHOICES
-        context["grade_levels"] = EmployeeProfile.GRADE_LEVELS
-        context["total_employees"] = self.get_queryset().count()
-        context["can_add_employee"] = is_hr_staff(self.request.user)
-        return context
-
-
-class EmployeeDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
-    model = EmployeeProfile
-    template_name = "employee/employee-detail.html"
-    context_object_name = "employee"
-
-    def test_func(self):
-        return is_hr_staff(self.request.user)
-
-    def get_object(self):
-        return get_object_or_404(
-            EmployeeProfile.active.select_related(
-                "user", "user__department", "user__role", "user__manager"
-            ),
-            pk=self.kwargs["pk"],
-        )
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        employee = self.object
-
-        context["education_records"] = Education.active.filter(
-            employee=employee.user
-        ).order_by("-completion_year")
-
-        context["contracts"] = Contract.active.filter(employee=employee.user).order_by(
-            "-start_date"
-        )
-
-        context["years_of_service"] = employee.years_of_service
-        context["probation_days_remaining"] = (
-            CalculationUtils.calculate_probation_days_remaining(
-                employee.probation_end_date
-            )
-            if employee.probation_end_date
-            else None
-        )
-
-        context["age"] = CalculationUtils.calculate_age(employee.date_of_birth)
-
-        return context
-
-
-class EmployeeCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
-    model = EmployeeProfile
-    form_class = EmployeeProfileForm
-    template_name = "employee/employee-update.html"
-
-    def test_func(self):
-        return is_hr_staff(self.request.user)
-
-    def form_valid(self, form):
-        form.instance.created_by = self.request.user
-        messages.success(self.request, "Employee profile created successfully.")
-        return super().form_valid(form)
-
-    def get_success_url(self):
-        return reverse("employee:employee_detail", kwargs={"pk": self.object.pk})
-
-class EmployeeUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
-    model = CustomUser
-    form_class = EmployeeUpdateForm
-    template_name = "employee/employee-update.html"
-    pk_url_kwarg = "pk"
-    context_object_name = "object"
-
-    def test_func(self):
-        return is_hr_staff(self.request.user)
-
-    def get_object(self, queryset=None):
-        employee_profile = get_object_or_404(EmployeeProfile.active, pk=self.kwargs["pk"])
-        return employee_profile.user
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["page_title"] = f"Edit Employee - {self.object.get_full_name()}"
-        context["form_title"] = "Update Employee Information"
-        context["is_update"] = True
-        context["departments"] = Department.active.all()
-        context["roles"] = Role.active.all()
-        context["managers"] = CustomUser.active.exclude(id=self.object.id)
-        return context
-
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs["instance"] = self.object
-        return kwargs
-
-    def form_valid(self, form):
-        with transaction.atomic():
-            employee = form.save(commit=False)
-            employee.updated_by = self.request.user
-            employee.save()
-
-            employee_profile = employee.employee_profile
-            employee_profile.basic_salary = form.cleaned_data.get('basic_salary')
-            employee_profile.updated_by = self.request.user
-            employee_profile.save()
-
-            log_user_activity(
-                user=self.request.user,
-                action="UPDATE",
-                description=f"Updated employee: {employee.get_display_name()}",
-                request=self.request,
-                additional_data={
-                    "employee_code": employee.employee_code,
-                    "employee_id": employee.id,
-                    "profile_id": employee_profile.id,
-                },
-            )
-
-            messages.success(
-                self.request,
-                f"Employee {employee.get_display_name()} updated successfully.",
-            )
-            return redirect("employee:employee_detail", pk=employee_profile.pk)
-
-    def form_invalid(self, form):
-        messages.error(
-            self.request,
-            "Please correct the errors below and try again."
-        )
-        return super().form_invalid(form)
-
-    def get_success_url(self):
-        return reverse("employee:employee_detail", kwargs={"pk": self.object.employee_profile.pk})
-    
-class DepartmentListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+class DepartmentListView(LoginRequiredMixin, ListView):
     model = Department
-    template_name = "employee/department-list.html" 
+    template_name = "employee/department-list.html"
     context_object_name = "departments"
     paginate_by = 20
 
-    def test_func(self):
-        return is_hr_staff(self.request.user)
+    def dispatch(self, request, *args, **kwargs):
+        if not UserUtilities.check_user_permission(
+            request.user, "manage_departments"
+        ) and not UserUtilities.check_user_permission(request.user, "view_departments") and not is_hr_staff(request.user):
+            raise PermissionDenied
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        return Department.active.annotate(
-            employee_count=Count(
-                "employees",
-                filter=Q(employees__is_active=True),
-            ),
-            avg_salary=Avg(
-                "employees__employee_profile__basic_salary",
-                filter=Q(employees__is_active=True),
+        queryset = (
+            Department.objects.select_related("manager", "parent_department")
+            .filter(is_active=True)
+            .annotate(
+                employee_count=Count(
+                    "employees",
+                    filter=Q(employees__is_active=True),
+                ),
+                avg_salary=Avg(
+                    "employees__employee_profile__basic_salary",
+                    filter=Q(employees__is_active=True),
+                ),
             )
-        ).order_by("name")
+        )
+
+        search_query = self.request.GET.get("search")
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query)
+                | Q(code__icontains=search_query)
+                | Q(description__icontains=search_query)
+            )
+
+        return queryset.order_by("name")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["page_title"] = "Department Management"
+        context["can_add_department"] = UserUtilities.check_user_permission(
+            self.request.user, "manage_departments"
+        )
+        context["can_export"] = UserUtilities.check_user_permission(
+            self.request.user, "manage_departments"
+        )
+        context["search_query"] = self.request.GET.get("search", "")
+
         departments = self.get_queryset()
         context["total_departments"] = departments.count()
         context["total_employees"] = sum(dept.employee_count for dept in departments)
         context["departments_with_managers"] = departments.exclude(manager=None).count()
-        if departments.count() > 0:
-            context["average_employees_per_dept"] = context["total_employees"] / departments.count()
+
+        if context["total_departments"] > 0:
+            context["average_employees_per_dept"] = (
+                context["total_employees"] / context["total_departments"]
+            )
         else:
             context["average_employees_per_dept"] = 0
+
         return context
 
-class DepartmentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
-    model = Department
-    template_name = "employee/department-detail.html" 
-    context_object_name = "department"
 
-    def test_func(self):
-        return is_hr_staff(self.request.user)
+class DepartmentDetailView(LoginRequiredMixin, DetailView):
+    model = Department
+    template_name = "employee/department-detail.html"
+    context_object_name = "department"
+    pk_url_kwarg = "pk"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not UserUtilities.check_user_permission(request.user, "view_departments") and not is_hr_staff(request.user):
+            raise PermissionDenied
+        return super().dispatch(request, *args, **kwargs)
 
     def get_object(self):
         return get_object_or_404(Department.active, pk=self.kwargs["pk"])
@@ -332,7 +197,11 @@ class DepartmentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         department = self.object
-
+        context["page_title"] = f"Department - {department.name}"
+        context["can_edit"] = UserUtilities.check_user_permission(
+            self.request.user, "manage_departments"
+        )
+        
         employees = (
             EmployeeProfile.active.filter(user__department=department)
             .select_related("user")
@@ -340,7 +209,9 @@ class DepartmentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
         )
         
         context["employees"] = employees
+        context["sub_departments"] = department.sub_departments.filter(is_active=True)
         context["employee_count"] = employees.count()
+        context["annual_budget"] = department.budget
         context["avg_salary"] = (
             employees.aggregate(avg=Avg("basic_salary"))["avg"] or 0
         )
@@ -360,8 +231,168 @@ class DepartmentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
         context["confirmed_count"] = sum(1 for emp in employees if emp.employment_status == 'CONFIRMED')
         context["probation_count"] = sum(1 for emp in employees if emp.employment_status == 'PROBATION')
         context["contract_count"] = sum(1 for emp in employees if emp.employment_status == 'CONTRACT')
+        context["active_employee_count"] = (
+            employees.filter(user__is_active=True).count()
+        )
         
         return context
+
+class DepartmentCreateView(LoginRequiredMixin, CreateView):
+    model = Department
+    form_class = DepartmentForm
+    template_name = "employee/department-create.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not UserUtilities.check_user_permission(request.user, "manage_departments"):
+            raise PermissionDenied
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "Add New Department"
+        context["form_title"] = "Department Information"
+        return context
+
+    def form_valid(self, form):
+        with transaction.atomic():
+            department = form.save(commit=False)
+            department.created_by = self.request.user
+            department.save()
+
+            log_user_activity(
+                user=self.request.user,
+                action="CREATE",
+                description=f"Created new department: {department.name}",
+                request=self.request,
+                additional_data={
+                    "department_code": department.code,
+                    "department_id": department.id,
+                },
+            )
+
+            messages.success(
+                self.request, f'Department "{department.name}" created successfully.'
+            )
+            return redirect("employee:department_detail", pk=department.id)
+
+class DepartmentUpdateView(LoginRequiredMixin, UpdateView):
+    model = Department
+    form_class = DepartmentForm
+    template_name = "employee/department-update.html"
+    pk_url_kwarg = "pk"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not UserUtilities.check_user_permission(request.user, "manage_departments"):
+            raise PermissionDenied
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = f"Edit Department - {self.object.name}"
+        context["form_title"] = "Update Department Information"
+        context["is_update"] = True
+        return context
+
+    def form_valid(self, form):
+        with transaction.atomic():
+            old_department = Department.objects.get(pk=self.object.pk)
+            department = form.save()
+
+            changes = {}
+            for field in form.changed_data:
+                old_value = getattr(old_department, field, None)
+                new_value = getattr(department, field, None)
+                changes[field] = {
+                    "old": str(old_value) if old_value else None,
+                    "new": str(new_value) if new_value else None,
+                }
+
+            log_user_activity(
+                user=self.request.user,
+                action="UPDATE",
+                description=f"Updated department: {department.name}",
+                request=self.request,
+                additional_data={
+                    "department_code": department.code,
+                    "department_id": department.id,
+                    "changes": changes,
+                },
+            )
+
+            messages.success(
+                self.request, f'Department "{department.name}" updated successfully.'
+            )
+            return redirect("employee:department_detail", pk=department.id)
+
+
+@login_required
+@require_POST
+def department_delete_view(request, pk):
+    if not UserUtilities.check_user_permission(request.user, "manage_departments"):
+        raise PermissionDenied
+
+    department = get_object_or_404(Department, id=pk)
+
+    if department.employees.filter(is_active=True).exists():
+        messages.error(
+            request,
+            "Cannot delete department with active employees. Please reassign employees first.",
+        )
+        return redirect("employee:department_detail", pk=pk)
+
+    if department.sub_departments.filter(is_active=True).exists():
+        messages.error(request, "Cannot delete department with active sub-departments.")
+        return redirect("employee:department_detail", pk=pk)
+
+    with transaction.atomic():
+        department_name = department.name
+        department.soft_delete()
+
+        log_user_activity(
+            user=request.user,
+            action="DELETE",
+            description=f"Deleted department: {department_name}",
+            request=request,
+            additional_data={
+                "department_code": department.code,
+                "department_id": pk,
+            },
+        )
+
+        messages.success(
+            request,
+            f'Department "{department_name}" has been deactivated successfully.',
+        )
+
+    return redirect("employee:department_list")
+
+
+@login_required
+def department_export_view(request):
+    if not UserUtilities.check_user_permission(request.user, "manage_departments"):
+        raise PermissionDenied
+
+    departments = Department.objects.select_related(
+        "manager", "parent_department"
+    ).filter(is_active=True)
+    excel_data = ExcelUtilities.export_departments_to_excel(departments)
+
+    response = HttpResponse(
+        excel_data,
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="departments_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
+    )
+
+    log_user_activity(
+        user=request.user,
+        action="EXPORT",
+        description=f"Exported {departments.count()} departments to Excel",
+        request=request,
+    )
+
+    return response
 
 class RoleListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = Role

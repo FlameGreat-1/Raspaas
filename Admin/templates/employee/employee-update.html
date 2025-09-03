@@ -145,10 +145,37 @@
                                 </div>
                             {% endif %}
                         </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.marital_status.id_for_label }}" class="form-label">Marital Status</label>
+                            {{ form.marital_status }}
+                            {% if form.marital_status.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.marital_status.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.spouse_name.id_for_label }}" class="form-label">Spouse Name</label>
+                            {{ form.spouse_name }}
+                            {% if form.spouse_name.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.spouse_name.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Required if marital status is Married</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.number_of_children.id_for_label }}" class="form-label">Number of Children</label>
+                            {{ form.number_of_children }}
+                            {% if form.number_of_children.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.number_of_children.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
-
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
@@ -253,6 +280,7 @@
                     </div>
                 </div>
             </div>
+            
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
@@ -299,11 +327,58 @@
                             <div class="form-text">Monthly salary in LKR</div>
                         </div>
                         <div class="col-md-6">
+                            <label for="{{ form.employment_status.id_for_label }}" class="form-label">Employment Status <span class="text-danger">*</span></label>
+                            {{ form.employment_status }}
+                            {% if form.employment_status.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.employment_status.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.grade_level.id_for_label }}" class="form-label">Grade Level <span class="text-danger">*</span></label>
+                            {{ form.grade_level }}
+                            {% if form.grade_level.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.grade_level.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
                             <label for="{{ form.hire_date.id_for_label }}" class="form-label">Hire Date</label>
                             {{ form.hire_date }}
                             {% if form.hire_date.errors %}
                                 <div class="text-danger fs-12 mt-1">
                                     {% for error in form.hire_date.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.probation_end_date.id_for_label }}" class="form-label">Probation End Date</label>
+                            {{ form.probation_end_date }}
+                            {% if form.probation_end_date.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.probation_end_date.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Required for probation status employees</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.confirmation_date.id_for_label }}" class="form-label">Confirmation Date</label>
+                            {{ form.confirmation_date }}
+                            {% if form.confirmation_date.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.confirmation_date.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Date when employee was confirmed</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.work_location.id_for_label }}" class="form-label">Work Location</label>
+                            {{ form.work_location }}
+                            {% if form.work_location.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.work_location.errors %}{{ error }}{% endfor %}
                                 </div>
                             {% endif %}
                         </div>
@@ -315,6 +390,66 @@
                                     {% for error in form.manager.errors %}{{ error }}{% endfor %}
                                 </div>
                             {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.status.id_for_label }}" class="form-label">Account Status <span class="text-danger">*</span></label>
+                            {{ form.status }}
+                            {% if form.status.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.status.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Changing status affects employee's system access</div>
+                        </div>                        
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-bank-line me-2 text-primary"></i>Banking Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="{{ form.bank_name.id_for_label }}" class="form-label">Bank Name</label>
+                            {{ form.bank_name }}
+                            {% if form.bank_name.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.bank_name.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.bank_branch.id_for_label }}" class="form-label">Bank Branch</label>
+                            {{ form.bank_branch }}
+                            {% if form.bank_branch.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.bank_branch.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.bank_account_number.id_for_label }}" class="form-label">Bank Account Number</label>
+                            {{ form.bank_account_number }}
+                            {% if form.bank_account_number.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.bank_account_number.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Enter 8-20 digit account number</div>
+                        </div>
+                        <div class="col-md-12">
+                            <label for="{{ form.tax_identification_number.id_for_label }}" class="form-label">Tax Identification Number</label>
+                            {{ form.tax_identification_number }}
+                            {% if form.tax_identification_number.errors %}
+                                <div class="text-danger fs-12 mt-1">
+                                    {% for error in form.tax_identification_number.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Unique tax identification number</div>
                         </div>
                     </div>
                 </div>
@@ -343,7 +478,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
@@ -498,6 +632,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const departmentField = document.getElementById('{{ form.department.id_for_label }}');
     const roleField = document.getElementById('{{ form.role.id_for_label }}');
     const managerField = document.getElementById('{{ form.manager.id_for_label }}');
+    const employmentStatusField = document.getElementById('{{ form.employment_status.id_for_label }}');
+    const gradeLevelField = document.getElementById('{{ form.grade_level.id_for_label }}');
+    const maritalStatusField = document.getElementById('{{ form.marital_status.id_for_label }}');
     
     if (departmentField) {
         new Choices(departmentField, {
@@ -520,6 +657,61 @@ document.addEventListener('DOMContentLoaded', function() {
             searchEnabled: true,
             placeholder: true,
             placeholderValue: 'Select Manager'
+        });
+    }
+    
+    if (employmentStatusField) {
+        new Choices(employmentStatusField, {
+            searchEnabled: true,
+            placeholder: true,
+            placeholderValue: 'Select Employment Status'
+        });
+        
+        employmentStatusField.addEventListener('change', function() {
+            const probationEndDateField = document.getElementById('{{ form.probation_end_date.id_for_label }}');
+            const probationEndDateLabel = probationEndDateField.closest('.col-md-6').querySelector('.form-label');
+            
+            if (this.value === 'PROBATION') {
+                probationEndDateField.setAttribute('required', 'required');
+                if (!probationEndDateLabel.querySelector('.text-danger')) {
+                    probationEndDateLabel.innerHTML += ' <span class="text-danger">*</span>';
+                }
+            } else {
+                probationEndDateField.removeAttribute('required');
+                probationEndDateLabel.innerHTML = probationEndDateLabel.innerHTML.replace(' <span class="text-danger">*</span>', '');
+            }
+        });
+    }
+    
+    if (gradeLevelField) {
+        new Choices(gradeLevelField, {
+            searchEnabled: true,
+            placeholder: true,
+            placeholderValue: 'Select Grade Level'
+        });
+    }
+    
+    if (maritalStatusField) {
+        new Choices(maritalStatusField, {
+            searchEnabled: true,
+            placeholder: true,
+            placeholderValue: 'Select Marital Status'
+        });
+        
+        maritalStatusField.addEventListener('change', function() {
+            const spouseNameField = document.getElementById('{{ form.spouse_name.id_for_label }}');
+            const spouseNameLabel = spouseNameField.closest('.col-md-6').querySelector('.form-label');
+            
+            if (this.value === 'MARRIED') {
+                spouseNameField.setAttribute('required', 'required');
+                if (!spouseNameLabel.querySelector('.text-danger')) {
+                    spouseNameLabel.innerHTML += ' <span class="text-danger">*</span>';
+                }
+            } else {
+                spouseNameField.removeAttribute('required');
+                spouseNameLabel.innerHTML = spouseNameLabel.innerHTML.replace(' <span class="text-danger">*</span>', '');
+                spouseNameField.value = '';
+            }
         });
     }
 
@@ -549,4 +741,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+
+
 
