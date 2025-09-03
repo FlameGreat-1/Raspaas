@@ -16,6 +16,8 @@ import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 import logging
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -205,7 +207,6 @@ def cleanup_expired_sessions():
 
     return expired_sessions.count()
 
-
 def create_password_reset_token(user, request) -> PasswordResetToken:
     existing_tokens = PasswordResetToken.objects.filter(
         user=user, is_used=False, expires_at__gt=timezone.now()
@@ -221,7 +222,8 @@ def create_password_reset_token(user, request) -> PasswordResetToken:
 
 def send_password_reset_email(user, token: PasswordResetToken, request):
     try:
-        reset_url = request.build_absolute_uri(f"/accounts/reset-password/{token.token}/")
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        reset_url = request.build_absolute_uri(f"/accounts/reset-password/{uidb64}/{token.token}/")
 
         context = {
             "user": user,
@@ -282,7 +284,6 @@ def send_welcome_email(user, temporary_password: str, request):
     except Exception as e:
         logger.error(f"Failed to send welcome email: {e}")
         return False
-
 
 def validate_employee_data(data: Dict) -> Tuple[bool, Dict[str, List[str]]]:
     errors = {}

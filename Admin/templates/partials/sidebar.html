@@ -183,16 +183,21 @@
                                     <ul class="pe-slide-menu collapse" id="collapseStudents">
                                         <li class="pe-slide-item">
                                             <a href="{% url 'employee:employee_list' %}" class="pe-nav-link">
-                                                Employees List
+                                                All Employees
                                             </a>
                                         </li>
                                         <li class="pe-slide-item">
                                             <a href="{% url 'accounts:employee_create' %}" class="pe-nav-link">
-                                                Employee Registration
+                                                Registration
                                             </a>
                                         </li>
                                     </ul>
                                 </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'employee:department_list' %}" class="pe-nav-link">
+                                        <span class="pe-nav-sub-content">Departments</span>
+                                    </a>
+                                </li>                        
                                 <li class="pe-slide-item pe-has-sub">
                                     <a href="#collapseTeacher" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseTeacher">
                                         <span class="pe-nav-sub-content">Contracts</span>
@@ -202,11 +207,6 @@
                                         <li class="pe-slide-item">
                                             <a href="{% url 'employee:contract_list' %}" class="pe-nav-link">
                                                 All Contracts
-                                            </a>
-                                        </li>
-                                        <li class="pe-slide-item">
-                                            <a href="{% url 'employee:contract_create' %}" class="pe-nav-link">
-                                                Create Contract
                                             </a>
                                         </li>
                                     </ul>
@@ -219,32 +219,11 @@
                                     <ul class="pe-slide-menu collapse" id="collapseEducation">
                                         <li class="pe-slide-item">
                                             <a href="{% url 'employee:education_list' %}" class="pe-nav-link">
-                                                Education Records
-                                            </a>
-                                        </li>
-                                        <li class="pe-slide-item">
-                                            <a href="{% url 'employee:education_create' %}" class="pe-nav-link">
-                                                Add Education
+                                                Records
                                             </a>
                                         </li>
                                     </ul>
-                                </li>                                
-                                <li class="pe-slide-item">
-                                    <a href="apps-school-parents.html" class="pe-nav-link">
-                                    
-                                        Parents
-                                    </a>
-                                </li>
-                                <li class="pe-slide-item">
-                                    <a href="apps-school-courses.html" class="pe-nav-link">
-                                        Course
-                                    </a>
-                                </li>
-                                <li class="pe-slide-item">
-                                    <a href="apps-school-exam.html" class="pe-nav-link">
-                                        Exam
-                                    </a>
-                                </li>
+                                </li>                                                         
                             </ul>
                         </li>
                     </ul>
@@ -262,15 +241,15 @@
                             <a href="javascript:void(0)">Accounts</a>
                         </li>
                         <li class="pe-slide-item">
-                            <a href="{% url 'accounts:login' %}" class="pe-nav-link">
-                                Sign in
+                            <a href="{% url 'accounts:department_list' %}" class="pe-nav-link">
+                                Department
                             </a>
-                        </li>
+                        </li>  
                         <li class="pe-slide-item">
-                            <a href="{% url 'accounts:password_reset' %}" class="pe-nav-link">
-                                Forgot Password
+                            <a href="{% url 'accounts:role_list' %}" class="pe-nav-link"> 
+                                Roles
                             </a>
-                        </li>
+                        </li>    
                         <li class="pe-slide-item">
                             <a href="{% url 'accounts:password_change' %}" class="pe-nav-link">
                                 Change Password

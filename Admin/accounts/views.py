@@ -18,7 +18,7 @@ from django.views import View
 from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Avg
 from django.utils import timezone
 from django.urls import reverse_lazy, reverse
 from django.conf import settings
@@ -34,6 +34,8 @@ from django.contrib.auth.views import (
 )
 import json
 from datetime import datetime, timedelta
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
 
 from .models import (
     CustomUser,
@@ -183,11 +185,12 @@ def dashboard_view(request):
         request.user.role and request.user.role.name in ["SUPER_ADMIN"]
     ):
         context["system_stats"] = SystemUtilities.get_system_statistics()
-        template_name = "dashboard-analytics.html"
+        template_name = "employee/employees-analytics.html"
     else:
         template_name = "index.html"
 
     return render(request, template_name, context)
+
 class ForcePasswordChangeView(TemplateView):
     template_name = "accounts/auth-reset-password.html"
     form_class = CustomPasswordChangeForm
@@ -263,12 +266,13 @@ class CustomPasswordResetView(PasswordResetView):
 def password_reset_done_view(request):
     return render(
         request,
-        "auth-email-verify.html",
+        "accounts/emails/auth-email-verify.html",  
         {
             "page_title": "Password Reset Sent",
             "message": "We have sent you an email with instructions to reset your password.",
         },
     )
+
 
 class CustomPasswordResetConfirmView(PasswordResetConfirmView):
     template_name = "accounts/auth-reset-password.html"
@@ -277,17 +281,51 @@ class CustomPasswordResetConfirmView(PasswordResetConfirmView):
 
     def dispatch(self, request, *args, **kwargs):
         token = kwargs.get("token")
+        uidb64 = kwargs.get("uidb64")
+
         try:
-            reset_token = PasswordResetToken.objects.get(token=token)
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+            reset_token = PasswordResetToken.objects.get(token=token, user=user)
+
             if not reset_token.is_valid():
                 messages.error(request, "Invalid or expired password reset token.")
                 return redirect("accounts:password_reset")
+
             self.reset_token = reset_token
-        except PasswordResetToken.DoesNotExist:
+            self.validlink = True
+            self.user = user
+            self.user_cache = user
+
+            kwargs["uidb64"] = uidb64
+            kwargs["token"] = token
+
+        except (
+            TypeError,
+            ValueError,
+            OverflowError,
+            User.DoesNotExist,
+            PasswordResetToken.DoesNotExist,
+        ):
             messages.error(request, "Invalid password reset token.")
             return redirect("accounts:password_reset")
 
         return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["force_change"] = True
+        return context
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.user
+        return kwargs
+
+    def get_form(self, form_class=None):
+        if form_class is None:
+            form_class = self.get_form_class()
+        return form_class(**self.get_form_kwargs())
 
     def form_valid(self, form):
         user = form.save()
@@ -315,7 +353,7 @@ def password_reset_complete_view(request):
     )
 
 class EmployeeListView(LoginRequiredMixin, ListView):
-    model = EmployeeProfile  # Changed from CustomUser
+    model = EmployeeProfile  
     template_name = "employee/employee-list.html"
     context_object_name = "employees"
     paginate_by = 25
@@ -962,9 +1000,11 @@ def employee_import_status(request, task_id):
         return JsonResponse({'error': 'Celery not available'}, status=500)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
 class DepartmentListView(LoginRequiredMixin, ListView):
     model = Department
-    template_name = "apps-school-courses.html"
+    template_name = "accounts/department-list.html"
     context_object_name = "departments"
     paginate_by = 20
 
@@ -976,9 +1016,20 @@ class DepartmentListView(LoginRequiredMixin, ListView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = Department.objects.select_related(
-            "manager", "parent_department"
-        ).filter(is_active=True)
+        queryset = (
+            Department.objects.select_related("manager", "parent_department")
+            .filter(is_active=True)
+            .annotate(
+                employee_count=Count(
+                    "employees",
+                    filter=Q(employees__is_active=True),
+                ),
+                avg_salary=Avg(
+                    "employees__employee_profile__basic_salary",
+                    filter=Q(employees__is_active=True),
+                ),
+            )
+        )
 
         search_query = self.request.GET.get("search")
         if search_query:
@@ -1001,14 +1052,25 @@ class DepartmentListView(LoginRequiredMixin, ListView):
         )
         context["search_query"] = self.request.GET.get("search", "")
 
-        for department in context["departments"]:
-            department.employee_count = department.get_all_employees().count()
+        departments = self.get_queryset()
+        context["total_departments"] = Department.objects.filter(is_active=True).count()
+        context["total_employees"] = sum(dept.employee_count for dept in departments)
+        context["departments_with_managers"] = (
+            Department.objects.filter(is_active=True).exclude(manager=None).count()
+        )
+
+        if context["total_departments"] > 0:
+            context["average_employees_per_dept"] = (
+                context["total_employees"] / context["total_departments"]
+            )
+        else:
+            context["average_employees_per_dept"] = 0
 
         return context
 
 class DepartmentDetailView(LoginRequiredMixin, DetailView):
     model = Department
-    template_name = "apps-school-courses.html"
+    template_name = "accounts/department-detail.html"
     context_object_name = "department"
     pk_url_kwarg = "department_id"
 
@@ -1030,13 +1092,16 @@ class DepartmentDetailView(LoginRequiredMixin, DetailView):
         context["active_employee_count"] = (
             context["employees"].filter(status="ACTIVE").count()
         )
+
+        context["annual_budget"] = department.budget
+
         return context
 
 
 class DepartmentCreateView(LoginRequiredMixin, CreateView):
     model = Department
     form_class = DepartmentForm
-    template_name = "ui-form-elements.html"
+    template_name = "accounts/department-create.html"
 
     def dispatch(self, request, *args, **kwargs):
         if not UserUtilities.check_user_permission(request.user, "manage_departments"):
@@ -1074,7 +1139,7 @@ class DepartmentCreateView(LoginRequiredMixin, CreateView):
 class DepartmentUpdateView(LoginRequiredMixin, UpdateView):
     model = Department
     form_class = DepartmentForm
-    template_name = "ui-form-elements.html"
+    template_name = "accounts/department-update.html"
     pk_url_kwarg = "department_id"
 
     def dispatch(self, request, *args, **kwargs):
@@ -1193,7 +1258,7 @@ def department_export_view(request):
 
 class RoleListView(LoginRequiredMixin, ListView):
     model = Role
-    template_name = "apps-teacher.html"
+    template_name = "accounts/roles-list.html"
     context_object_name = "roles"
     paginate_by = 20
 
@@ -1235,7 +1300,7 @@ class RoleListView(LoginRequiredMixin, ListView):
 
 class RoleDetailView(LoginRequiredMixin, DetailView):
     model = Role
-    template_name = "apps-teacher.html"
+    template_name = "accounts/roles-detail.html"
     context_object_name = "role"
     pk_url_kwarg = "role_id"
 
@@ -1258,7 +1323,7 @@ class RoleDetailView(LoginRequiredMixin, DetailView):
 class RoleCreateView(LoginRequiredMixin, CreateView):
     model = Role
     form_class = RoleForm
-    template_name = "ui-form-elements.html"
+    template_name = "accounts/roles-create.html"
 
     def dispatch(self, request, *args, **kwargs):
         if not UserUtilities.check_user_permission(request.user, "manage_roles"):
@@ -1295,7 +1360,7 @@ class RoleCreateView(LoginRequiredMixin, CreateView):
 class RoleUpdateView(LoginRequiredMixin, UpdateView):
     model = Role
     form_class = RoleForm
-    template_name = "ui-form-elements.html"
+    template_name = "accounts/roles-update.html"
     pk_url_kwarg = "role_id"
 
     def dispatch(self, request, *args, **kwargs):

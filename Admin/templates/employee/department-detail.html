@@ -1,0 +1,477 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Department Details" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/datatables.net-bs5/css/dataTables.bootstrap5.min.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="HR Operations" title="Department Details"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xl-4">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h5 class="card-title mb-0">Department Information</h5>
+                <div class="ms-auto">
+                    {% if department.is_active %}
+                    <span class="badge bg-success-subtle text-success">Active</span>
+                    {% else %}
+                    <span class="badge bg-danger-subtle text-danger">Inactive</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="avatar-lg mx-auto">
+                        <div class="avatar-title bg-primary-subtle text-primary rounded-circle fs-1">
+                            <i class="ri-building-line"></i>
+                        </div>
+                    </div>
+                    <h4 class="mt-3">{{ department.name }}</h4>
+                    <p class="text-muted">{{ department.code }}</p>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <th scope="row" width="40%">Description</th>
+                                <td>{{ department.description|default:"No description provided" }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Manager</th>
+                                <td>
+                                    {% if department.manager %}
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0 me-2">
+                                            {% if department.manager.profile_picture %}
+                                            <img src="{{ department.manager.profile_picture.url }}" alt="{{ department.manager.get_full_name }}" class="avatar-xs rounded-circle">
+                                            {% else %}
+                                            <div class="avatar-xs">
+                                                <span class="avatar-title rounded-circle bg-primary-subtle text-primary">
+                                                    {{ department.manager.first_name|first }}{{ department.manager.last_name|first }}
+                                                </span>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <a href="{% url 'employee:employee_detail' pk=department.manager.employee_profile.id %}" class="text-primary">
+                                                {{ department.manager.get_full_name }}
+                                            </a>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted">Not assigned</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Parent Department</th>
+                                <td>
+                                    {% if department.parent_department %}
+                                    <a href="{% url 'employee:department_detail' pk=department.parent_department.id %}" class="text-primary">
+                                        {{ department.parent_department.name }}
+                                    </a>
+                                    {% else %}
+                                    <span class="text-muted">None (Top-level department)</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Location</th>
+                                <td>{{ department.location|default:"Not specified" }}</td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Budget</th>
+                                <td>
+                                    {% if department.budget %}
+                                    ${{ department.budget|floatformat:2 }}
+                                    {% else %}
+                                    <span class="text-muted">Not specified</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row">Created</th>
+                                <td>{{ department.created_at|date:"M d, Y" }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Department Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="border rounded p-3">
+                            <h6 class="text-muted mb-2">Total Employees</h6>
+                            <h4 class="mb-0">{{ employee_count }}</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="border rounded p-3">
+                            <h6 class="text-muted mb-2">Average Salary</h6>
+                            <h4 class="mb-0">${{ avg_salary|floatformat:2 }}</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="border rounded p-3">
+                            <h6 class="text-muted mb-2">Gender Ratio</h6>
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar bg-primary" role="progressbar" style="width: {{ male_percentage }}%" aria-valuenow="{{ male_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        <div class="progress-bar bg-info" role="progressbar" style="width: {{ female_percentage }}%" aria-valuenow="{{ female_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex mt-2">
+                                <small class="text-muted"><i class="ri-checkbox-blank-circle-fill text-primary me-1"></i> Male ({{ male_count }})</small>
+                                <small class="text-muted ms-3"><i class="ri-checkbox-blank-circle-fill text-info me-1"></i> Female ({{ female_count }})</small>
+                            </div>
+                        </div>
+                    </div>                    
+                    <div class="col-md-6">
+                        <div class="border rounded p-3">
+                            <h6 class="text-muted mb-2">Employment Status</h6>
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                <span class="badge bg-success-subtle text-success">{{ confirmed_count }} Confirmed</span>
+                                <span class="badge bg-warning-subtle text-warning">{{ probation_count }} Probation</span>
+                                <span class="badge bg-info-subtle text-info">{{ contract_count }} Contract</span>
+                            </div>
+                        </div>
+                    </div>                    
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h5 class="card-title mb-0">Department Employees</h5>
+                <div class="ms-auto">
+                    <a href="{% url 'employee:employee_list' %}?department={{ department.id }}" class="btn btn-sm btn-primary">
+                        <i class="ri-filter-line me-1"></i> View in Employee List
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="employeeTable">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Position</th>
+                                <th>Status</th>
+                                <th>Salary</th>
+                                <th>Hire Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for employee in employees %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0 me-2">
+                                            {% if employee.user.profile_picture %}
+                                            <img src="{{ employee.user.profile_picture.url }}" alt="{{ employee.user.get_full_name }}" class="avatar-xs rounded-circle">
+                                            {% else %}
+                                            <div class="avatar-xs">
+                                                <span class="avatar-title rounded-circle bg-primary-subtle text-primary">
+                                                    {{ employee.user.first_name|first }}{{ employee.user.last_name|first }}
+                                                </span>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-0">{{ employee.user.get_full_name }}</h6>
+                                            <small class="text-muted">{{ employee.user.employee_code }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>{{ employee.user.job_title|default:"Not specified" }}</td>
+                                <td>
+                                    {% if employee.employment_status == "CONFIRMED" %}
+                                    <span class="badge bg-success-subtle text-success">Confirmed</span>
+                                    {% elif employee.employment_status == "PROBATION" %}
+                                    <span class="badge bg-warning-subtle text-warning">Probation</span>
+                                    {% elif employee.employment_status == "CONTRACT" %}
+                                    <span class="badge bg-info-subtle text-info">Contract</span>
+                                    {% elif employee.employment_status == "INTERN" %}
+                                    <span class="badge bg-primary-subtle text-primary">Intern</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary-subtle text-secondary">{{ employee.employment_status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>${{ employee.basic_salary|floatformat:2 }}</td>
+                                <td>{{ employee.user.hire_date|date:"M d, Y" }}</td>
+                                <td>
+                                    <a href="{% url 'employee:employee_detail' pk=employee.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="ri-eye-line"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-3">
+                                    <div class="text-muted">
+                                        <i class="ri-user-search-line fs-3"></i>
+                                        <p class="mt-2">No employees found in this department</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Salary Distribution</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="salaryDistributionChart" style="height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Employment Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="employmentStatusChart" style="height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if department.sub_departments.exists %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Sub-departments</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Department</th>
+                                <th>Manager</th>
+                                <th>Employees</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sub_dept in department.sub_departments.all %}
+                            {% if sub_dept.is_active %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ sub_dept.name }}</td>
+                                <td>
+                                    {% if sub_dept.manager %}
+                                    {{ sub_dept.manager.get_full_name }}
+                                    {% else %}
+                                    <span class="text-muted">Not assigned</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary-subtle text-primary">
+                                        {{ sub_dept.employees.count }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{% url 'employee:department_detail' pk=sub_dept.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="ri-eye-line"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script src="/static/assets/libs/datatables.net/js/jquery.dataTables.min.js"></script>
+<script src="/static/assets/libs/datatables.net-bs5/js/dataTables.bootstrap5.min.js"></script>
+<script src="/static/assets/libs/apexcharts/apexcharts.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize DataTable
+    $('#employeeTable').DataTable({
+        paging: true,
+        searching: true,
+        ordering: true,
+        info: true,
+        lengthChange: false,
+        pageLength: 10,
+        language: {
+            search: "",
+            searchPlaceholder: "Search employees..."
+        }
+    });
+    
+    // Salary Distribution Chart
+    const salaryRanges = {
+        'Below $1,000': 0,
+        '$1,000 - $2,000': 0,
+        '$2,000 - $3,000': 0,
+        '$3,000 - $4,000': 0,
+        '$4,000 - $5,000': 0,
+        'Above $5,000': 0
+    };
+    
+    {% for employee in employees %}
+    const salary = {{ employee.basic_salary }};
+    if (salary < 1000) {
+        salaryRanges['Below $1,000']++;
+    } else if (salary < 2000) {
+        salaryRanges['$1,000 - $2,000']++;
+    } else if (salary < 3000) {
+        salaryRanges['$2,000 - $3,000']++;
+    } else if (salary < 4000) {
+        salaryRanges['$3,000 - $4,000']++;
+    } else if (salary < 5000) {
+        salaryRanges['$4,000 - $5,000']++;
+    } else {
+        salaryRanges['Above $5,000']++;
+    }
+    {% endfor %}
+    
+    const salaryLabels = Object.keys(salaryRanges);
+    const salaryData = Object.values(salaryRanges);
+    
+    if (document.getElementById('salaryDistributionChart')) {
+        const salaryOptions = {
+            series: [{
+                name: 'Employees',
+                data: salaryData
+            }],
+            chart: {
+                type: 'bar',
+                height: 300,
+                toolbar: {
+                    show: false
+                }
+            },
+            plotOptions: {
+                bar: {
+                    borderRadius: 4,
+                    horizontal: false,
+                    columnWidth: '60%'
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            colors: ['#4b38b3'],
+            xaxis: {
+                categories: salaryLabels
+            },
+            yaxis: {
+                title: {
+                    text: 'Number of Employees'
+                }
+            }
+        };
+        
+        const salaryChart = new ApexCharts(document.getElementById('salaryDistributionChart'), salaryOptions);
+        salaryChart.render();
+    }
+    
+    // Employment Status Chart
+    const statusCounts = {
+        'Confirmed': 0,
+        'Probation': 0,
+        'Contract': 0,
+        'Intern': 0,
+        'Consultant': 0
+    };
+    
+    {% for employee in employees %}
+    const status = "{{ employee.employment_status }}";
+    if (status === "CONFIRMED") {
+        statusCounts['Confirmed']++;
+    } else if (status === "PROBATION") {
+        statusCounts['Probation']++;
+    } else if (status === "CONTRACT") {
+        statusCounts['Contract']++;
+    } else if (status === "INTERN") {
+        statusCounts['Intern']++;
+    } else if (status === "CONSULTANT") {
+        statusCounts['Consultant']++;
+    }
+    {% endfor %}
+    
+    const statusLabels = Object.keys(statusCounts);
+    const statusData = Object.values(statusCounts);
+    
+    if (document.getElementById('employmentStatusChart')) {
+        const statusOptions = {
+            series: statusData,
+            chart: {
+                type: 'donut',
+                height: 300
+            },
+            labels: statusLabels,
+            colors: ['#0ab39c', '#f7b84b', '#405189', '#299cdb', '#f06548'],
+            legend: {
+                position: 'bottom'
+            },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '65%'
+                    }
+                }
+            },
+            dataLabels: {
+                enabled: true,
+                formatter: function(val) {
+                    return val.toFixed(1) + "%";
+                }
+            },
+            tooltip: {
+                y: {
+                    formatter: function(val) {
+                        return val + " employees";
+                    }
+                }
+            }
+        };
+        
+        const statusChart = new ApexCharts(document.getElementById('employmentStatusChart'), statusOptions);
+        statusChart.render();
+    }
+});
+</script>
+{% endblock %}
+

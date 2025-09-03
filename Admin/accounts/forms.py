@@ -89,7 +89,6 @@ class CustomLoginForm(AuthenticationForm):
                         code="invalid_status",
                     )
 
-                # Use the multi-field authentication backend
                 self.user_cache = authenticate(
                     self.request, username=username, password=password
                 )
@@ -135,10 +134,10 @@ class EmployeeRegistrationForm(forms.ModelForm):
             attrs={
                 "class": "form-control",
                 "placeholder": "Basic Salary (LKR)",
-                "step": "0.01"
+                "step": "0.01",
             }
         ),
-        help_text="Employee's basic monthly salary in LKR"
+        help_text="Employee's basic monthly salary in LKR",
     )
 
     class Meta:
@@ -247,7 +246,7 @@ class EmployeeRegistrationForm(forms.ModelForm):
                 attrs={
                     "class": "form-control",
                     "placeholder": "Basic Salary (LKR)",
-                    "step": "0.01"
+                    "step": "0.01",
                 }
             ),
         }
@@ -319,14 +318,13 @@ class EmployeeRegistrationForm(forms.ModelForm):
             if salary > 10000000:
                 raise ValidationError("Basic salary seems too high. Please verify.")
         return salary
-    
+
     def clean_password1(self):
         password1 = self.cleaned_data.get("password1")
         if password1:
-            validate_password_strength(password1)  
-            return password1  
+            validate_password_strength(password1)
+            return password1
         return password1
-
 
     def clean_password2(self):
         password1 = self.cleaned_data.get("password1")
@@ -358,6 +356,13 @@ class EmployeeRegistrationForm(forms.ModelForm):
 
         if commit:
             user.save()
+
+            EmployeeProfile.objects.create(
+                user=user,
+                basic_salary=self.cleaned_data.get("basic_salary"),
+                is_active=True,
+                created_by=self.created_by,
+            )
 
         return user
 
@@ -527,11 +532,17 @@ class EmployeeUpdateForm(forms.ModelForm):
 
         if commit and hasattr(user, "employee_profile"):
             basic_salary = self.cleaned_data.get("basic_salary")
+            user_status = self.cleaned_data.get("status")
+
             if basic_salary:
                 user.employee_profile.basic_salary = basic_salary
-                user.employee_profile.save(update_fields=["basic_salary"])
+
+            user.employee_profile.is_active = user_status == "ACTIVE"
+
+            user.employee_profile.save(update_fields=["basic_salary", "is_active"])
 
         return user
+
 class CustomPasswordChangeForm(PasswordChangeForm):
     old_password = forms.CharField(
         label="Current Password",
@@ -661,11 +672,10 @@ class CustomSetPasswordForm(SetPasswordForm):
             user.save()
         return user
 
-
 class DepartmentForm(forms.ModelForm):
     class Meta:
         model = Department
-        fields = ["name", "code", "description", "manager", "parent_department"]
+        fields = ["name", "code", "description", "manager", "parent_department", "budget", "location"]
         widgets = {
             "name": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Department Name"}
@@ -682,6 +692,12 @@ class DepartmentForm(forms.ModelForm):
             ),
             "manager": forms.Select(attrs={"class": "form-select"}),
             "parent_department": forms.Select(attrs={"class": "form-select"}),
+            "budget": forms.NumberInput(
+                attrs={"class": "form-control", "placeholder": "Annual Budget"}
+            ),
+            "location": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "Department Location"}
+            ),
         }
 
     def __init__(self, *args, **kwargs):
@@ -694,6 +710,8 @@ class DepartmentForm(forms.ModelForm):
         self.fields["parent_department"].empty_label = (
             "Select Parent Department (Optional)"
         )
+        self.fields["budget"].required = False
+        self.fields["location"].required = False
 
     def clean_code(self):
         code = self.cleaned_data.get("code")
@@ -720,7 +738,6 @@ class DepartmentForm(forms.ModelForm):
                 raise ValidationError("Department cannot be its own parent.")
 
         return cleaned_data
-
 
 class RoleForm(forms.ModelForm):
     class Meta:

@@ -118,6 +118,7 @@ class EmployeeUtils:
             "salary_stats": salary_stats,
         }
 
+
     @staticmethod
     def search_employees(
         query, department=None, employment_status=None, grade_level=None
@@ -134,7 +135,7 @@ class EmployeeUtils:
             )
 
         if department:
-            queryset = queryset.filter(user__department=department)
+            queryset = queryset.filter(user__department_id=department)
 
         if employment_status:
             queryset = queryset.filter(employment_status=employment_status)
@@ -143,7 +144,6 @@ class EmployeeUtils:
             queryset = queryset.filter(grade_level=grade_level)
 
         return queryset.select_related("user", "user__department")
-
 
 class ContractUtils:
 

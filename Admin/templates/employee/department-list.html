@@ -11,13 +11,13 @@
 <link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
 {% endblock %}
 {% block content %}
-{% with title_sub="HR Management" title="Departments"%}
+{% with title_sub="HR Operations" title="Departments"%}
 {% include "partials/pagetitle.html" %}
 {% endwith %}
 
 <div class="card">
     <div class="card-header">
-        <h4>Departments List</h4>
+        <h4>Departments Overview</h4>
         <div class="d-flex flex-wrap gap-3 ms-auto">
             <div class="form-icon">
                 <input type="text" class="form-control form-control-icon" id="departmentSearch"
@@ -33,7 +33,7 @@
                     <li><a class="dropdown-item" href="javascript:void(0)">Name A-Z</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)">Name Z-A</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)">Most Employees</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)">Newest</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)">Least Employees</a></li>
                 </ul>
             </div>
             <div class="dropdown">
@@ -43,9 +43,9 @@
                 </button>
                 <ul class="dropdown-menu" aria-labelledby="filterByDropdown">
                     <li><a class="dropdown-item" href="javascript:void(0)">All Departments</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)">Active</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)">With Head</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)">Without Head</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)">With Manager</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)">Without Manager</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)">With Employees</a></li>
                 </ul>
             </div>
             <div class="dropdown">
@@ -53,16 +53,11 @@
                     Export
                 </button>
                 <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="{% url 'accounts:department_export' %}">
-                        <i class="ri-file-text-line me-2"></i>Export CSV
+                    <li><a class="dropdown-item" href="{% url 'employee:export_employees_excel' %}?group_by=department">
+                        <i class="ri-file-excel-line me-2"></i>Export Employees by Department
                     </a></li>
                 </ul>
             </div>
-            {% if can_add_department %}
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createDepartmentModal">
-                <i class="bi bi-plus-lg me-1"></i>Add Department
-            </button>
-            {% endif %}
         </div>
     </div>
     <div class="card-body">
@@ -72,11 +67,10 @@
                     <tr>
                         <th>#</th>
                         <th>Department</th>
-                        <th>Head of Department</th>
+                        <th>Manager</th>
                         <th>Employees</th>
-                        <th>Roles</th>
+                        <th>Avg. Salary</th>
                         <th>Status</th>
-                        <th>Created</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -94,14 +88,14 @@
                             </div>
                         </td>
                         <td>
-                            {% if department.head_of_department %}
+                            {% if department.manager %}
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="avatar avatar-sm bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center">
-                                        {{ department.head_of_department.first_name|first }}{{ department.head_of_department.last_name|first }}
+                                        {{ department.manager.first_name|first }}{{ department.manager.last_name|first }}
                                     </div>
                                     <div>
-                                        <span class="fw-medium">{{ department.head_of_department.get_full_name }}</span>
-                                        <br><small class="text-muted">{{ department.head_of_department.employee_code }}</small>
+                                        <span class="fw-medium">{{ department.manager.get_full_name }}</span>
+                                        <br><small class="text-muted">{{ department.manager.employee_code }}</small>
                                     </div>
                                 </div>
                             {% else %}
@@ -115,15 +109,14 @@
                             </div>
                         </td>
                         <td>
-                            <div class="d-flex flex-wrap gap-1">
-                                {% for role in department.roles.all|slice:":3" %}
-                                    <span class="badge bg-secondary-subtle text-secondary">{{ role.display_name }}</span>
-                                {% endfor %}
-                                {% if department.roles.count > 3 %}
-                                    <span class="badge bg-light text-muted">+{{ department.roles.count|add:"-3" }} more</span>
-                                {% endif %}
-                            </div>
-                        </td>
+                            {% if department.avg_salary %}
+                                <div class="d-flex align-items-center">
+                                    <span class="fw-medium">${{ department.avg_salary|floatformat:2 }}</span>
+                                </div>
+                            {% else %}
+                                <span class="text-muted">N/A</span>
+                            {% endif %}
+                        </td>                        
                         <td>
                             {% if department.is_active %}
                                 <span class="badge bg-success-subtle text-success">Active</span>
@@ -131,34 +124,23 @@
                                 <span class="badge bg-danger-subtle text-danger">Inactive</span>
                             {% endif %}
                         </td>
-                        <td>{{ department.created_at|date:"M d, Y" }}</td>
                         <td>
                             <div class="action-buttons">
-                                <a href="{% url 'employee:department_detail' department.pk %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                <a href="{% url 'employee:department_detail' pk=department.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
                                     <i class="ri-eye-line"></i>
                                 </a>
-                                {% if can_add_department %}
-                                <a href="{% url 'accounts:department_update' department.pk %}" class="btn btn-sm btn-outline-info" title="Edit">
-                                    <i class="ri-edit-line"></i>
+                                <a href="{% url 'employee:employee_list' %}?department={{ department.id }}" class="btn btn-sm btn-outline-info" title="View Employees">
+                                    <i class="ri-team-line"></i>
                                 </a>
-                                <a href="#" class="btn btn-sm btn-outline-danger" title="Delete" onclick="confirmDelete('{{ department.pk }}', '{{ department.name }}')">
-                                    <i class="ri-delete-bin-line"></i>
-                                </a>
-                                {% endif %}
                             </div>
                         </td>                        
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center py-4">
+                        <td colspan="7" class="text-center py-4">
                             <div class="text-muted">
                                 <i class="ri-building-line fs-48"></i>
                                 <p class="mt-2">No departments found</p>
-                                {% if can_add_department %}
-                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createDepartmentModal">
-                                    <i class="ri-add-line me-1"></i>Add First Department
-                                </button>
-                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -166,7 +148,6 @@
                 </tbody>
             </table>
         </div>
-        
         {% if departments.has_other_pages %}
         <div class="d-flex flex-wrap gap-3 align-items-center mt-5">
             <div class="fw-medium">
@@ -177,7 +158,7 @@
                     <ul class="pagination pagination-primary mb-0">
                         {% if departments.has_previous %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ departments.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                            <a class="page-link" href="?page={{ departments.previous_page_number }}">
                                 <i class="ri-arrow-left-s-line fw-semibold"></i>
                             </a>
                         </li>
@@ -190,14 +171,14 @@
                             </li>
                             {% elif num > departments.number|add:'-3' and num < departments.number|add:'3' %}
                             <li class="page-item">
-                                <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">{{ num }}</a>
+                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
                             </li>
                             {% endif %}
                         {% endfor %}
                         
                         {% if departments.has_next %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ departments.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">
+                            <a class="page-link" href="?page={{ departments.next_page_number }}">
                                 <i class="ri-arrow-right-s-line fw-semibold"></i>
                             </a>
                         </li>
@@ -209,111 +190,6 @@
         {% endif %}
     </div>
 </div>
-{% if can_add_department %}
-<div class="modal fade" id="createDepartmentModal" tabindex="-1" aria-labelledby="createDepartmentModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="createDepartmentModalLabel">Create New Department</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="POST" action="{% url 'accounts:department_create' %}" id="createDepartmentForm">
-                {% csrf_token %}
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label for="departmentName" class="form-label">Department Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="name" id="departmentName" 
-                                   placeholder="Enter department name" required>
-                        </div>
-                        
-                        <div class="col-12">
-                            <label for="departmentDescription" class="form-label">Description</label>
-                            <textarea class="form-control" name="description" id="departmentDescription" rows="3" 
-                                      placeholder="Enter department description"></textarea>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <label for="headOfDepartment" class="form-label">Head of Department</label>
-                            <select class="form-control" name="head_of_department" id="headOfDepartment">
-                                <option value="">Select Head of Department</option>
-                                {% for employee in available_heads %}
-                                <option value="{{ employee.id }}">{{ employee.get_full_name }} ({{ employee.employee_code }})</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <label for="departmentCode" class="form-label">Department Code</label>
-                            <input type="text" class="form-control" name="code" id="departmentCode" 
-                                   placeholder="e.g., HR, IT, FIN" maxlength="10">
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <label for="departmentBudget" class="form-label">Annual Budget</label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" class="form-control" name="budget" id="departmentBudget" 
-                                       placeholder="0.00" step="0.01" min="0">
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <label for="departmentLocation" class="form-label">Location</label>
-                            <input type="text" class="form-control" name="location" id="departmentLocation" 
-                                   placeholder="Office location or floor">
-                        </div>
-                        
-                        <div class="col-12">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="is_active" id="departmentActive" checked>
-                                <label class="form-check-label" for="departmentActive">
-                                    Active Department
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create Department</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteConfirmModalLabel">Confirm Delete</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="text-center">
-                    <div class="fs-4 mb-3 bg-danger-subtle text-danger avatar-lg d-inline-flex align-items-center justify-content-center rounded-circle">
-                        <i class="ri-delete-bin-line"></i>
-                    </div>
-                    <h5>Delete Department</h5>
-                    <p>Are you sure you want to delete <strong id="departmentNameToDelete"></strong>?</p>
-                    <div class="alert alert-warning">
-                        <i class="ri-alert-line me-2"></i>
-                        <strong>Warning:</strong> This action cannot be undone. All employees in this department will need to be reassigned.
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form id="deleteForm" method="POST" style="display: inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">Delete Department</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
 
 <div class="row mt-4">
     <div class="col-12">
@@ -346,8 +222,8 @@
                             <div class="fs-4 mb-3 bg-warning-subtle text-warning avatar-lg d-inline-flex align-items-center justify-content-center rounded-circle">
                                 <i class="ri-user-star-line"></i>
                             </div>
-                            <h4>{{ departments_with_heads|default:0 }}</h4>
-                            <span class="text-muted">With Department Heads</span>
+                            <h4>{{ departments_with_managers|default:0 }}</h4>
+                            <span class="text-muted">With Department Managers</span>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -358,8 +234,22 @@
                             <h4>{{ average_employees_per_dept|floatformat:0|default:0 }}</h4>
                             <span class="text-muted">Avg Employees/Dept</span>
                         </div>
+                    </div>                    
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5>Department Distribution</h5>
+            </div>
+            <div class="card-body">
+                <div id="departmentDistributionChart" style="height: 300px;"></div>
             </div>
         </div>
     </div>
@@ -369,11 +259,10 @@
 
 {% block script %}
 <script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="/static/assets/libs/apexcharts/apexcharts.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('departmentSearch');
-    const createForm = document.getElementById('createDepartmentForm');
-    const headSelect = document.getElementById('headOfDepartment');
     
     if (searchInput) {
         let searchTimeout;
@@ -385,24 +274,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 tableRows.forEach(row => {
                     const departmentName = row.querySelector('td:nth-child(2)');
-                    const headName = row.querySelector('td:nth-child(3)');
+                    const managerName = row.querySelector('td:nth-child(3)');
                     
-                    if (departmentName && headName) {
+                    if (departmentName && managerName) {
                         const deptText = departmentName.textContent.toLowerCase();
-                        const headText = headName.textContent.toLowerCase();
-                        const isVisible = deptText.includes(searchTerm) || headText.includes(searchTerm);
+                        const managerText = managerName.textContent.toLowerCase();
+                        const isVisible = deptText.includes(searchTerm) || managerText.includes(searchTerm);
                         row.style.display = isVisible ? '' : 'none';
                     }
                 });
             }, 300);
-        });
-    }
-    
-    if (headSelect) {
-        new Choices(headSelect, {
-            searchEnabled: true,
-            placeholder: true,
-            placeholderValue: 'Select Head of Department'
         });
     }
     
@@ -419,17 +300,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 switch(sortType) {
                     case 'Name A-Z':
-                        aValue = a.querySelector('td:nth-child(2) h6').textContent.trim();
-                        bValue = b.querySelector('td:nth-child(2) h6').textContent.trim();
+                        aValue = a.querySelector('td:nth-child(2) h6')?.textContent.trim() || '';
+                        bValue = b.querySelector('td:nth-child(2) h6')?.textContent.trim() || '';
                         return aValue.localeCompare(bValue);
                     case 'Name Z-A':
-                        aValue = a.querySelector('td:nth-child(2) h6').textContent.trim();
-                        bValue = b.querySelector('td:nth-child(2) h6').textContent.trim();
+                        aValue = a.querySelector('td:nth-child(2) h6')?.textContent.trim() || '';
+                        bValue = b.querySelector('td:nth-child(2) h6')?.textContent.trim() || '';
                         return bValue.localeCompare(aValue);
                     case 'Most Employees':
-                        aValue = parseInt(a.querySelector('td:nth-child(4) .badge').textContent) || 0;
-                        bValue = parseInt(b.querySelector('td:nth-child(4) .badge').textContent) || 0;
+                        aValue = parseInt(a.querySelector('td:nth-child(4) .badge')?.textContent) || 0;
+                        bValue = parseInt(b.querySelector('td:nth-child(4) .badge')?.textContent) || 0;
                         return bValue - aValue;
+                    case 'Least Employees':
+                        aValue = parseInt(a.querySelector('td:nth-child(4) .badge')?.textContent) || 0;
+                        bValue = parseInt(b.querySelector('td:nth-child(4) .badge')?.textContent) || 0;
+                        return aValue - bValue;
                     default:
                         return 0;
                 }
@@ -450,17 +335,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 let showRow = true;
                 
                 switch(filterType) {
-                    case 'Active':
-                        const statusBadge = row.querySelector('td:nth-child(6) .badge');
-                        showRow = statusBadge && statusBadge.textContent.includes('Active');
+                    case 'With Manager':
+                        const managerCell = row.querySelector('td:nth-child(3)');
+                        showRow = managerCell && !managerCell.textContent.includes('Not Assigned');
                         break;
-                    case 'With Head':
-                        const headCell = row.querySelector('td:nth-child(3)');
-                        showRow = headCell && !headCell.textContent.includes('Not Assigned');
+                    case 'Without Manager':
+                        const managerCell2 = row.querySelector('td:nth-child(3)');
+                        showRow = managerCell2 && managerCell2.textContent.includes('Not Assigned');
                         break;
-                    case 'Without Head':
-                        const headCell2 = row.querySelector('td:nth-child(3)');
-                        showRow = headCell2 && headCell2.textContent.includes('Not Assigned');
+                    case 'With Employees':
+                        const employeeCount = parseInt(row.querySelector('td:nth-child(4) .badge')?.textContent) || 0;
+                        showRow = employeeCount > 0;
                         break;
                     default:
                         showRow = true;
@@ -471,19 +356,63 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    if (createForm) {
-        createForm.addEventListener('submit', function(e) {
-            const submitBtn = this.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="ri-loader-4-line me-1 spinner-border spinner-border-sm"></i>Creating...';
-        });
-    }
+    // Department Distribution Chart
+    const departmentData = [];
+    const departmentColors = [];
     
-    window.confirmDelete = function(departmentId, departmentName) {
-        document.getElementById('departmentNameToDelete').textContent = departmentName;
-        document.getElementById('deleteForm').action = `/accounts/departments/${departmentId}/delete/`;
-        new bootstrap.Modal(document.getElementById('deleteConfirmModal')).show();
-    };
+    document.querySelectorAll('tbody tr').forEach(row => {
+        const deptName = row.querySelector('td:nth-child(2) h6')?.textContent.trim();
+        const empCount = parseInt(row.querySelector('td:nth-child(4) .badge')?.textContent) || 0;
+        
+        if (deptName && empCount > 0) {
+            departmentData.push({
+                name: deptName,
+                value: empCount
+            });
+            
+            // Generate a random color
+            const hue = Math.floor(Math.random() * 360);
+            departmentColors.push(`hsl(${hue}, 70%, 60%)`);
+        }
+    });
+    
+    if (departmentData.length > 0 && document.getElementById('departmentDistributionChart')) {
+        const options = {
+            series: departmentData.map(item => item.value),
+            chart: {
+                type: 'donut',
+                height: 300
+            },
+            labels: departmentData.map(item => item.name),
+            colors: departmentColors,
+            legend: {
+                position: 'bottom'
+            },
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '65%'
+                    }
+                }
+            },
+            dataLabels: {
+                enabled: true,
+                formatter: function(val) {
+                    return val.toFixed(1) + "%";
+                }
+            },
+            tooltip: {
+                y: {
+                    formatter: function(val) {
+                        return val + " employees";
+                    }
+                }
+            }
+        };
+        
+        const chart = new ApexCharts(document.getElementById('departmentDistributionChart'), options);
+        chart.render();
+    }
 });
 </script>
 {% endblock %}

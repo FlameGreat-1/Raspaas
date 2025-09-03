@@ -1,0 +1,238 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% block meta %}
+{% with title="Role Details" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block content %}
+{% with title_sub="HR Management" title="Role Details" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">{{ role.display_name }}</h4>
+                <div class="d-flex gap-2">
+                    {% if can_edit %}
+                    <a href="{% url 'accounts:role_update' role_id=role.id %}" class="btn btn-primary">
+                        <i class="ri-edit-line me-1"></i> Edit Role
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'accounts:role_list' %}" class="btn btn-light">
+                        <i class="ri-arrow-left-line me-1"></i> Back to List
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card border shadow-none">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">Role Information</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-borderless mb-0">
+                                        <tbody>
+                                            <tr>
+                                                <th scope="row" style="width: 180px;">Role Name:</th>
+                                                <td>{{ role.get_name_display }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Display Name:</th>
+                                                <td>{{ role.display_name }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Level:</th>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <span class="me-2">{{ role.level }}</span>
+                                                        <div class="text-warning">
+                                                            {% for i in "12345"|make_list %}
+                                                                {% if forloop.counter <= role.level %}
+                                                                <i class="ri-star-fill"></i>
+                                                                {% else %}
+                                                                <i class="ri-star-line"></i>
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Status:</th>
+                                                <td>
+                                                    {% if role.is_active %}
+                                                    <span class="badge bg-success-subtle text-success">Active</span>
+                                                    {% else %}
+                                                    <span class="badge bg-danger-subtle text-danger">Inactive</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Description:</th>
+                                                <td>{{ role.description|default:"No description provided" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Created By:</th>
+                                                <td>{{ role.created_by.get_full_name|default:"System" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Created At:</th>
+                                                <td>{{ role.created_at|date:"F d, Y H:i" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th scope="row">Last Updated:</th>
+                                                <td>{{ role.updated_at|date:"F d, Y H:i" }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border shadow-none mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">Role Permissions</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="ri-user-settings-line me-2 text-primary"></i>
+                                                <h6 class="mb-0">Employee Management</h6>
+                                            </div>
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" disabled {% if role.can_manage_employees %}checked{% endif %}>
+                                                <label class="form-check-label">Manage Employees</label>
+                                            </div>
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" disabled {% if role.can_view_all_data %}checked{% endif %}>
+                                                <label class="form-check-label">View All Data</label>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="ri-calendar-check-line me-2 text-success"></i>
+                                                <h6 class="mb-0">Leave Management</h6>
+                                            </div>
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" disabled {% if role.can_approve_leave %}checked{% endif %}>
+                                                <label class="form-check-label">Approve Leave</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <i class="ri-money-dollar-circle-line me-2 text-warning"></i>
+                                                <h6 class="mb-0">Payroll Management</h6>
+                                            </div>
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" disabled {% if role.can_manage_payroll %}checked{% endif %}>
+                                                <label class="form-check-label">Manage Payroll</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4">
+                                    <h6 class="mb-3">Additional Permissions</h6>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 5px; padding: 15px;">
+                                                <div class="row">
+                                                    {% for permission in permissions %}
+                                                    <div class="col-md-6 mb-3">
+                                                        <span class="badge bg-primary-subtle text-primary p-2 d-inline-block" style="width: 100%; text-align: left;">
+                                                            <i class="ri-check-line me-1"></i> {{ permission.name }}
+                                                        </span>
+                                                    </div>
+                                                    {% empty %}
+                                                    <div class="col-12">
+                                                        <p class="text-muted">No additional permissions assigned.</p>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>                                
+                        
+                        <div class="card border shadow-none">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Users with this Role</h5>
+                                <span class="badge bg-primary rounded-pill">{{ user_count }}</span>
+                            </div>
+                            <div class="card-body">
+                                {% if users %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Employee</th>
+                                                <th>Department</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for user in users %}
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar-xs me-2 bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center">
+                                                            {{ user.first_name|first }}{{ user.last_name|first }}
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-0">{{ user.get_full_name }}</h6>
+                                                            <small class="text-muted">{{ user.employee_code }}</small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>{{ user.department.name|default:"N/A" }}</td>
+                                                <td>
+                                                    {% if user.is_active %}
+                                                    <span class="badge bg-success-subtle text-success">Active</span>
+                                                    {% else %}
+                                                    <span class="badge bg-danger-subtle text-danger">Inactive</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-3">
+                                    <i class="ri-user-search-line fs-48 text-muted mb-2"></i>
+                                    <p class="mb-0">No users currently assigned to this role.</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

@@ -75,7 +75,7 @@ def is_admin_user(user):
 @login_required
 def dashboard_view(request):
     if is_admin_user(request.user):
-        template_name = "dashboard-analytics.html"
+        template_name = "employee/employees-analytics.html"
         context = UnifiedAnalytics.get_complete_dashboard_data()
     else:
         template_name = "index.html"
@@ -113,8 +113,7 @@ def system_statistics_view(request):
         "birthday_notifications": NotificationUtils.get_birthday_notifications(),
     }
 
-    return render(request, "dashboard-analytics.html", context)
-
+    return render(request, "employee/employees-analytics.html", context)
 
 class EmployeeListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = EmployeeProfile
@@ -285,7 +284,7 @@ class EmployeeUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 
     def get_success_url(self):
         return reverse("employee:employee_detail", kwargs={"pk": self.object.employee_profile.pk})
-
+    
 class DepartmentListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = Department
     template_name = "employee/department-list.html" 
@@ -298,16 +297,26 @@ class DepartmentListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     def get_queryset(self):
         return Department.active.annotate(
             employee_count=Count(
-                "customuser__employee_profile",
-                filter=Q(customuser__employee_profile__is_active=True),
+                "employees",
+                filter=Q(employees__is_active=True),
+            ),
+            avg_salary=Avg(
+                "employees__employee_profile__basic_salary",
+                filter=Q(employees__is_active=True),
             )
         ).order_by("name")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["total_departments"] = self.get_queryset().count()
+        departments = self.get_queryset()
+        context["total_departments"] = departments.count()
+        context["total_employees"] = sum(dept.employee_count for dept in departments)
+        context["departments_with_managers"] = departments.exclude(manager=None).count()
+        if departments.count() > 0:
+            context["average_employees_per_dept"] = context["total_employees"] / departments.count()
+        else:
+            context["average_employees_per_dept"] = 0
         return context
-
 
 class DepartmentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     model = Department
@@ -324,23 +333,39 @@ class DepartmentDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
         context = super().get_context_data(**kwargs)
         department = self.object
 
-        context["employees"] = (
+        employees = (
             EmployeeProfile.active.filter(user__department=department)
             .select_related("user")
             .order_by("user__employee_code")
         )
-
-        context["employee_count"] = context["employees"].count()
+        
+        context["employees"] = employees
+        context["employee_count"] = employees.count()
         context["avg_salary"] = (
-            context["employees"].aggregate(avg=Avg("basic_salary"))["avg"] or 0
+            employees.aggregate(avg=Avg("basic_salary"))["avg"] or 0
         )
-
+        
+        male_count = sum(1 for emp in employees if emp.user.gender == 'MALE')
+        female_count = sum(1 for emp in employees if emp.user.gender == 'FEMALE')
+        context["male_count"] = male_count
+        context["female_count"] = female_count
+        
+        if context["employee_count"] > 0:
+            context["male_percentage"] = (male_count / context["employee_count"]) * 100
+            context["female_percentage"] = (female_count / context["employee_count"]) * 100
+        else:
+            context["male_percentage"] = 0
+            context["female_percentage"] = 0
+        
+        context["confirmed_count"] = sum(1 for emp in employees if emp.employment_status == 'CONFIRMED')
+        context["probation_count"] = sum(1 for emp in employees if emp.employment_status == 'PROBATION')
+        context["contract_count"] = sum(1 for emp in employees if emp.employment_status == 'CONTRACT')
+        
         return context
-
 
 class RoleListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = Role
-    template_name = "employee/role-list.html"
+    template_name = "employee/roles-list.html"
     context_object_name = "roles"
     paginate_by = 20
 
@@ -360,7 +385,7 @@ class RoleListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
 
 class RoleDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
     model = Role
-    template_name = "employee/role-detail.html"
+    template_name = "employee/roles-detail.html"
     context_object_name = "role"
 
     def test_func(self):

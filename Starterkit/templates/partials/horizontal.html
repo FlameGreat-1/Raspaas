@@ -22,7 +22,7 @@
                         </a>
                     </li>
                     <li class="pe-slide-item">
-                        <a href="dashboard-analytics.html" class="pe-nav-link">
+                        <a href="employees-analytics.html" class="pe-nav-link">
                             Sales Analytics
                         </a>
                     </li>
@@ -154,7 +154,7 @@
                                 </a>
                                 <ul class="pe-slide-menu collapse" id="collapseTeacher">
                                     <li class="pe-slide-item">
-                                        <a href="apps-teacher.html" class="pe-nav-link">
+                                        <a href="accounts/roles-list.html" class="pe-nav-link">
                                             All Teacher
                                         </a>
                                     </li>
@@ -166,15 +166,10 @@
                                 </ul>
                             </li>
                             <li class="pe-slide-item">
-                                <a href="apps-school-parents.html" class="pe-nav-link">
-                                    Parents
+                                <a href="{% url 'accounts:department_list' %}" class="pe-nav-link">
+                                    Dept. List
                                 </a>
-                            </li>
-                            <li class="pe-slide-item">
-                                <a href="apps-school-courses.html" class="pe-nav-link">
-                                    Course
-                                </a>
-                            </li>
+                            </li>                            
                             <li class="pe-slide-item">
                                 <a href="apps-school-exam.html" class="pe-nav-link">
                                     Exam

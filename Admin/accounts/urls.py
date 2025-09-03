@@ -13,7 +13,7 @@ urlpatterns = [
     # Password Reset URLs
     path('password-reset/', views.CustomPasswordResetView.as_view(), name='password_reset'),
     path('password-reset/done/', views.password_reset_done_view, name='password_reset_done'),
-    path('reset-password/<str:token>/', views.CustomPasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('reset-password/<uidb64>/<token>/', views.CustomPasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('password-reset/complete/', views.password_reset_complete_view, name='password_reset_complete'),
     
     # Password Change URLs

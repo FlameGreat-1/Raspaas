@@ -8,7 +8,8 @@ import uuid
 from datetime import timedelta
 import secrets
 import hashlib
-
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
 
 class ActiveManager(models.Manager):
     def get_queryset(self):
@@ -50,7 +51,6 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault("status", "ACTIVE")
 
         return self.create_user(employee_code, email, password, **extra_fields)
-
 
 class Department(models.Model):
     id = models.AutoField(primary_key=True)
@@ -149,7 +149,7 @@ class Role(models.Model):
     ]
 
     id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=50, choices=ROLE_TYPES, unique=True)
+    name = models.CharField(max_length=50, choices=ROLE_TYPES)
     display_name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     level = models.PositiveIntegerField(default=1)

@@ -154,10 +154,9 @@
                                 </a>
                                 <ul class="pe-slide-menu collapse" id="collapseTeacher">
                                     <li class="pe-slide-item">
-                                        <a href="apps-teacher.html" class="pe-nav-link">
-                                            All Teacher
+                                        <a href="{% url 'accounts:role_list' %}" class="pe-nav-link">
+                                            Roles
                                         </a>
-                                    </li>
                                     <li class="pe-slide-item">
                                         <a href="apps-teacher-schedule.html" class="pe-nav-link">
                                             Schedule
@@ -166,15 +165,10 @@
                                 </ul>
                             </li>
                             <li class="pe-slide-item">
-                                <a href="apps-school-parents.html" class="pe-nav-link">
-                                    Parents
+                                <a href="{% url 'accounts:department_list' %}" class="pe-nav-link">
+                                    Dept. List
                                 </a>
-                            </li>
-                            <li class="pe-slide-item">
-                                <a href="apps-school-courses.html" class="pe-nav-link">
-                                    Course
-                                </a>
-                            </li>
+                            </li>                            
                             <li class="pe-slide-item">
                                 <a href="apps-school-exam.html" class="pe-nav-link">
                                     Exam
@@ -207,7 +201,7 @@
                         </a>
                     </li>
                     <li class="pe-slide-item">
-                        <a href="{% url 'accounts:password_reset_confirm' token='sample-token' %}" class="pe-nav-link">
+                        <a href="{% url 'accounts:password_reset_confirm' uidb64='sample-uidb64' token='sample-token' %}" class="pe-nav-link">
                             Reset Password
                         </a>
                     </li>
