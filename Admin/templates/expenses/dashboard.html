@@ -1,0 +1,351 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Expenses" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Dashboard" title="Expenses"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<!-- Begin page -->
+<div class="row">
+    <div class="col-xxl-8">
+        <div class="row">
+            <div class="col-xxl col-sm-4">
+                <div class="card overflow-hidden">
+                    <div class="card-body bg-info-subtle position-relative z-1">
+                        <div class="d-flex gap-2">
+                            <div class="school-icon bg-info d-flex justify-content-center align-items-center fs-4">
+                                <i class="ri-file-list-3-line" id="hexagon"></i>
+                            </div>
+                            <div class="text-center">
+                                <span class="d-block fw-semibold mb-2 fs-5">Pending Approval</span>
+                                <h4 class="mb-0 fw-semibold">{{ pending_approval }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xxl col-sm-4">
+                <div class="card overflow-hidden">
+                    <div class="card-body bg-success-subtle position-relative z-1">
+                        <div class="d-flex gap-2">
+                            <div class="school-icon bg-success d-flex justify-content-center align-items-center fs-4">
+                                <i class="ri-check-line" id="hexagon"></i>
+                            </div>
+                            <div class="text-center">
+                                <span class="d-block fw-semibold mb-2 fs-5">Approved</span>
+                                <h4 class="mb-0 fw-semibold">{{ approved_expenses }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xxl col-sm-4">
+                <div class="card overflow-hidden">
+                    <div class="card-body bg-danger-subtle position-relative z-1">
+                        <div class="d-flex gap-2">
+                            <div class="school-icon bg-danger d-flex justify-content-center align-items-center fs-4">
+                                <i class="ri-close-line" id="hexagon"></i>
+                            </div>
+                            <div class="text-center">
+                                <span class="d-block fw-semibold mb-2 fs-5">Rejected</span>
+                                <h4 class="mb-0 fw-semibold">{{ rejected_expenses }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-12">
+                <div class="card card-h-100">
+                    <div class="card-header">
+                        <h4>Recent Expenses</h4>
+                        <div class="dropdown">
+                            <a href="javascript:void(0)" data-bs-toggle="dropdown" class="text-body" aria-expanded="false">
+                                <i class="bi bi-three-dots"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{% url 'expenses:expense_list' %}">View All</a></li>
+                                <li><a class="dropdown-item" href="{% url 'expenses:expense_create' %}">Create New</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="expenses-table table-box table-responsive" data-simplebar>
+                            <table class="table table-hover text-nowrap">
+                                <thead class="table-light border-0">
+                                    <tr>
+                                        <th class="text-muted">Reference</th>
+                                        <th class="text-muted">Category</th>
+                                        <th class="text-muted">Type</th>
+                                        <th class="text-muted">Amount</th>
+                                        <th class="text-muted">Status</th>
+                                        <th class="text-muted">Submitted By</th>
+                                        <th class="text-muted">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for expense in recent_expenses %}
+                                    <tr>
+                                        <td class="fw-semibold">
+                                            <a href="{% url 'expenses:expense_detail' expense.id %}">{{ expense.reference_number }}</a>
+                                        </td>
+                                        <td class="fw-semibold">{{ expense.expense_category.name }}</td>
+                                        <td class="fw-semibold">{{ expense.expense_type.name }}</td>
+                                        <td class="fw-semibold">${{ expense.total_amount|floatformat:2 }}</td>
+                                        <td class="py-3">
+                                            {% if expense.status == 'PENDING' or expense.status == 'UNDER_REVIEW' %}
+                                            <span class="badge bg-warning px-3 rounded-3">{{ expense.get_status_display }}</span>
+                                            {% elif expense.status == 'APPROVED' %}
+                                            <span class="badge bg-success px-3 rounded-3">{{ expense.get_status_display }}</span>
+                                            {% elif expense.status == 'REJECTED' %}
+                                            <span class="badge bg-danger px-3 rounded-3">{{ expense.get_status_display }}</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary px-3 rounded-3">{{ expense.get_status_display }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="fw-semibold">{{ expense.submitted_by.get_full_name }}</td>
+                                        <td class="fw-semibold">{{ expense.created_at|date:"d/m/Y" }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center">No recent expenses found.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Expense by Category</h4>
+                        <div class="dropdown">
+                            <a href="javascript:void(0)" data-bs-toggle="dropdown" class="text-body" aria-expanded="false">
+                                <i class="bi bi-three-dots"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="javascript:void(0)">This Week</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0)">This Month</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0)">This Year</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="w-100">
+                            <div id="expenseByCategoryChart"></div>
+                        </div>
+                        <div class="table-responsive mt-3">
+                            <table class="table table-hover text-nowrap">
+                                <thead class="table-light border-0">
+                                    <tr>
+                                        <th class="text-muted">Category</th>
+                                        <th class="text-muted">Count</th>
+                                        <th class="text-muted">Total Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for category in expense_by_category %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ category.expense_category__name }}</td>
+                                        <td class="fw-semibold">{{ category.count }}</td>
+                                        <td class="fw-semibold">${{ category.total|floatformat:2 }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="3" class="text-center">No data available</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-4">
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card overflow-hidden">
+                    <div class="card-body bg-primary-subtle position-relative z-1">
+                        <div class="position-relative z-1 h-100">
+                            <h2 class="text-primary">Total Expenses</h2>
+                            <h1 class="text-primary">${{ total_expenses_amount|floatformat:2 }}</h1>
+                            <div class="d-flex justify-content-between mt-4">
+                                <div>
+                                    <span class="text-muted fs-18">Employee</span>
+                                    <h3 class="text-primary">${{ employee_expenses|floatformat:2 }}</h3>
+                                </div>
+                                <div>
+                                    <span class="text-muted fs-18">Operational</span>
+                                    <h3 class="text-primary">${{ operational_expenses|floatformat:2 }}</h3>
+                                </div>
+                            </div>
+                            <a href="{% url 'expenses:expense_list' %}" class="btn btn-primary mt-3">View All Expenses</a>
+                        </div>
+                        <div>
+                            <img src="/static/assets/images/dashboard/expense-bg.png" alt="Expense Background" class="position-absolute end-0 bottom-0 opacity-25 img-fluid">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Expense by Status</h4>
+                        <div class="dropdown">
+                            <a href="javascript:void(0)" data-bs-toggle="dropdown" class="text-body" aria-expanded="false">
+                                <i class="bi bi-three-dots"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="javascript:void(0)">This Week</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0)">This Month</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0)">This Year</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="expenseByStatusChart"></div>
+                        <div class="d-flex flex-wrap justify-content-center mt-3">
+                            {% for status in expense_by_status %}
+                            <div class="px-3 py-2">
+                                <div class="d-flex align-items-center">
+                                    <div class="status-indicator bg-{{ status.status|lower }}-subtle me-2"></div>
+                                    <span>{{ status.status }}</span>
+                                    <span class="ms-2 fw-semibold">{{ status.count }}</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>Expense by Department</h4>
+                        <div class="dropdown">
+                            <a href="javascript:void(0)" data-bs-toggle="dropdown" class="text-body" aria-expanded="false">
+                                <i class="bi bi-three-dots"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="javascript:void(0)">This Week</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0)">This Month</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0)">This Year</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover text-nowrap">
+                                <thead class="table-light border-0">
+                                    <tr>
+                                        <th class="text-muted">Department</th>
+                                        <th class="text-muted">Count</th>
+                                        <th class="text-muted">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for dept in expense_by_department %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ dept.department__name }}</td>
+                                        <td class="fw-semibold">{{ dept.count }}</td>
+                                        <td class="fw-semibold">${{ dept.total|floatformat:2 }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="3" class="text-center">No data available</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+{% block javascript %}
+<script src="/static/assets/libs/apexcharts/apexcharts.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Expense by Category Chart
+        var categoryData = [
+            {% for category in expense_by_category %}
+                {{ category.total|floatformat:2 }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+        var categoryLabels = [
+            {% for category in expense_by_category %}
+                "{{ category.expense_category__name }}"{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+        
+        var categoryOptions = {
+            series: categoryData,
+            chart: {
+                type: 'donut',
+                height: 300
+            },
+            labels: categoryLabels,
+            colors: ['#3577f1', '#0ab39c', '#f7b84b', '#f06548', '#299cdb', '#6559cc'],
+            legend: {
+                position: 'bottom'
+            },
+            dataLabels: {
+                enabled: false
+            }
+        };
+        
+        var categoryChart = new ApexCharts(document.querySelector("#expenseByCategoryChart"), categoryOptions);
+        categoryChart.render();
+        
+        // Expense by Status Chart
+        var statusData = [
+            {% for status in expense_by_status %}
+                {{ status.count }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+        var statusLabels = [
+            {% for status in expense_by_status %}
+                "{{ status.status }}"{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+        
+        var statusOptions = {
+            series: statusData,
+            chart: {
+                type: 'pie',
+                height: 300
+            },
+            labels: statusLabels,
+            colors: ['#f7b84b', '#0ab39c', '#f06548', '#3577f1', '#299cdb'],
+            legend: {
+                position: 'bottom'
+            },
+            dataLabels: {
+                enabled: false
+            }
+        };
+        
+        var statusChart = new ApexCharts(document.querySelector("#expenseByStatusChart"), statusOptions);
+        statusChart.render();
+    });
+</script>
+{% endblock %}
+

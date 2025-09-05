@@ -4,7 +4,7 @@
         <a href="index.html" class="d-flex align-items-end logo-main">
             <img height="35" width="34" class="logo-dark" alt="Dark Logo" src="/static/assets/images/logo-md.png">
             <img height="35" width="34" class="logo-light" alt="Light Logo" src="/static/assets/images/logo-md-light.png">
-            <h3 class="text-body-emphasis fw-bolder mb-0 ms-1">Operon</h3>
+            <h3 class="text-body-emphasis fw-bolder mb-0 ms-1">Razpaas</h3>
         </a>
         <button type="button" id="sidebarDefaultArrow" class="btn btn-sm p-0 fs-16 text-body-emphasis ms-auto float-end d-none icon-hover-btn d-none"><i class="ri-arrow-right-line fs-5"></i></button>
         <!--end::Brand Image-->
@@ -158,7 +158,45 @@
                                     </a>
                                 </li>
                             </ul>
-                        </li>                          
+                        </li>    
+                        <li class="pe-slide-item pe-has-sub">
+                            <a href="#collapseExpenses" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseExpenses">
+                                <span class="pe-nav-sub-content">Expenses</span>
+                                <i class="ri-arrow-down-s-line pe-nav-arrow"></i>
+                            </a>
+                            <ul class="pe-slide-menu collapse" id="collapseExpenses">
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'expenses:dashboard' %}" class="pe-nav-link">
+                                        Dashboard
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'expenses:category_list' %}" class="pe-nav-link">
+                                        Categories
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'expenses:type_list' %}" class="pe-nav-link">
+                                        Expense Types
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'expenses:expense_list' %}" class="pe-nav-link">
+                                        All Expenses
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'expenses:expense_create' %}" class="pe-nav-link">
+                                        Create Expense
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'expenses:report' %}" class="pe-nav-link">
+                                        Reports
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>                                              
                         <li class="pe-slide-item pe-has-sub">
                             <a href="#collapseSchool" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseSchool">
                                 <span class="pe-nav-sub-content">Employee</span>

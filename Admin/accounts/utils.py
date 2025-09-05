@@ -229,7 +229,7 @@ def send_password_reset_email(user, token: PasswordResetToken, request):
         context = {
             "user": user,
             "reset_url": reset_url,
-            "company_name": SystemConfiguration.get_setting("COMPANY_NAME", "HR System"),
+            "company_name": SystemConfiguration.get_setting("COMPANY_NAME", "Razpaas"),
             "expires_in_hours": int(SystemConfiguration.get_setting("PASSWORD_RESET_EXPIRY_HOURS", "24")),
         }
 
@@ -266,7 +266,7 @@ def send_welcome_email(user, temporary_password: str, request):
             "employee": user,
             "temp_password": temporary_password,
             "login_url": login_url,
-            "company_name": SystemConfiguration.get_setting("COMPANY_NAME", "Operon"),
+            "company_name": SystemConfiguration.get_setting("COMPANY_NAME", "Razpaas"),
             "logo_url": logo_url,
             "current_year": datetime.now().year
         }
@@ -1020,7 +1020,7 @@ class SystemUtilities:
                     "user": user,
                     "days_until_expiry": warning_days,
                     "change_password_url": "/accounts/change-password/",
-                    "company_name": SystemConfiguration.get_setting("COMPANY_NAME", "HR System"),
+                    "company_name": SystemConfiguration.get_setting("COMPANY_NAME", "Razpaas"),
                 }
 
                 html_message = render_to_string("accounts/emails/password_expiry_warning.html", context)

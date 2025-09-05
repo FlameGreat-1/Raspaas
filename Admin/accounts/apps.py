@@ -51,7 +51,7 @@ class AccountsConfig(AppConfig):
                 {
                     "name": "HR_ADMIN",
                     "display_name": "HR Administrator",
-                    "description": "HR management with employee and payroll access",
+                    "description": "Razpaas with employee and payroll access",
                     "level": 8,
                     "can_manage_employees": True,
                     "can_view_all_data": True,

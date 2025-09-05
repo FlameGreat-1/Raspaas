@@ -1110,7 +1110,7 @@ def sync_hr_system_data(self, employee_data_list):
         failed_syncs = len([r for r in sync_results if not r["success"]])
 
         logger.info(
-            f"HR system sync: {successful_syncs} successful, {failed_syncs} failed"
+            f"Razpaas sync: {successful_syncs} successful, {failed_syncs} failed"
         )
 
         return {
@@ -1122,7 +1122,7 @@ def sync_hr_system_data(self, employee_data_list):
         }
 
     except Exception as exc:
-        logger.error(f"HR system sync failed: {str(exc)}")
+        logger.error(f"Razpaas sync failed: {str(exc)}")
         if self.request.retries < self.max_retries:
             raise self.retry(countdown=300, exc=exc)
         return {"success": False, "error": str(exc)}

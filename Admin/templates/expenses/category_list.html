@@ -1,0 +1,197 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Expense Categories" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Categories" title="Expenses"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<!-- Begin page -->
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h5 class="card-title mb-0 flex-grow-1">Expense Categories</h5>
+                <div class="d-flex gap-2">
+                    <form method="get" class="app-search d-none d-md-block">
+                        <div class="position-relative">
+                            <input type="text" class="form-control" name="search" placeholder="Search categories..." value="{{ search_term }}">
+                            <span class="ri-search-line search-widget-icon"></span>
+                            {% if search_term %}
+                            <a href="{% url 'expenses:category_list' %}" class="ri-close-line search-widget-icon search-widget-icon-close"></a>
+                            {% endif %}
+                        </div>
+                    </form>
+                    <a href="{% url 'expenses:category_create' %}" class="btn btn-primary">
+                        <i class="ri-add-line align-bottom me-1"></i> Add Category
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-nowrap align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">ID</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Code</th>
+                                <th scope="col">Type</th>
+                                <th scope="col">Description</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for category in categories %}
+                            <tr>
+                                <td>{{ category.id }}</td>
+                                <td>{{ category.name }}</td>
+                                <td>{{ category.code }}</td>
+                                <td>
+                                    {% if category.is_employee_expense %}
+                                    <span class="badge bg-info">Employee</span>
+                                    {% elif category.is_operational_expense %}
+                                    <span class="badge bg-primary">Operational</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if category.description %}
+                                    {{ category.description|truncatechars:50 }}
+                                    {% else %}
+                                    <span class="text-muted">No description</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if category.is_active %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <a href="{% url 'expenses:category_update' category.id %}" class="btn btn-sm btn-soft-primary">
+                                            <i class="ri-pencil-line"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-soft-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ category.id }}">
+                                            <i class="ri-delete-bin-line"></i>
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Delete Modal -->
+                                    <div class="modal fade" id="deleteModal{{ category.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ category.id }}" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="deleteModalLabel{{ category.id }}">Confirm Delete</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    Are you sure you want to delete the category <strong>{{ category.name }}</strong>?
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                                                    <form action="{% url 'expenses:category_delete' category.id %}" method="post">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center">
+                                    {% if search_term %}
+                                    No categories found matching "{{ search_term }}".
+                                    {% else %}
+                                    No expense categories found. <a href="{% url 'expenses:category_create' %}">Create one</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Pagination -->
+                {% if is_paginated %}
+                <div class="d-flex justify-content-end mt-4">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if search_term %}&search={{ search_term }}{% endif %}" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_term %}&search={{ search_term }}{% endif %}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item"><a class="page-link" href="?page={{ num }}{% if search_term %}&search={{ search_term }}{% endif %}">{{ num }}</a></li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_term %}&search={{ search_term }}{% endif %}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_term %}&search={{ search_term }}{% endif %}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+{% block javascript %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const searchForm = document.querySelector('.app-search');
+        const searchInput = searchForm.querySelector('input[name="search"]');
+        
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchForm.submit();
+            }
+        });
+        
+        const clearSearchBtn = document.querySelector('.search-widget-icon-close');
+        if (clearSearchBtn) {
+            clearSearchBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                window.location.href = "{% url 'expenses:category_list' %}";
+            });
+        }
+    });
+</script>
+{% endblock %}
+

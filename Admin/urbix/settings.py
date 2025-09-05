@@ -31,7 +31,7 @@ ALLOWED_HOSTS = [
     config("DOMAIN_NAME", default=""),
 ]
 
-# Custom User Model (from HR system)
+# Custom User Model (from Razpaas)
 AUTH_USER_MODEL = "accounts.CustomUser"
 
 # Application definition
@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "employees",
     "attendance",
     "payroll",
+    "expenses",
 ]
 
 MIDDLEWARE = [
@@ -86,7 +87,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "urbix.wsgi.application"
 
-# Database Configuration (HR system enhanced)
+# Database Configuration (Razpaas enhanced)
 if config("DATABASE_URL", default=None):
     # Production Database (PostgreSQL from Render)
     DATABASES = {"default": dj_database_url.parse(config("DATABASE_URL"))}
@@ -115,15 +116,15 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Internationalization (HR system enhanced)
+# Internationalization (Razpaas enhanced)
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = config(
     "TIME_ZONE", default="Asia/Colombo"
-)  # HR system default, configurable
+)  # Razpaas default, configurable
 USE_I18N = True
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images) - Combined URBIX + HR system
+# Static files (CSS, JavaScript, Images) - Combined URBIX + Razpaas
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
@@ -132,10 +133,10 @@ STATICFILES_DIRS = []
 if (BASE_DIR / "static").exists():
     STATICFILES_DIRS.append(BASE_DIR / "static")
 
-# WhiteNoise configuration for static files (HR system)
+# WhiteNoise configuration for static files (Razpaas)
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# Media files (User uploads) - HR system
+# Media files (User uploads) - Razpaas
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
@@ -150,12 +151,12 @@ WEBPACK_LOADER = {
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Authentication URLs (HR system)
+# Authentication URLs (Razpaas)
 LOGIN_URL = "/admin/login/"
 LOGIN_REDIRECT_URL = "/admin/"
 LOGOUT_REDIRECT_URL = "/admin/"
 
-# Celery Configuration (Background Tasks) - HR system
+# Celery Configuration (Background Tasks) - Razpaas
 CELERY_BROKER_URL = config("REDIS_URL", default="redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = config("REDIS_URL", default="redis://localhost:6379/0")
 CELERY_ACCEPT_CONTENT = ["json"]
@@ -164,7 +165,7 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
-# Email Configuration (HR system)
+# Email Configuration (Razpaas)
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com")
 EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
@@ -173,18 +174,18 @@ EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@urbix.com")
 
-# File Upload Settings (HR system)
+# File Upload Settings (Razpaas)
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 FILE_UPLOAD_PERMISSIONS = 0o644
 
-# Production Security Settings (HR system)
+# Production Security Settings (Razpaas)
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
-# SSL/HTTPS Settings (Production) - HR system
+# SSL/HTTPS Settings (Production) - Razpaas
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -197,20 +198,20 @@ else:
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
 
-# Guardian (Object-level permissions) - HR system
+# Guardian (Object-level permissions) - Razpaas
 AUTHENTICATION_BACKENDS = [
     "accounts.manager.MultiFieldAuthBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
 
-# Session Configuration (HR system)
+# Session Configuration (Razpaas)
 SESSION_COOKIE_AGE = 3600  # 1 hour
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 
-# CSRF Configuration (HR system)
+# CSRF Configuration (Razpaas)
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_TRUSTED_ORIGINS = [
@@ -218,7 +219,7 @@ CSRF_TRUSTED_ORIGINS = [
     config("CSRF_TRUSTED_ORIGIN", default="http://localhost:8000"),
 ]
 
-# Cache Configuration (HR system) - COMMENTED OUT FOR TESTING
+# Cache Configuration (Razpaas) - COMMENTED OUT FOR TESTING
 # if config("REDIS_URL", default=None):
 #     CACHES = {
 #         "default": {
@@ -244,7 +245,7 @@ CACHES = {
     }
 }
 
-# Logging Configuration (HR system)
+# Logging Configuration (Razpaas)
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -288,7 +289,7 @@ LOGGING = {
     },
 }
 
-# Payroll Specific Settings (HR system)
+# Payroll Specific Settings (Razpaas)
 PAYROLL_SETTINGS = {
     "DEFAULT_CURRENCY": "LKR",  # Sri Lankan Rupees
     "TAX_RATE": 0.15,  # 15% default tax rate
@@ -298,7 +299,7 @@ PAYROLL_SETTINGS = {
     "MINIMUM_WAGE": 15000,  # LKR per month
 }
 
-# HR System Settings (HR system)
+# Razpaas Settings (Razpaas)
 HR_SETTINGS = {
     "EMPLOYEE_CODE_PREFIX": "EMP",
     "EMPLOYEE_CODE_LENGTH": 6,
@@ -308,7 +309,7 @@ HR_SETTINGS = {
     "SESSION_TIMEOUT": 3600,  # 1 hour
 }
 
-# License System Settings (HR system)
+# License System Settings (Razpaas)
 LICENSE_SETTINGS = {
     "OFFLINE_VALIDATION_DAYS": 30,
     "LICENSE_CHECK_INTERVAL": 24,  # hours
@@ -316,26 +317,26 @@ LICENSE_SETTINGS = {
     "MAX_EMPLOYEES": 1000,
 }
 
-# Internationalization Settings (HR system)
+# Internationalization Settings (Razpaas)
 LOCALE_PATHS = [
     BASE_DIR / "locale",
 ]
 
 ANONYMOUS_USER_NAME = None
 
-# Date and Time Formats (HR system)
+# Date and Time Formats (Razpaas)
 DATE_FORMAT = "Y-m-d"
 TIME_FORMAT = "H:i:s"
 DATETIME_FORMAT = "Y-m-d H:i:s"
 SHORT_DATE_FORMAT = "m/d/Y"
 SHORT_DATETIME_FORMAT = "m/d/Y P"
 
-# Number Formatting (HR system)
+# Number Formatting (Razpaas)
 USE_THOUSAND_SEPARATOR = True
 THOUSAND_SEPARATOR = ","
 DECIMAL_SEPARATOR = "."
 
-# Development Settings (HR system enhanced)
+# Development Settings (Razpaas enhanced)
 if DEBUG:
     try:
         import debug_toolbar
@@ -346,5 +347,5 @@ if DEBUG:
     except ImportError:
         pass
 
-# Environment indicator (HR system)
+# Environment indicator (Razpaas)
 RENDER = config("RENDER", default=False, cast=bool)

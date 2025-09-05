@@ -1,0 +1,269 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Expense Type" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block content %}
+{% with title_sub="Type" title="Expenses"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<!-- Begin page -->
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    {% if form.instance.id %}
+                    Edit Expense Type
+                    {% else %}
+                    Create Expense Type
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger" role="alert">
+                        {% for error in form.non_field_errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.category.id_for_label }}" class="form-label">Category <span class="text-danger">*</span></label>
+                            <select class="form-select {% if form.category.errors %}is-invalid{% endif %}" 
+                                    id="{{ form.category.id_for_label }}" name="{{ form.category.html_name }}" required>
+                                <option value="">Select Category</option>
+                                {% for category in form.fields.category.queryset %}
+                                <option value="{{ category.id }}" {% if form.category.value|stringformat:"i" == category.id|stringformat:"i" %}selected{% endif %}>
+                                    {{ category.name }} {% if category.is_employee_expense %}(Employee){% elif category.is_operational_expense %}(Operational){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            {% if form.category.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.category.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">Select the category this expense type belongs to.</div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">Type Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control {% if form.name.errors %}is-invalid{% endif %}" 
+                                   id="{{ form.name.id_for_label }}" name="{{ form.name.html_name }}" 
+                                   value="{{ form.name.value|default:'' }}" required>
+                            {% if form.name.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.name.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">Enter a descriptive name for the expense type.</div>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.code.id_for_label }}" class="form-label">Type Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control {% if form.code.errors %}is-invalid{% endif %}" 
+                                   id="{{ form.code.id_for_label }}" name="{{ form.code.html_name }}" 
+                                   value="{{ form.code.value|default:'' }}" required>
+                            {% if form.code.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.code.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">Enter a unique code for the expense type (e.g., TRAVEL, MEAL).</div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                            <textarea class="form-control {% if form.description.errors %}is-invalid{% endif %}" 
+                                      id="{{ form.description.id_for_label }}" name="{{ form.description.html_name }}" 
+                                      rows="3">{{ form.description.value|default:'' }}</textarea>
+                            {% if form.description.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.description.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">Provide a detailed description of this expense type.</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input {% if form.requires_receipt.errors %}is-invalid{% endif %}" 
+                                       type="checkbox" id="{{ form.requires_receipt.id_for_label }}" 
+                                       name="{{ form.requires_receipt.html_name }}" 
+                                       {% if form.requires_receipt.value %}checked{% endif %}>
+                                <label class="form-check-label" for="{{ form.requires_receipt.id_for_label }}">
+                                    Requires Receipt
+                                </label>
+                                {% if form.requires_receipt.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.requires_receipt.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <div class="form-text">Check if this expense type requires receipt documentation.</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input {% if form.is_taxable_benefit.errors %}is-invalid{% endif %}" 
+                                       type="checkbox" id="{{ form.is_taxable_benefit.id_for_label }}" 
+                                       name="{{ form.is_taxable_benefit.html_name }}" 
+                                       {% if form.is_taxable_benefit.value %}checked{% endif %}>
+                                <label class="form-check-label" for="{{ form.is_taxable_benefit.id_for_label }}">
+                                    Taxable Benefit
+                                </label>
+                                {% if form.is_taxable_benefit.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.is_taxable_benefit.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <div class="form-text">Check if this expense type is considered a taxable benefit.</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input {% if form.is_reimbursable.errors %}is-invalid{% endif %}" 
+                                       type="checkbox" id="{{ form.is_reimbursable.id_for_label }}" 
+                                       name="{{ form.is_reimbursable.html_name }}" 
+                                       {% if form.is_reimbursable.value %}checked{% endif %}>
+                                <label class="form-check-label" for="{{ form.is_reimbursable.id_for_label }}">
+                                    Reimbursable
+                                </label>
+                                {% if form.is_reimbursable.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.is_reimbursable.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <div class="form-text">Check if this expense type is reimbursable to employees.</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input {% if form.is_purchase_return.errors %}is-invalid{% endif %}" 
+                                       type="checkbox" id="{{ form.is_purchase_return.id_for_label }}" 
+                                       name="{{ form.is_purchase_return.html_name }}" 
+                                       {% if form.is_purchase_return.value %}checked{% endif %}>
+                                <label class="form-check-label" for="{{ form.is_purchase_return.id_for_label }}">
+                                    Purchase Return
+                                </label>
+                                {% if form.is_purchase_return.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.is_purchase_return.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <div class="form-text">Check if this expense type is for purchase returns.</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input {% if form.is_active.errors %}is-invalid{% endif %}" 
+                                       type="checkbox" role="switch" id="{{ form.is_active.id_for_label }}" 
+                                       name="{{ form.is_active.html_name }}" 
+                                       {% if form.is_active.value %}checked{% endif %}>
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    Active
+                                </label>
+                                {% if form.is_active.errors %}
+                                <div class="invalid-feedback">
+                                    {% for error in form.is_active.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <div class="form-text">Toggle to activate or deactivate this expense type.</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a href="{% url 'expenses:type_list' %}" class="btn btn-light">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            {% if form.instance.id %}
+                            Update Type
+                            {% else %}
+                            Create Type
+                            {% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get form elements
+        const categorySelect = document.getElementById('{{ form.category.id_for_label }}');
+        const codeInput = document.getElementById('{{ form.code.id_for_label }}');
+        const requiresReceiptCheckbox = document.getElementById('{{ form.requires_receipt.id_for_label }}');
+        const isTaxableBenefitCheckbox = document.getElementById('{{ form.is_taxable_benefit.id_for_label }}');
+        const isReimbursableCheckbox = document.getElementById('{{ form.is_reimbursable.id_for_label }}');
+        const isPurchaseReturnCheckbox = document.getElementById('{{ form.is_purchase_return.id_for_label }}');
+        
+        // Update form fields based on selected category
+        categorySelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const categoryText = selectedOption.text;
+            
+            // Adjust form fields based on category type
+            if (categoryText.includes('(Employee)')) {
+                // Default settings for employee expenses
+                requiresReceiptCheckbox.checked = true;
+                isReimbursableCheckbox.checked = true;
+            } else if (categoryText.includes('(Operational)')) {
+                // Default settings for operational expenses
+                requiresReceiptCheckbox.checked = true;
+                isReimbursableCheckbox.checked = false;
+            }
+        });
+        
+        // When purchase return is checked, adjust other fields
+        isPurchaseReturnCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                isReimbursableCheckbox.checked = false;
+                isTaxableBenefitCheckbox.checked = false;
+            }
+        });
+    });
+</script>
+{% endblock %}
+
+
