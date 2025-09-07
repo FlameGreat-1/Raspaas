@@ -635,7 +635,6 @@ class PurchaseSummary(models.Model):
         self.expense.total_amount = self.total_amount - self.total_returned
         self.expense.save(update_fields=["total_amount"])
 
-
 class ExpenseAuditTrail(models.Model):
     id = models.AutoField(primary_key=True)
     expense = models.ForeignKey(
@@ -667,6 +666,23 @@ class ExpenseAuditTrail(models.Model):
 
     def __str__(self):
         return f"{self.expense.reference} - {self.action} - {self.timestamp}"
+
+    def save(self, *args, **kwargs):
+        if self.previous_state:
+            self.previous_state = self._convert_decimals(self.previous_state)
+        if self.current_state:
+            self.current_state = self._convert_decimals(self.current_state)
+        super().save(*args, **kwargs)
+
+    def _convert_decimals(self, data):
+        if isinstance(data, Decimal):
+            return str(data)
+        elif isinstance(data, dict):
+            return {k: self._convert_decimals(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self._convert_decimals(i) for i in data]
+        return data
+
 
 class ExpenseApprovalWorkflow(models.Model):
     id = models.AutoField(primary_key=True)
@@ -735,7 +751,7 @@ class ExpenseApprovalWorkflow(models.Model):
             return True, "Workflow completed, expense approved"
 
         self.current_step += 1
-        
+
         step_names = ["Employee Request", "Admin/HR Entry", "Review", "Approval", "Disbursement"]
         expense_statuses = [
             ExpenseStatus.SUBMITTED.value,
@@ -744,7 +760,7 @@ class ExpenseApprovalWorkflow(models.Model):
             ExpenseStatus.APPROVED.value,
             ExpenseStatus.DISBURSED.value
         ]
-        
+
         if self.current_step <= len(expense_statuses):
             self.expense.update_status(expense_statuses[self.current_step-1], approved_by)
 
@@ -832,6 +848,7 @@ class ExpenseApprovalStep(models.Model):
         self.save(update_fields=["is_completed", "completed_at", "notes"])
 
         return True, "Step completed successfully"
+
 
 class ExpenseDeductionThreshold(models.Model):
     id = models.AutoField(primary_key=True)

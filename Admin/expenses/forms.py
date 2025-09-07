@@ -11,8 +11,6 @@ from .models import (
     ExpenseDocument,
     PurchaseItem,
     PurchaseSummary,
-    ExpenseApprovalWorkflow,
-    ExpenseApprovalStep,
     ExpenseDeductionThreshold,
     EmployeeDeductionThreshold,
     PayrollExpenseIntegration,
@@ -140,6 +138,7 @@ class ExpenseForm(forms.ModelForm):
             "receipt_attached",
             "notes",
             "approver",
+            "created_by",
         ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 3}),
@@ -150,6 +149,8 @@ class ExpenseForm(forms.ModelForm):
         user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
+        self.fields["currency"].required = False
+        self.fields["notes"].required = False
         if user:
             self.fields["created_by"].initial = user
 
@@ -409,6 +410,10 @@ class PurchaseExpenseForm(forms.ModelForm):
         max_digits=12, decimal_places=2, required=False, initial=Decimal("0.00")
     )
 
+    created_by = forms.ModelChoiceField(
+        queryset=CustomUser.objects.all(), widget=forms.HiddenInput(), required=False
+    )
+
     class Meta:
         model = Expense
         fields = [
@@ -437,6 +442,8 @@ class PurchaseExpenseForm(forms.ModelForm):
             "receipt_attached",
             "notes",
             "approver",
+            "total_amount",
+            "created_by",
         ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 3}),
@@ -616,7 +623,6 @@ class ExpenseStatusUpdateForm(forms.Form):
 
             if expense.status == ExpenseStatus.UNDER_REVIEW.value:
                 self.fields["reason"].required = True
-
 
 class ExpenseFilterForm(forms.Form):
     employee = forms.ModelChoiceField(

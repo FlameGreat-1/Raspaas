@@ -1,0 +1,217 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Search Expenses" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Expense Management" title="Search Expenses"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="card-title mb-0">
+                            <i class="ri-search-line me-2 text-primary"></i>Advanced Expense Search
+                        </h5>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <a href="{% url 'expenses:expense_list' %}" class="btn btn-outline-secondary">
+                            <i class="ri-arrow-left-line me-1"></i>Back to Expenses
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-lg-8 mx-auto">
+        <div class="card">
+            <div class="card-header border-0">
+                <h5 class="card-title mb-0">Search Expense Records</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                        <p class="mb-0"><i class="ri-error-warning-line me-1"></i>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Search Term <span class="text-danger">*</span></label>
+                        {{ form.search_term }}
+                        {% if form.search_term.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.search_term.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">Enter keywords, reference numbers, or employee names to search for</div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Search In</label>
+                        <div class="row">
+                            {% for choice in form.search_in %}
+                            <div class="col-md-6">
+                                <div class="form-check mb-2">
+                                    {{ choice.tag }}
+                                    <label class="form-check-label" for="{{ choice.id_for_label }}">
+                                        {{ choice.choice_label }}
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% if form.search_in.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.search_in.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">Select where to search for the term</div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0">
+                                <i class="ri-information-line fs-18"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h6 class="alert-heading mb-1">Search Tips</h6>
+                                <p class="mb-0">For best results, use specific terms like reference numbers or exact employee names. Partial matches are supported for all search fields.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end mt-4">
+                        <a href="{% url 'expenses:expense_list' %}" class="btn btn-secondary me-2">
+                            <i class="ri-close-line me-1"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ri-search-line me-1"></i>Search Expenses
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-lg-8 mx-auto">
+        <div class="card bg-primary-subtle border-0">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6 class="text-primary mb-2">
+                            <i class="ri-information-line me-2"></i>Search Options
+                        </h6>
+                        <ul class="text-primary mb-0 small">
+                            <li><strong>Reference:</strong> Search by expense reference numbers</li>
+                            <li><strong>Employee Name:</strong> Search by employee first or last name</li>
+                            <li><strong>Description:</strong> Search within expense descriptions</li>
+                            <li><strong>Notes:</strong> Search within expense notes and comments</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'expenses:export' %}" class="btn btn-outline-primary btn-sm">
+                                <i class="ri-download-line me-1"></i>Export Expenses
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if messages %}
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+    {% for message in messages %}
+    <div class="toast align-items-center text-white bg-{{ message.tags }} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+        <div class="d-flex">
+            <div class="toast-body">
+                {% if message.tags == 'success' %}
+                    <i class="ri-check-line me-2"></i>
+                {% elif message.tags == 'error' %}
+                    <i class="ri-error-warning-line me-2"></i>
+                {% elif message.tags == 'warning' %}
+                    <i class="ri-alert-line me-2"></i>
+                {% else %}
+                    <i class="ri-information-line me-2"></i>
+                {% endif %}
+                {{ message }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block script %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toastElList = [].slice.call(document.querySelectorAll('.toast'));
+    const toastList = toastElList.map(function(toastEl) {
+        return new bootstrap.Toast(toastEl);
+    });
+    toastList.forEach(toast => toast.show());
+    
+    const searchInput = document.getElementById('id_search_term');
+    if (searchInput) {
+        searchInput.focus();
+    }
+    
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    const submitButton = document.querySelector('button[type="submit"]');
+    
+    function validateForm() {
+        let atLeastOneChecked = false;
+        checkboxes.forEach(checkbox => {
+            if (checkbox.checked) {
+                atLeastOneChecked = true;
+            }
+        });
+        
+        if (!atLeastOneChecked) {
+            submitButton.disabled = true;
+        } else {
+            submitButton.disabled = false;
+        }
+    }
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', validateForm);
+    });
+    
+    validateForm();
+});
+</script>
+{% endblock %}
+

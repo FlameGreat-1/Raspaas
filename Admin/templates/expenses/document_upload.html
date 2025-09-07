@@ -1,0 +1,214 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Upload Documents" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block content %}
+{% with title_sub="Expense" title="Upload Documents"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0">Upload Document</h4>
+                <div>
+                    <a href="{% url 'expenses:expense_detail' pk=expense.pk %}" class="btn btn-light">
+                        <i class="ri-arrow-left-line align-middle me-1"></i> Back to Expense
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="alert alert-info">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <i class="ri-information-line fs-18 align-middle me-2"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="alert-heading">Expense Information</h5>
+                                    <p class="mb-0">Reference: <strong>{{ expense.reference }}</strong> | Amount: <strong>{{ expense.currency }} {{ expense.total_amount }}</strong></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    {{ form.expense }}
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.document_type.id_for_label }}">Document Type</label>
+                            {{ form.document_type }}
+                            {% if form.document_type.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.document_type.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-4">
+                                {{ form.is_receipt }}
+                                <label class="form-check-label" for="{{ form.is_receipt.id_for_label }}">This is a Receipt</label>
+                            </div>
+                            {% if form.is_receipt.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.is_receipt.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label" for="{{ form.file.id_for_label }}">File</label>
+                            <div class="input-group">
+                                {{ form.file }}
+                            </div>
+                            <small class="text-muted">Allowed file types: PDF, JPG, JPEG, PNG, DOC, DOCX, XLS, XLSX. Maximum size: 10MB</small>
+                            {% if form.file.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.file.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label" for="{{ form.description.id_for_label }}">Description</label>
+                            {{ form.description }}
+                            {% if form.description.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.description.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12 text-end">
+                            <a href="{% url 'expenses:expense_detail' pk=expense.pk %}" class="btn btn-light me-2">Cancel</a>
+                            <button type="submit" name="save_and_continue" class="btn btn-info me-2">Upload & Continue</button>
+                            <button type="submit" class="btn btn-primary">Upload & Return</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-4">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Uploaded Documents</h4>
+            </div>
+            <div class="card-body">
+                {% if documents %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Type</th>
+                                <th>File</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doc in documents %}
+                            <tr>
+                                <td>
+                                    {{ doc.document_type }}
+                                    {% if doc.is_receipt %}
+                                    <span class="badge bg-success rounded-3">Receipt</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="d-block text-truncate" style="max-width: 150px;">{{ doc.file_name }}</small>
+                                    <small class="text-muted">{{ doc.file_size }} KB</small>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <a href="{{ doc.file.url }}" class="btn btn-sm btn-info" target="_blank">
+                                            <i class="ri-eye-line"></i>
+                                        </a>
+                                        <form action="{% url 'expenses:document_delete' pk=doc.pk %}" method="post" onsubmit="return confirm('Are you sure you want to delete this document?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="ri-delete-bin-line"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center py-3">
+                                    <i class="ri-file-search-line fs-24 text-muted mb-2"></i>
+                                    <p class="mb-0">No documents uploaded yet</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="ri-file-upload-line fs-3 text-muted mb-2"></i>
+                    <p class="mb-0">No documents uploaded yet</p>
+                    <p class="text-muted">Use the form to upload expense documents</p>
+                </div>
+                {% endif %}
+                
+                <div class="mt-3">
+                    <div class="alert alert-light border">
+                        <h5 class="alert-heading fs-14">Document Guidelines</h5>
+                        <ul class="mb-0 ps-3">
+                            <li>All receipts must be clearly legible</li>
+                            <li>Include date, vendor name, and amount</li>
+                            <li>For travel expenses, attach itineraries</li>
+                            <li>For meals, note attendees and purpose</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Preview file name when selected
+        const fileInput = document.getElementById('{{ form.file.id_for_label }}');
+        if (fileInput) {
+            fileInput.addEventListener('change', function() {
+                const fileName = this.files[0]?.name || 'No file chosen';
+                const fileSize = this.files[0]?.size || 0;
+                const fileSizeKB = Math.round(fileSize / 1024);
+                
+                const fileInfoElement = document.createElement('div');
+                fileInfoElement.classList.add('mt-2', 'text-muted');
+                fileInfoElement.innerHTML = `Selected: <strong>${fileName}</strong> (${fileSizeKB} KB)`;
+                
+                const existingInfo = this.parentElement.querySelector('.text-muted:not(small)');
+                if (existingInfo) {
+                    existingInfo.remove();
+                }
+                
+                this.parentElement.appendChild(fileInfoElement);
+            });
+        }
+    });
+</script>
+{% endblock %}
+

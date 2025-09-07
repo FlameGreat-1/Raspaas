@@ -1,0 +1,184 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Global Deduction Threshold" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Expense Management" title="Global Deduction Threshold"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xl-8 mx-auto">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="card-title mb-0">
+                            <i class="ri-money-dollar-circle-line me-2 text-primary"></i>Update Global Threshold
+                        </h5>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <a href="{% url 'expenses:threshold_list' %}" class="btn btn-outline-secondary">
+                            <i class="ri-arrow-left-line me-1"></i>Back to Thresholds
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-xl-8 mx-auto">
+        <div class="card">
+            <div class="card-header border-0">
+                <h5 class="card-title mb-0">Global Deduction Threshold Settings</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info mb-4">
+                    <div class="d-flex">
+                        <div class="flex-shrink-0">
+                            <i class="ri-information-line fs-18 align-middle me-2"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h5 class="alert-heading">Important Information</h5>
+                            <p class="mb-0">These settings control the default maximum amount that can be deducted from an employee's salary for expense repayments, and the minimum percentage of salary that must be protected.</p>
+                        </div>
+                    </div>
+                </div>
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.default_threshold_amount.id_for_label }}">Default Threshold Amount <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">LKR</span>
+                                {{ form.default_threshold_amount }}
+                            </div>
+                            <small class="text-muted">Maximum amount that can be deducted per pay period</small>
+                            {% if form.default_threshold_amount.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.default_threshold_amount.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.minimum_salary_protection_percent.id_for_label }}">Minimum Salary Protection (%) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                {{ form.minimum_salary_protection_percent }}
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <small class="text-muted">Minimum percentage of salary that must be protected</small>
+                            {% if form.minimum_salary_protection_percent.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.minimum_salary_protection_percent.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning mb-4">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0">
+                                <i class="ri-alert-line fs-18 align-middle me-2"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h5 class="alert-heading">Warning</h5>
+                                <p class="mb-0">Updating these settings will create a new global threshold. The previous settings will be deactivated but remain in the system for record-keeping purposes.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12 text-end">
+                            <a href="{% url 'expenses:threshold_list' %}" class="btn btn-light me-2">
+                                <i class="ri-close-line me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="ri-save-line me-1"></i>Save Settings
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4 bg-primary-subtle border-0">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-12">
+                        <h6 class="text-primary mb-2">
+                            <i class="ri-information-line me-2"></i>About Deduction Thresholds
+                        </h6>
+                        <ul class="text-primary mb-0 small">
+                            <li>The default threshold amount is the maximum amount that can be deducted from an employee's salary in a single pay period.</li>
+                            <li>The minimum salary protection percentage ensures that employees retain at least this percentage of their salary after deductions.</li>
+                            <li>These settings apply to all employees unless overridden by employee-specific thresholds.</li>
+                            <li>Changes to these settings will not affect existing deduction plans that have already been processed.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if messages %}
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+    {% for message in messages %}
+    <div class="toast align-items-center text-white bg-{{ message.tags }} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+        <div class="d-flex">
+            <div class="toast-body">
+                {% if message.tags == 'success' %}
+                    <i class="ri-check-line me-2"></i>
+                {% elif message.tags == 'error' %}
+                    <i class="ri-error-warning-line me-2"></i>
+                {% elif message.tags == 'warning' %}
+                    <i class="ri-alert-line me-2"></i>
+                {% else %}
+                    <i class="ri-information-line me-2"></i>
+                {% endif %}
+                {{ message }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block script %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toastElList = [].slice.call(document.querySelectorAll('.toast'));
+    const toastList = toastElList.map(function(toastEl) {
+        return new bootstrap.Toast(toastEl);
+    });
+    toastList.forEach(toast => toast.show());
+    
+    const form = document.querySelector('form.needs-validation');
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    });
+});
+</script>
+{% endblock %}
+

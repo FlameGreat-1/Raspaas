@@ -12,6 +12,7 @@ from django.utils import timezone
 from django.core.paginator import Paginator
 from django.core.exceptions import ValidationError
 from django.forms import modelformset_factory, inlineformset_factory
+from django.http import JsonResponse
 from decimal import Decimal
 import csv
 import json
@@ -69,6 +70,7 @@ from .utils import (
     generate_expense_reference,
     apply_threshold_based_deduction, 
     estimate_payroll_cycles,
+    calculate_installment_details,
     get_installment_plan_progress,
     is_valid_status_transition,
     generate_category_report,
@@ -289,6 +291,14 @@ class ExpenseTypeDeleteView(LoginRequiredMixin, View):
         messages.success(request, 'Expense type deleted successfully.')
         return redirect('expenses:type_list')
 
+class ExpenseTypeAPIView(View):
+    def get(self, request):
+        category_id = request.GET.get('category')
+        if not category_id:
+            return JsonResponse([], safe=False)
+            
+        expense_types = ExpenseType.active.filter(category_id=category_id).values('id', 'name')
+        return JsonResponse(list(expense_types), safe=False)
 class ExpenseListView(LoginRequiredMixin, ListView):
     model = Expense
     template_name = 'expenses/expense_list.html'
@@ -516,7 +526,6 @@ class ExpenseStatusUpdateView(LoginRequiredMixin, View):
         
         return redirect('expenses:expense_detail', pk=expense.pk)
 
-
 class ExpenseApprovalView(LoginRequiredMixin, View):
     def post(self, request, pk):
         expense = get_object_or_404(Expense, pk=pk)
@@ -627,7 +636,6 @@ class DocumentDeleteView(LoginRequiredMixin, View):
         messages.success(request, "Document deleted successfully.")
         return redirect("expenses:expense_detail", pk=expense.pk)
 
-
 class PurchaseExpenseCreateView(LoginRequiredMixin, CreateView):
     model = Expense
     form_class = PurchaseExpenseForm
@@ -654,13 +662,17 @@ class PurchaseExpenseCreateView(LoginRequiredMixin, CreateView):
         messages.success(
             self.request, f"Purchase expense {expense.reference} created successfully."
         )
+        
+        # Override the success URL if save_and_add_items is in the POST data
+        if 'save_and_add_items' in self.request.POST:
+            return redirect("expenses:purchase_items", pk=self.object.pk)
+            
         return response
 
     def get_success_url(self):
         if self.object.receipt_attached:
             return reverse("expenses:document_upload", kwargs={"pk": self.object.pk})
-        return reverse("expenses:purchase_items", kwargs={"pk": self.object.pk})
-
+        return reverse("expenses:expense_detail", kwargs={"pk": self.object.pk})
 
 class PurchaseItemsView(LoginRequiredMixin, View):
     def get(self, request, pk):
@@ -825,61 +837,65 @@ class AutoCreateWorkflowMixin:
 
         return workflow, "Standard approval workflow created successfully."
 
-
 class ExpenseCreateView(LoginRequiredMixin, AutoCreateWorkflowMixin, CreateView):
     model = Expense
     form_class = ExpenseForm
-    template_name = 'expenses/expense_form.html'
-    
+    template_name = "expenses/expense_form.html"
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs['user'] = self.request.user
+        kwargs["user"] = self.request.user
         return kwargs
-    
+
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         form.instance.reference = generate_expense_reference()
-        
+
         response = super().form_valid(form)
-        
-        workflow, workflow_message = self.create_standard_workflow(self.object, self.request.user)
+
+        workflow, workflow_message = self.create_standard_workflow(
+            self.object, self.request.user
+        )
         if workflow:
             messages.success(self.request, workflow_message)
-        
+
         expense = self.object
-        
+
         if expense.receipt_attached:
-            messages.info(self.request, 'Please upload receipt documents for this expense.')
-        
-        if expense.add_to_payroll and expense.payroll_effect == PayrollEffect.DEDUCT_IN_INSTALLMENTS.value:
+            messages.info(
+                self.request, "Please upload receipt documents for this expense."
+            )
+
+        if (
+            expense.add_to_payroll
+            and expense.payroll_effect == PayrollEffect.DEDUCT_IN_INSTALLMENTS.value
+        ):
             if not expense.installment_amount:
                 default_threshold = ExpenseDeductionThreshold.get_current_threshold()
                 expense.installment_amount = default_threshold.default_threshold_amount
                 expense.save(update_fields=["installment_amount"])
-            
+
             plan = ExpenseInstallmentPlan.objects.create(
                 expense=expense,
                 total_amount=expense.total_amount,
                 installment_amount=expense.installment_amount,
                 start_date=timezone.now().date(),
-                created_by=self.request.user
+                created_by=self.request.user,
             )
-            
+
             installment_details = calculate_installment_details(
-                expense.total_amount, 
-                expense.installment_amount,
-                plan.start_date
+                expense.total_amount, expense.installment_amount, plan.start_date
             )
-            
-            for installment in installment_details['installments']:
+
+            for installment in installment_details["installments"]:
                 ExpenseInstallment.objects.create(
                     plan=plan,
-                    installment_number=installment['installment_number'],
-                    scheduled_date=installment['date'],
-                    amount=installment['amount'],
-                    remaining_balance=installment['remaining_balance']
+                    installment_number=installment["installment_number"],
+                    scheduled_date=installment["date"],
+                    amount=installment["amount"],
+                    remaining_balance=installment["remaining_balance"],
                 )
-            
+
             ExpenseAuditTrail.objects.create(
                 expense=expense,
                 action="Installment plan created automatically",
@@ -888,20 +904,24 @@ class ExpenseCreateView(LoginRequiredMixin, AutoCreateWorkflowMixin, CreateView)
                     "plan_id": plan.id,
                     "total_amount": str(plan.total_amount),
                     "installment_amount": str(plan.installment_amount),
-                    "number_of_installments": plan.number_of_installments
-                }
+                    "number_of_installments": plan.number_of_installments,
+                },
             )
-            
-            messages.success(self.request, f'Installment plan created with {plan.number_of_installments} installments.')
-        
-        messages.success(self.request, f'Expense {expense.reference} created successfully.')
+
+            messages.success(
+                self.request,
+                f"Installment plan created with {plan.number_of_installments} installments.",
+            )
+
+        messages.success(
+            self.request, f"Expense {expense.reference} created successfully."
+        )
         return response
-    
+
     def get_success_url(self):
         if self.object.receipt_attached:
-            return reverse('expenses:document_upload', kwargs={'pk': self.object.pk})
-        return reverse('expenses:expense_detail', kwargs={'pk': self.object.pk})
-
+            return reverse("expenses:document_upload", kwargs={"pk": self.object.pk})
+        return reverse("expenses:expense_detail", kwargs={"pk": self.object.pk})
 
 class WorkflowAdvanceView(LoginRequiredMixin, View):
     def post(self, request, pk):
@@ -1072,7 +1092,7 @@ class AllInstallmentPlansView(LoginRequiredMixin, ListView):
             plan_data = {
                 'plan': plan,
                 'expense': plan.expense,
-                'expense_date': plan.expense.expense_date,
+                'expense_date': plan.expense.request_date,
                 'expense_type': plan.expense.expense_type,
                 'expense_description': plan.expense.description,
                 'total_amount': plan.total_amount,
@@ -1093,6 +1113,12 @@ class AllInstallmentPlansView(LoginRequiredMixin, ListView):
             all_employees_total += plan.total_amount
             all_employees_processed += progress['processed_amount']
         
+        for employee_id, employee_data in plans_by_employee.items():
+            if employee_data['total_amount'] > 0:
+                employee_data['progress_percentage'] = (employee_data['total_processed'] / employee_data['total_amount'] * 100)
+            else:
+                employee_data['progress_percentage'] = 0
+        
         overall_progress = 0
         if all_employees_total > 0:
             overall_progress = (all_employees_processed / all_employees_total * 100)
@@ -1107,7 +1133,6 @@ class AllInstallmentPlansView(LoginRequiredMixin, ListView):
         context['total_outstanding'] = all_employees_total - all_employees_processed
         
         return context
-
 
 class InstallmentDetailView(LoginRequiredMixin, DetailView):
     model = ExpenseInstallmentPlan
@@ -1132,7 +1157,7 @@ class InstallmentDetailView(LoginRequiredMixin, DetailView):
         
         expense_details = {
             'id': plan.expense.id,
-            'date': plan.expense.expense_date,
+            'date': plan.expense.request_date,
             'type': plan.expense.expense_type,
             'description': plan.expense.description,
             'total_amount': plan.expense.total_amount,
@@ -1190,7 +1215,6 @@ class BatchApprovalView(LoginRequiredMixin, FormView):
         messages.success(self.request, f'{approved_count} expenses approved successfully.')
         return super().form_valid(form)
 
-
 class BatchDisbursementView(LoginRequiredMixin, FormView):
     form_class = ExpenseBatchDisbursementForm
     template_name = 'expenses/batch_disbursement.html'
@@ -1200,7 +1224,11 @@ class BatchDisbursementView(LoginRequiredMixin, FormView):
         form = super().get_form(form_class)
         form.fields['expenses'].queryset = Expense.active.filter(
             status=ExpenseStatus.APPROVED.value,
-            payment_status=PaymentStatus.PENDING.value
+            disbursed_at__isnull=True
+        ).filter(
+            Q(payment_status=PaymentStatus.PAID_BY_EMPLOYEE.value) |
+            Q(payment_status=PaymentStatus.ADVANCE_REQUESTED.value) |
+            Q(payment_status=PaymentStatus.LOAN_REQUESTED.value)
         )
         return form
     
@@ -1212,29 +1240,52 @@ class BatchDisbursementView(LoginRequiredMixin, FormView):
         
         disbursed_count = 0
         for expense in expenses:
-            expense.payment_status = PaymentStatus.PAID.value
-            expense.payment_date = disbursement_date
-            expense.payment_method = payment_method
-            expense.save()
+            previous_state = {
+                'status': expense.status,
+                'payment_status': expense.payment_status,
+                'payment_method': expense.payment_method,
+                'payroll_status': expense.payroll_status,
+                'disbursed_at': expense.disbursed_at
+            }
             
-            ExpenseAuditTrail.objects.create(
-                expense=expense,
-                action="Expense disbursed in batch",
-                user=self.request.user,
-                previous_state={'payment_status': PaymentStatus.PENDING.value},
-                current_state={
-                    'payment_status': PaymentStatus.PAID.value,
-                    'payment_date': str(disbursement_date),
-                    'payment_method': payment_method
-                },
-                notes=notes
+            expense.payment_method = payment_method
+            expense.disbursed_by = self.request.user
+            expense.disbursed_at = timezone.now()
+            expense.disbursement_reference = f"DISB-{timezone.now().strftime('%Y%m%d')}-{expense.id}"
+            
+            if expense.payment_status == PaymentStatus.PAID_BY_EMPLOYEE.value:
+                expense.payroll_status = PayrollStatus.PENDING_ADDITION.value
+            else:
+                expense.payroll_status = PayrollStatus.PENDING_DEDUCTION.value
+            
+            success, message = expense.update_status(
+                ExpenseStatus.DISBURSED.value, 
+                user=self.request.user
             )
             
-            disbursed_count += 1
+            if success:
+                current_state = {
+                    'status': expense.status,
+                    'payment_status': expense.payment_status,
+                    'payment_method': expense.payment_method,
+                    'payroll_status': expense.payroll_status,
+                    'disbursed_at': expense.disbursed_at,
+                    'disbursement_reference': expense.disbursement_reference
+                }
+                
+                ExpenseAuditTrail.objects.create(
+                    expense=expense,
+                    action="Expense disbursed in batch",
+                    user=self.request.user,
+                    previous_state=previous_state,
+                    current_state=current_state,
+                    notes=notes
+                )
+                
+                disbursed_count += 1
         
-        messages.success(self.request, f'{disbursed_count} expenses disbursed successfully.')
+        messages.success(self.request, f'{disbursed_count} expenses disbursed successfully and marked for payroll processing.')
         return super().form_valid(form)
-
 
 class PayrollProcessingView(LoginRequiredMixin, ListView):
     template_name = 'expenses/payroll_processing.html'
@@ -1281,7 +1332,7 @@ class PayrollProcessingView(LoginRequiredMixin, ListView):
         
         for employee_data in expenses_by_employee.values():
             employee_id = employee_data['employee'].id
-            threshold = employee_thresholds.get(employee_id, default_threshold.threshold_amount if default_threshold else Decimal('5000.00'))
+            threshold = employee_thresholds.get(employee_id, default_threshold.default_threshold_amount if default_threshold else Decimal('5000.00'))
             
             total_deductions = employee_data['total_deductions']
             this_cycle_deduction, remaining_deduction = apply_threshold_based_deduction(

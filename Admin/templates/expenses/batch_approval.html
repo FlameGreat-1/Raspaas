@@ -1,0 +1,433 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Batch Expense Approval" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Expense Management" title="Batch Expense Approval"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="card-title mb-0">
+                            <i class="ri-check-double-line me-2 text-primary"></i>Batch Expense Approval
+                            <span class="badge bg-primary-subtle text-primary ms-2">{{ form.fields.expenses.queryset.count }}</span>
+                        </h5>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <a href="{% url 'expenses:expense_list' %}" class="btn btn-outline-secondary">
+                            <i class="ri-arrow-left-line me-1"></i>Back to Expenses
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-0">
+                <h5 class="card-title mb-0">Select Expenses to Approve</h5>
+            </div>
+            <div class="card-body">
+                {% if form.fields.expenses.queryset.exists %}
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                        <p class="mb-0"><i class="ri-error-warning-line me-1"></i>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllBtn">
+                                    <i class="ri-checkbox-multiple-line me-1"></i>Select All
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="deselectAllBtn">
+                                    <i class="ri-checkbox-multiple-blank-line me-1"></i>Deselect All
+                                </button>
+                            </div>
+                            <div class="text-muted small">
+                                <span id="selectedCount">0</span> of {{ form.fields.expenses.queryset.count }} expenses selected
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="border-0" style="width: 40px;">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="headerCheckbox">
+                                            </div>
+                                        </th>
+                                        <th class="border-0">Reference</th>
+                                        <th class="border-0">Employee</th>
+                                        <th class="border-0">Category</th>
+                                        <th class="border-0">Date</th>
+                                        <th class="border-0">Amount</th>
+                                        <th class="border-0">Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for expense in form.fields.expenses.queryset %}
+                                    <tr>
+                                        <td>
+                                            <div class="form-check">
+                                                <input class="form-check-input expense-checkbox" type="checkbox" name="expenses" value="{{ expense.id }}" id="expense_{{ expense.id }}">
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="fw-medium">{{ expense.reference }}</span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-shrink-0 me-2">
+                                                    {% if expense.employee.profile_picture %}
+                                                        <img src="{{ expense.employee.profile_picture.url }}" alt="{{ expense.employee.get_full_name }}" class="avatar-xs rounded-circle">
+                                                    {% else %}
+                                                        <div class="avatar-xs">
+                                                            <span class="avatar-title rounded-circle bg-secondary-subtle text-secondary">
+                                                                {{ expense.employee.first_name|first|upper }}{{ expense.employee.last_name|first|upper }}
+                                                            </span>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-0 fw-medium">{{ expense.employee.get_full_name }}</h6>
+                                                    <small class="text-muted">{{ expense.employee.employee_code }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info-subtle text-info">
+                                                {{ expense.expense_category.name }}
+                                            </span>
+                                            {% if expense.expense_type %}
+                                            <br>
+                                            <small class="text-muted">{{ expense.expense_type.name }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-column">
+                                                <span>{{ expense.date_incurred|date:"M d, Y" }}</span>
+                                                <small class="text-muted">Submitted: {{ expense.created_at|date:"M d, Y" }}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="fw-semibold text-success">${{ expense.total_amount|floatformat:2 }}</span>
+                                            {% if expense.tax_amount %}
+                                            <br>
+                                            <small class="text-muted">Tax: ${{ expense.tax_amount|floatformat:2 }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#expenseDetailModal{{ expense.id }}">
+                                                <i class="ri-eye-line me-1"></i>View
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="ri-information-line me-2"></i>
+                        <strong>Note:</strong> Approving expenses will change their status to "Approved" and make them eligible for payment processing.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Notes (Optional)</label>
+                        {{ form.notes }}
+                        {% if form.notes.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.notes.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">Add any notes or comments about this batch approval.</div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end mt-4">
+                        <a href="{% url 'expenses:expense_list' %}" class="btn btn-secondary me-2">
+                            <i class="ri-close-line me-1"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="approveBtn" disabled>
+                            <i class="ri-check-double-line me-1"></i>Approve Selected Expenses
+                        </button>
+                    </div>
+                </form>
+                {% else %}
+                <div class="text-center py-5">
+                    <div class="avatar-xl mx-auto mb-4">
+                        <div class="avatar-title bg-light text-muted rounded-circle">
+                            <i class="ri-file-list-3-line fs-36"></i>
+                        </div>
+                    </div>
+                    <h5 class="mb-3">No Expenses to Approve</h5>
+                    <p class="text-muted mb-4">
+                        There are currently no expenses pending approval.
+                    </p>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <a href="{% url 'expenses:expense_list' %}" class="btn btn-primary">
+                            <i class="ri-arrow-left-line me-1"></i>Back to Expenses
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% for expense in form.fields.expenses.queryset %}
+<div class="modal fade" id="expenseDetailModal{{ expense.id }}" tabindex="-1" aria-labelledby="expenseDetailModalLabel{{ expense.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="expenseDetailModalLabel{{ expense.id }}">Expense Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Reference</label>
+                            <p class="mb-0 fw-medium">{{ expense.reference }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Employee</label>
+                            <p class="mb-0 fw-medium">{{ expense.employee.get_full_name }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Category</label>
+                            <p class="mb-0">
+                                <span class="badge bg-info-subtle text-info">{{ expense.expense_category.name }}</span>
+                                {% if expense.expense_type %}
+                                <span class="badge bg-light text-dark ms-1">{{ expense.expense_type.name }}</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Department</label>
+                            <p class="mb-0">{{ expense.department.name|default:"Not specified" }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Date Incurred</label>
+                            <p class="mb-0">{{ expense.date_incurred|date:"F d, Y" }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Submitted On</label>
+                            <p class="mb-0">{{ expense.created_at|date:"F d, Y" }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Amount</label>
+                            <p class="mb-0 fw-semibold text-success">${{ expense.total_amount|floatformat:2 }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small">Tax Amount</label>
+                            <p class="mb-0">${{ expense.tax_amount|default:"0.00"|floatformat:2 }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Description</label>
+                    <p class="mb-0">{{ expense.description|default:"No description provided" }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Notes</label>
+                    <p class="mb-0">{{ expense.notes|default:"No notes provided"|linebreaks }}</p>
+                </div>
+                
+                {% if expense.add_to_payroll %}
+                <div class="alert alert-info">
+                    <i class="ri-information-line me-2"></i>
+                    This expense is marked to be added to payroll processing.
+                </div>
+                {% endif %}
+                
+                {% if expense.attachments.exists %}
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Attachments</label>
+                    <div class="row g-2">
+                        {% for attachment in expense.attachments.all %}
+                        <div class="col-md-4">
+                            <div class="card border">
+                                <div class="card-body p-2">
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0 me-2">
+                                            <div class="avatar-xs">
+                                                <div class="avatar-title bg-light text-secondary rounded">
+                                                    <i class="ri-file-text-line"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1 overflow-hidden">
+                                            <p class="mb-0 small text-truncate">{{ attachment.file.name|slice:"10:" }}</p>
+                                            <small class="text-muted">{{ attachment.document_type }}</small>
+                                        </div>
+                                        <div class="flex-shrink-0 ms-2">
+                                            <a href="{{ attachment.file.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                                <i class="ri-download-line"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% if messages %}
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+    {% for message in messages %}
+    <div class="toast align-items-center text-white bg-{{ message.tags }} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+        <div class="d-flex">
+            <div class="toast-body">
+                {% if message.tags == 'success' %}
+                    <i class="ri-check-line me-2"></i>
+                {% elif message.tags == 'error' %}
+                    <i class="ri-error-warning-line me-2"></i>
+                {% elif message.tags == 'warning' %}
+                    <i class="ri-alert-line me-2"></i>
+                {% else %}
+                    <i class="ri-information-line me-2"></i>
+                {% endif %}
+                {{ message }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block script %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toastElList = [].slice.call(document.querySelectorAll('.toast'));
+    const toastList = toastElList.map(function(toastEl) {
+        return new bootstrap.Toast(toastEl);
+    });
+    toastList.forEach(toast => toast.show());
+    
+    const headerCheckbox = document.getElementById('headerCheckbox');
+    const expenseCheckboxes = document.querySelectorAll('.expense-checkbox');
+    const selectedCountElement = document.getElementById('selectedCount');
+    const approveBtn = document.getElementById('approveBtn');
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    const deselectAllBtn = document.getElementById('deselectAllBtn');
+    
+    function updateSelectedCount() {
+        const selectedCount = document.querySelectorAll('.expense-checkbox:checked').length;
+        selectedCountElement.textContent = selectedCount;
+        
+        if (selectedCount > 0) {
+            approveBtn.disabled = false;
+        } else {
+            approveBtn.disabled = true;
+        }
+        
+        if (selectedCount === expenseCheckboxes.length) {
+            headerCheckbox.checked = true;
+            headerCheckbox.indeterminate = false;
+        } else if (selectedCount === 0) {
+            headerCheckbox.checked = false;
+            headerCheckbox.indeterminate = false;
+        } else {
+            headerCheckbox.indeterminate = true;
+        }
+    }
+    
+    headerCheckbox.addEventListener('change', function() {
+        expenseCheckboxes.forEach(checkbox => {
+            checkbox.checked = headerCheckbox.checked;
+        });
+        updateSelectedCount();
+    });
+    
+    expenseCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedCount);
+    });
+    
+    selectAllBtn.addEventListener('click', function() {
+        expenseCheckboxes.forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        updateSelectedCount();
+    });
+    
+    deselectAllBtn.addEventListener('click', function() {
+        expenseCheckboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        updateSelectedCount();
+    });
+    
+    updateSelectedCount();
+});
+</script>
+{% endblock %}
+
+

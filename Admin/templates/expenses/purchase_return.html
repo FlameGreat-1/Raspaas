@@ -1,0 +1,218 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Process Item Return" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Process" title="Item Return"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xl-8 mx-auto">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0">Process Item Return</h4>
+                <div>
+                    <a href="{% url 'expenses:purchase_items' pk=object.expense.pk %}" class="btn btn-light">
+                        <i class="ri-arrow-left-line align-middle me-1"></i> Back to Items
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="alert alert-info">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <i class="ri-information-line fs-18 align-middle me-2"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="alert-heading">Item Information</h5>
+                                    <p class="mb-0">Description: <strong>{{ object.item_description }}</strong></p>
+                                    <p class="mb-0">Quantity: <strong>{{ object.quantity }}</strong> | Unit Cost: <strong>{{ object.expense.currency }} {{ object.unit_cost }}</strong> | Total: <strong>{{ object.expense.currency }} {{ object.total_cost }}</strong></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.return_quantity.id_for_label }}">Return Quantity</label>
+                            {{ form.return_quantity }}
+                            <small class="text-muted">Maximum: {{ object.quantity }}</small>
+                            {% if form.return_quantity.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.return_quantity.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.return_date.id_for_label }}">Return Date</label>
+                            {{ form.return_date }}
+                            {% if form.return_date.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.return_date.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.refund_amount.id_for_label }}">Refund Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">{{ object.expense.currency }}</span>
+                                {{ form.refund_amount }}
+                            </div>
+                            {% if form.refund_amount.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.refund_amount.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.refund_method.id_for_label }}">Refund Method</label>
+                            {{ form.refund_method }}
+                            {% if form.refund_method.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.refund_method.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.return_reason.id_for_label }}">Return Reason</label>
+                            {{ form.return_reason }}
+                            {% if form.return_reason.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.return_reason.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.reference_number.id_for_label }}">Reference Number</label>
+                            {{ form.reference_number }}
+                            {% if form.reference_number.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.reference_number.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label" for="{{ form.notes.id_for_label }}">Notes</label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.notes.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="card border">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0">Return Summary</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <p class="mb-1 text-muted">Original Amount:</p>
+                                            <h5 class="text-primary">{{ object.expense.currency }} {{ object.total_cost }}</h5>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p class="mb-1 text-muted">Refund Amount:</p>
+                                            <h5 class="text-success" id="displayRefundAmount">{{ object.expense.currency }} 0.00</h5>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-md-6">
+                                            <p class="mb-1 text-muted">Original Quantity:</p>
+                                            <h5 class="text-primary">{{ object.quantity }}</h5>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p class="mb-1 text-muted">Return Quantity:</p>
+                                            <h5 class="text-success" id="displayReturnQuantity">0</h5>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12 text-end">
+                            <a href="{% url 'expenses:purchase_items' pk=object.expense.pk %}" class="btn btn-light me-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Process Return</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Calculate refund amount based on return quantity
+        const returnQuantityInput = document.getElementById('{{ form.return_quantity.id_for_label }}');
+        const refundAmountInput = document.getElementById('{{ form.refund_amount.id_for_label }}');
+        const displayRefundAmount = document.getElementById('displayRefundAmount');
+        const displayReturnQuantity = document.getElementById('displayReturnQuantity');
+        
+        const unitCost = {{ object.unit_cost }};
+        const maxQuantity = {{ object.quantity }};
+        
+        function calculateRefund() {
+            let returnQuantity = parseFloat(returnQuantityInput.value) || 0;
+            
+            // Ensure return quantity doesn't exceed maximum
+            if (returnQuantity > maxQuantity) {
+                returnQuantity = maxQuantity;
+                returnQuantityInput.value = maxQuantity;
+            }
+            
+            const refundAmount = returnQuantity * unitCost;
+            refundAmountInput.value = refundAmount.toFixed(2);
+            
+            // Update display values
+            displayRefundAmount.textContent = '{{ object.expense.currency }} ' + refundAmount.toFixed(2);
+            displayReturnQuantity.textContent = returnQuantity;
+        }
+        
+        if (returnQuantityInput && refundAmountInput) {
+            returnQuantityInput.addEventListener('input', calculateRefund);
+            refundAmountInput.addEventListener('input', function() {
+                const refundAmount = parseFloat(refundAmountInput.value) || 0;
+                displayRefundAmount.textContent = '{{ object.expense.currency }} ' + refundAmount.toFixed(2);
+            });
+            
+            // Initialize on page load
+            calculateRefund();
+        }
+    });
+</script>
+{% endblock %}
+

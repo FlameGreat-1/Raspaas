@@ -18,7 +18,9 @@ urlpatterns = [
     path('types/create/', views.ExpenseTypeCreateView.as_view(), name='type_create'),
     path('types/<int:pk>/update/', views.ExpenseTypeUpdateView.as_view(), name='type_update'),
     path('types/<int:pk>/delete/', views.ExpenseTypeDeleteView.as_view(), name='type_delete'),
-    
+
+    path('api/types/', views.ExpenseTypeAPIView.as_view(), name='expense_type_api'),
+
     # Expenses
     path('expenses/', views.ExpenseListView.as_view(), name='expense_list'),
     path('expenses/create/', views.ExpenseCreateView.as_view(), name='expense_create'),

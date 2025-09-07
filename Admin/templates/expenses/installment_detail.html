@@ -1,0 +1,429 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Installment Plan Details" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Expense Management" title="Installment Plan Details"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="card-title mb-0">
+                            <i class="ri-calendar-check-line me-2 text-primary"></i>Installment Plan Details
+                        </h5>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'expenses:all_installment_plans' %}" class="btn btn-outline-secondary">
+                                <i class="ri-arrow-left-line me-1"></i>Back to Plans
+                            </a>
+                            <a href="{% url 'expenses:expense_detail' pk=expense.id %}" class="btn btn-outline-primary">
+                                <i class="ri-file-list-line me-1"></i>View Expense
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header border-0">
+                <h5 class="card-title mb-0">Plan Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="avatar-lg mx-auto mb-3">
+                        <div class="avatar-title bg-primary-subtle text-primary rounded-circle">
+                            <i class="ri-calendar-check-line fs-24"></i>
+                        </div>
+                    </div>
+                    <h4 class="mb-1">LKR {{ plan.total_amount|floatformat:2 }}</h4>
+                    <p class="text-muted mb-0">Total Amount</p>
+                </div>
+                
+                <div class="progress mb-2" style="height: 8px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ progress.progress_percentage|floatformat:0 }}%;" 
+                         aria-valuenow="{{ progress.progress_percentage|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted small">Progress</span>
+                    <span class="text-success fw-medium">{{ progress.progress_percentage|floatformat:1 }}% Complete</span>
+                </div>
+                
+                <div class="mt-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Installment Amount</span>
+                        <span class="fw-medium">LKR {{ plan.installment_amount|floatformat:2 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Number of Installments</span>
+                        <span class="fw-medium">{{ plan.number_of_installments }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Start Date</span>
+                        <span class="fw-medium">{{ plan.start_date|date:"M d, Y" }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">End Date</span>
+                        <span class="fw-medium">{{ plan.end_date|date:"M d, Y" }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Processed Amount</span>
+                        <span class="fw-medium text-success">LKR {{ progress.processed_amount|floatformat:2 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Remaining Amount</span>
+                        <span class="fw-medium text-warning">LKR {{ progress.remaining_amount|floatformat:2 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header border-0">
+                <h5 class="card-title mb-0">Employee Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="flex-shrink-0 me-3">
+                        <div class="avatar-md">
+                            <span class="avatar-title rounded-circle bg-primary-subtle text-primary">
+                                {{ employee.name|slice:":1" }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h5 class="mb-1">{{ employee.name }}</h5>
+                        <p class="text-muted mb-0">{{ employee.employee_id|default:"" }}</p>
+                        <p class="text-muted mb-0">{{ employee.department|default:"" }}</p>
+                        <p class="text-muted mb-0">{{ employee.email }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header border-0">
+                <h5 class="card-title mb-0">Expense Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-column">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Reference</span>
+                        <span class="fw-medium">{{ expense.id }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Date</span>
+                        <span class="fw-medium">{{ expense.date|date:"M d, Y" }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Type</span>
+                        <span class="fw-medium">{{ expense.type }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Amount</span>
+                        <span class="fw-medium">LKR {{ expense.total_amount|floatformat:2 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Status</span>
+                        <span class="badge bg-success-subtle text-success">{{ expense.status }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Payment Status</span>
+                        <span class="badge bg-info-subtle text-info">{{ expense.payment_status }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Payroll Status</span>
+                        <span class="badge bg-primary-subtle text-primary">{{ expense.payroll_status }}</span>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <h6 class="mb-2">Description</h6>
+                    <p class="text-muted mb-0">{{ expense.description }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="card-title mb-0">Installments</h5>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <span class="badge bg-info-subtle text-info">
+                            {{ progress.processed_installments }}/{{ progress.total_installments }} Installments Processed
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="border-0">#</th>
+                                <th class="border-0">Scheduled Date</th>
+                                <th class="border-0">Amount</th>
+                                <th class="border-0">Remaining Balance</th>
+                                <th class="border-0">Status</th>
+                                <th class="border-0">Processed Date</th>
+                                <th class="border-0">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for installment in installments %}
+                            <tr>
+                                <td>{{ installment.installment_number }}</td>
+                                <td>{{ installment.scheduled_date|date:"M d, Y" }}</td>
+                                <td>
+                                    <span class="fw-medium">LKR {{ installment.amount|floatformat:2 }}</span>
+                                </td>
+                                <td>
+                                    <span class="fw-medium">LKR {{ installment.remaining_balance|floatformat:2 }}</span>
+                                </td>
+                                <td>
+                                    {% if installment.is_processed %}
+                                    <span class="badge bg-success-subtle text-success">
+                                        <i class="ri-check-line me-1"></i>Processed
+                                    </span>
+                                    {% else %}
+                                        {% if installment.scheduled_date|date:"Y-m-d" < now|date:"Y-m-d" %}
+                                        <span class="badge bg-warning-subtle text-warning">
+                                            <i class="ri-time-line me-1"></i>Overdue
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-info-subtle text-info">
+                                            <i class="ri-calendar-line me-1"></i>Scheduled
+                                        </span>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if installment.processed_date %}
+                                    {{ installment.processed_date|date:"M d, Y" }}
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="text-muted small">{{ installment.notes|truncatechars:30|default:"-" }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header border-0">
+                <h5 class="card-title mb-0">Payment Timeline</h5>
+            </div>
+            <div class="card-body">
+                <div class="timeline-container">
+                    <ul class="timeline-steps">
+                        {% for installment in installments %}
+                        <li class="timeline-step {% if installment.is_processed %}completed{% elif installment.scheduled_date|date:'Y-m-d' < now|date:'Y-m-d' %}overdue{% else %}pending{% endif %}">
+                            <div class="timeline-content">
+                                <div class="inner-circle">
+                                    {% if installment.is_processed %}
+                                    <i class="ri-check-line"></i>
+                                    {% elif installment.scheduled_date|date:'Y-m-d' < now|date:'Y-m-d' %}
+                                    <i class="ri-time-line"></i>
+                                    {% else %}
+                                    <i class="ri-calendar-line"></i>
+                                    {% endif %}
+                                </div>
+                                <p class="h6 mb-0 mt-2">Installment #{{ installment.installment_number }}</p>
+                                <p class="text-muted mb-0 small">{{ installment.scheduled_date|date:"M d, Y" }}</p>
+                                <p class="mb-0 fw-medium">LKR {{ installment.amount|floatformat:2 }}</p>
+                                {% if installment.is_processed %}
+                                <p class="text-success small mb-0">Processed on {{ installment.processed_date|date:"M d, Y" }}</p>
+                                {% elif installment.scheduled_date|date:'Y-m-d' < now|date:'Y-m-d' %}
+                                <p class="text-warning small mb-0">Overdue</p>
+                                {% else %}
+                                <p class="text-info small mb-0">Upcoming</p>
+                                {% endif %}
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4 bg-primary-subtle border-0">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6 class="text-primary mb-2">
+                            <i class="ri-information-line me-2"></i>About Installment Plans
+                        </h6>
+                        <ul class="text-primary mb-0 small">
+                            <li>Installments are automatically processed through payroll on the scheduled dates</li>
+                            <li>Deduction amounts are subject to threshold limits</li>
+                            <li>If an installment cannot be fully processed due to threshold limits, the remaining amount will be carried forward</li>
+                            <li>Contact the finance department for any adjustments to the installment plan</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'expenses:threshold_list' %}" class="btn btn-outline-primary btn-sm">
+                                <i class="ri-settings-line me-1"></i>Threshold Settings
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if messages %}
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+    {% for message in messages %}
+    <div class="toast align-items-center text-white bg-{{ message.tags }} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+        <div class="d-flex">
+            <div class="toast-body">
+                {% if message.tags == 'success' %}
+                    <i class="ri-check-line me-2"></i>
+                {% elif message.tags == 'error' %}
+                    <i class="ri-error-warning-line me-2"></i>
+                {% elif message.tags == 'warning' %}
+                    <i class="ri-alert-line me-2"></i>
+                {% else %}
+                    <i class="ri-information-line me-2"></i>
+                {% endif %}
+                {{ message }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+<style>
+    .timeline-container {
+        width: 100%;
+        padding: 20px 0;
+        position: relative;
+        overflow-x: auto;
+    }
+    
+    .timeline-steps {
+        display: flex;
+        justify-content: space-between;
+        min-width: 100%;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .timeline-step {
+        list-style-type: none;
+        flex: 1;
+        text-align: center;
+        position: relative;
+        padding: 0 10px;
+    }
+    
+    .timeline-step:not(:last-child):after {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        width: 100%;
+        height: 2px;
+        background-color: #e9ecef;
+        z-index: 0;
+    }
+    
+    .timeline-step.completed:not(:last-child):after {
+        background-color: #28a745;
+    }
+    
+    .timeline-step.overdue:not(:last-child):after {
+        background-color: #ffc107;
+    }
+    
+    .timeline-content {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .inner-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        background-color: #e9ecef;
+        color: #6c757d;
+    }
+    
+    .timeline-step.completed .inner-circle {
+        background-color: #d4edda;
+        color: #28a745;
+    }
+    
+    .timeline-step.overdue .inner-circle {
+        background-color: #fff3cd;
+        color: #ffc107;
+    }
+    
+    .timeline-step.pending .inner-circle {
+        background-color: #d1ecf1;
+        color: #17a2b8;
+    }
+</style>
+{% endblock %}
+
+{% block script %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toastElList = [].slice.call(document.querySelectorAll('.toast'));
+    const toastList = toastElList.map(function(toastEl) {
+        return new bootstrap.Toast(toastEl);
+    });
+    toastList.forEach(toast => toast.show());
+    
+    const choicesElements = document.querySelectorAll('.form-select');
+    choicesElements.forEach(element => {
+        new Choices(element, {
+            searchEnabled: false,
+            removeItemButton: false,
+            shouldSort: false
+        });
+    });
+});
+</script>
+{% endblock %}

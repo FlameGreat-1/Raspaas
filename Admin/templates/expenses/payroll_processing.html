@@ -1,0 +1,345 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Payroll Processing" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Expense Management" title="Payroll Processing"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="card-title mb-0">
+                            <i class="ri-money-dollar-box-line me-2 text-primary"></i>Payroll Processing
+                            <span class="badge bg-primary-subtle text-primary ms-2">{{ total_pending_expenses }}</span>
+                        </h5>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <a href="{% url 'expenses:expense_list' %}" class="btn btn-outline-secondary">
+                            <i class="ri-arrow-left-line me-1"></i>Back to Expenses
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card border">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="flex-shrink-0">
+                                        <div class="avatar-sm">
+                                            <div class="avatar-title bg-primary-subtle text-primary rounded">
+                                                <i class="ri-file-list-3-line"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-0">Total Pending Expenses</h6>
+                                        <p class="text-muted mb-0">{{ total_pending_expenses }} expenses</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="flex-shrink-0">
+                                        <div class="avatar-sm">
+                                            <div class="avatar-title bg-success-subtle text-success rounded">
+                                                <i class="ri-money-dollar-circle-line"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-0">Total Pending Amount</h6>
+                                        <p class="text-muted mb-0">${{ total_pending_amount|floatformat:2 }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="flex-shrink-0">
+                                        <div class="avatar-sm">
+                                            <div class="avatar-title bg-info-subtle text-info rounded">
+                                                <i class="ri-user-line"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-0">Affected Employees</h6>
+                                        <p class="text-muted mb-0">{{ expenses_by_employee|length }} employees</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-0">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="card-title mb-0">Expenses Pending Payroll Processing</h5>
+                    </div>
+                    <div class="col-auto">
+                        {% if default_threshold %}
+                        <span class="badge bg-light text-dark">
+                            <i class="ri-information-line me-1"></i>Default Deduction Threshold: ${{ default_threshold.default_threshold_amount|floatformat:2 }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if expenses_by_employee %}
+                <div class="accordion" id="employeeExpensesAccordion">
+                    {% for employee_name, data in expenses_by_employee.items %}
+                    <div class="accordion-item border mb-3">
+                        <h2 class="accordion-header" id="heading{{ forloop.counter }}">
+                            <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ forloop.counter }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="collapse{{ forloop.counter }}">
+                                <div class="d-flex align-items-center w-100">
+                                    <div class="flex-shrink-0 me-3">
+                                        {% if data.employee.profile_picture %}
+                                            <img src="{{ data.employee.profile_picture.url }}" alt="{{ employee_name }}" class="avatar-sm rounded-circle">
+                                        {% else %}
+                                            <div class="avatar-sm">
+                                                <span class="avatar-title rounded-circle bg-secondary-subtle text-secondary">
+                                                    {{ data.employee.first_name|first|upper }}{{ data.employee.last_name|first|upper }}
+                                                </span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0">{{ employee_name }}</h6>
+                                        <p class="text-muted mb-0 small">{{ data.employee.employee_code }} | {{ data.expenses|length }} expenses</p>
+                                    </div>
+                                    <div class="flex-shrink-0 ms-3 text-end">
+                                        <div class="d-flex flex-column">
+                                            {% if data.total_additions > 0 %}
+                                            <span class="badge bg-success-subtle text-success mb-1">
+                                                <i class="ri-add-line me-1"></i>Add: ${{ data.total_additions|floatformat:2 }}
+                                            </span>
+                                            {% endif %}
+                                            {% if data.total_deductions > 0 %}
+                                            <span class="badge bg-danger-subtle text-danger">
+                                                <i class="ri-subtract-line me-1"></i>Deduct: ${{ data.total_deductions|floatformat:2 }}
+                                            </span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </button>
+                        </h2>
+                        <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="heading{{ forloop.counter }}" data-bs-parent="#employeeExpensesAccordion">
+                            <div class="accordion-body">
+                                <div class="mb-4">
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="card border bg-light">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">Payroll Processing Summary</h6>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm table-borderless mb-0">
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td class="text-muted">Total Additions:</td>
+                                                                    <td class="text-success fw-medium">${{ data.total_additions|floatformat:2 }}</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td class="text-muted">Total Deductions:</td>
+                                                                    <td class="text-danger fw-medium">${{ data.total_deductions|floatformat:2 }}</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td class="text-muted">This Cycle Deduction:</td>
+                                                                    <td class="fw-medium">${{ data.this_cycle_deduction|floatformat:2 }}</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td class="text-muted">Remaining Deduction:</td>
+                                                                    <td class="fw-medium">${{ data.remaining_deduction|floatformat:2 }}</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td class="text-muted">Estimated Payroll Cycles:</td>
+                                                                    <td class="fw-medium">{{ data.estimated_cycles }}</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td class="text-muted">Status:</td>
+                                                                    <td>
+                                                                        <span class="badge bg-info-subtle text-info">
+                                                                            <i class="ri-time-line me-1"></i>Pending Payroll Processing
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <h6 class="mb-3">Expense Details</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="border-0">Reference</th>
+                                                <th class="border-0">Category</th>
+                                                <th class="border-0">Date</th>
+                                                <th class="border-0">Amount</th>
+                                                <th class="border-0">Payment Status</th>
+                                                <th class="border-0">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for expense in data.expenses %}
+                                            <tr>
+                                                <td>
+                                                    <span class="fw-medium">{{ expense.reference }}</span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-info-subtle text-info">
+                                                        {{ expense.expense_category.name }}
+                                                    </span>
+                                                    {% if expense.expense_type %}
+                                                    <br>
+                                                    <small class="text-muted">{{ expense.expense_type.name }}</small>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex flex-column">
+                                                        <span>{{ expense.date_incurred|date:"M d, Y" }}</span>
+                                                        <small class="text-muted">Approved: {{ expense.approved_date|date:"M d, Y" }}</small>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="fw-semibold {% if expense.payment_status == 'PAID_BY_EMPLOYEE' %}text-success{% else %}text-danger{% endif %}">
+                                                        {% if expense.payment_status == 'PAID_BY_EMPLOYEE' %}+{% else %}-{% endif %}${{ expense.total_amount|floatformat:2 }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {% if expense.payment_status == 'PAID_BY_EMPLOYEE' %}
+                                                    <span class="badge bg-success-subtle text-success">
+                                                        <i class="ri-add-line me-1"></i>Add to Payroll
+                                                    </span>
+                                                    {% else %}
+                                                    <span class="badge bg-danger-subtle text-danger">
+                                                        <i class="ri-subtract-line me-1"></i>Deduct from Payroll
+                                                    </span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex gap-1">
+                                                        <a href="{% url 'expenses:expense_detail' expense.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                                            <i class="ri-eye-line"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <div class="avatar-xl mx-auto mb-4">
+                        <div class="avatar-title bg-light text-muted rounded-circle">
+                            <i class="ri-money-dollar-box-line fs-36"></i>
+                        </div>
+                    </div>
+                    <h5 class="mb-3">No Expenses Pending Payroll Processing</h5>
+                    <p class="text-muted mb-4">
+                        There are currently no expenses marked for payroll processing.
+                    </p>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <a href="{% url 'expenses:expense_list' %}" class="btn btn-primary">
+                            <i class="ri-arrow-left-line me-1"></i>Back to Expenses
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if messages %}
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+    {% for message in messages %}
+    <div class="toast align-items-center text-white bg-{{ message.tags }} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+        <div class="d-flex">
+            <div class="toast-body">
+                {% if message.tags == 'success' %}
+                    <i class="ri-check-line me-2"></i>
+                {% elif message.tags == 'error' %}
+                    <i class="ri-error-warning-line me-2"></i>
+                {% elif message.tags == 'warning' %}
+                    <i class="ri-alert-line me-2"></i>
+                {% else %}
+                    <i class="ri-information-line me-2"></i>
+                {% endif %}
+                {{ message }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block script %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toastElList = [].slice.call(document.querySelectorAll('.toast'));
+    const toastList = toastElList.map(function(toastEl) {
+        return new bootstrap.Toast(toastEl);
+    });
+    toastList.forEach(toast => toast.show());
+    
+    const choicesElements = document.querySelectorAll('select');
+    choicesElements.forEach(element => {
+        new Choices(element, {
+            searchEnabled: false,
+            removeItemButton: false,
+            shouldSort: false
+        });
+    });
+});
+</script>
+{% endblock %}
+

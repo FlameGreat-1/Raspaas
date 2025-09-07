@@ -158,7 +158,7 @@
                                     </a>
                                 </li>
                             </ul>
-                        </li>    
+                        </li>  
                         <li class="pe-slide-item pe-has-sub">
                             <a href="#collapseExpenses" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseExpenses">
                                 <span class="pe-nav-sub-content">Expenses</span>
@@ -185,18 +185,75 @@
                                         All Expenses
                                     </a>
                                 </li>
+                                <li class="pe-slide-item pe-has-sub">
+                                    <a href="#collapseCreateExpense" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseCreateExpense">
+                                        <span class="pe-nav-sub-content">Create Expense</span>
+                                        <i class="ri-arrow-down-s-line pe-nav-arrow"></i>
+                                    </a>
+                                    <ul class="pe-slide-menu collapse" id="collapseCreateExpense">
+                                        <li class="pe-slide-item">
+                                            <a href="{% url 'expenses:expense_create' %}" class="pe-nav-link">
+                                                Regular Expense
+                                            </a>
+                                        </li>
+                                        <li class="pe-slide-item">
+                                            <a href="{% url 'expenses:purchase_create' %}" class="pe-nav-link">
+                                                Purchase Expense
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
                                 <li class="pe-slide-item">
-                                    <a href="{% url 'expenses:expense_create' %}" class="pe-nav-link">
-                                        Create Expense
+                                    <a href="{% url 'expenses:batch_approval' %}" class="pe-nav-link">
+                                        Batch Approval
                                     </a>
                                 </li>
                                 <li class="pe-slide-item">
-                                    <a href="{% url 'expenses:report' %}" class="pe-nav-link">
-                                        Reports
+                                    <a href="{% url 'expenses:batch_disbursement' %}" class="pe-nav-link">
+                                        Batch Disbursement
                                     </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'expenses:payroll_processing' %}" class="pe-nav-link">
+                                        Payroll Processing
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'expenses:all_installment_plans' %}" class="pe-nav-link">
+                                        Installment Plans
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'expenses:threshold_list' %}" class="pe-nav-link">
+                                        Deduction Thresholds
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item pe-has-sub">
+                                    <a href="#collapseExpenseReports" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseExpenseReports">
+                                        <span class="pe-nav-sub-content">Reports & Tools</span>
+                                        <i class="ri-arrow-down-s-line pe-nav-arrow"></i>
+                                    </a>
+                                    <ul class="pe-slide-menu collapse" id="collapseExpenseReports">
+                                        <li class="pe-slide-item">
+                                            <a href="{% url 'expenses:report' %}" class="pe-nav-link">
+                                                Generate Reports
+                                            </a>
+                                        </li>
+                                        <li class="pe-slide-item">
+                                            <a href="{% url 'expenses:export' %}" class="pe-nav-link">
+                                                Export Data
+                                            </a>
+                                        </li>
+                                        <li class="pe-slide-item">
+                                            <a href="{% url 'expenses:search' %}" class="pe-nav-link">
+                                                Advanced Search
+                                            </a>
+                                        </li>
+                                    </ul>
                                 </li>
                             </ul>
-                        </li>                                              
+                        </li>                                               
+                                                                 
                         <li class="pe-slide-item pe-has-sub">
                             <a href="#collapseSchool" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseSchool">
                                 <span class="pe-nav-sub-content">Employee</span>

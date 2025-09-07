@@ -1,0 +1,223 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Purchase Summary" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block content %}
+{% with title_sub="View" title="Purchase Summary"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xl-8 mx-auto">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0">Purchase Summary</h4>
+                <div>
+                    <a href="{% url 'expenses:expense_detail' pk=expense.pk %}" class="btn btn-light">
+                        <i class="ri-arrow-left-line align-middle me-1"></i> Back to Expense
+                    </a>
+                    <a href="{% url 'expenses:purchase_items' pk=expense.pk %}" class="btn btn-primary ms-2">
+                        <i class="ri-shopping-basket-line align-middle me-1"></i> Manage Items
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="alert alert-info">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <i class="ri-information-line fs-18 align-middle me-2"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="alert-heading">Expense Information</h5>
+                                    <p class="mb-0">Reference: <strong>{{ expense.reference }}</strong> | Status: 
+                                        {% if expense.status == 'DRAFT' %}
+                                        <span class="badge bg-secondary px-3 rounded-3">Draft</span>
+                                        {% elif expense.status == 'SUBMITTED' %}
+                                        <span class="badge bg-info px-3 rounded-3">Submitted</span>
+                                        {% elif expense.status == 'UNDER_REVIEW' %}
+                                        <span class="badge bg-warning px-3 rounded-3">Under Review</span>
+                                        {% elif expense.status == 'APPROVED' %}
+                                        <span class="badge bg-success px-3 rounded-3">Approved</span>
+                                        {% elif expense.status == 'REJECTED' %}
+                                        <span class="badge bg-danger px-3 rounded-3">Rejected</span>
+                                        {% elif expense.status == 'DISBURSED' %}
+                                        <span class="badge bg-primary px-3 rounded-3">Disbursed</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary px-3 rounded-3">{{ expense.status }}</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="text-primary">Vendor Information</h5>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <h6 class="text-muted mb-2">Vendor Name</h6>
+                        <p class="fs-16 fw-semibold">{{ purchase_summary.vendor_name }}</p>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <h6 class="text-muted mb-2">Purchase Location</h6>
+                        <p class="fs-16">{{ purchase_summary.purchase_location }}</p>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <h6 class="text-muted mb-2">Purchase Reference</h6>
+                        <p class="fs-16">{{ purchase_summary.purchase_reference|default:"-" }}</p>
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="text-primary">Financial Summary</h5>
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <h6 class="text-muted mb-2">Subtotal</h6>
+                        <p class="fs-16 fw-semibold">{{ expense.currency }} {{ purchase_summary.subtotal }}</p>
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <h6 class="text-muted mb-2">Tax Amount</h6>
+                        <p class="fs-16 fw-semibold">{{ expense.currency }} {{ purchase_summary.tax_amount }}</p>
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <h6 class="text-muted mb-2">Total Amount</h6>
+                        <p class="fs-16 fw-semibold">{{ expense.currency }} {{ purchase_summary.total_amount }}</p>
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <h6 class="text-muted mb-2">Total Returned</h6>
+                        <p class="fs-16 fw-semibold">{{ expense.currency }} {{ purchase_summary.total_returned }}</p>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card border">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Purchase Items</h5>
+                                <span class="badge bg-primary rounded-3">{{ purchase_items|length }} Items</span>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Description</th>
+                                                <th>Quantity</th>
+                                                <th>Unit Cost</th>
+                                                <th>Total Cost</th>
+                                                <th>Return Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in purchase_items %}
+                                            <tr>
+                                                <td>
+                                                    <p class="mb-0 fw-semibold">{{ item.item_description }}</p>
+                                                    {% if item.category %}
+                                                    <small class="text-muted">Category: {{ item.category }}</small>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ item.quantity }}</td>
+                                                <td>{{ expense.currency }} {{ item.unit_cost }}</td>
+                                                <td>{{ expense.currency }} {{ item.total_cost }}</td>
+                                                <td>
+                                                    {% if item.return_status == 'NOT_RETURNABLE' %}
+                                                    <span class="badge bg-secondary px-3 rounded-3">Not Returnable</span>
+                                                    {% elif item.return_status == 'RETURNABLE' %}
+                                                    <span class="badge bg-info px-3 rounded-3">Returnable</span>
+                                                    {% elif item.return_status == 'PENDING' %}
+                                                    <span class="badge bg-warning px-3 rounded-3">Pending Return</span>
+                                                    {% elif item.return_status == 'RETURNED' %}
+                                                    <span class="badge bg-success px-3 rounded-3">Returned</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary px-3 rounded-3">{{ item.return_status }}</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="5" class="text-center py-4">
+                                                    <div class="d-flex flex-column align-items-center">
+                                                        <i class="ri-shopping-basket-line fs-1 text-muted mb-3"></i>
+                                                        <h5>No items found</h5>
+                                                        <p class="text-muted">No purchase items have been added yet.</p>
+                                                        <a href="{% url 'expenses:purchase_items' pk=expense.pk %}" class="btn btn-primary mt-2">Add Items</a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if returned_items %}
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card border">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Returned Items</h5>
+                                <span class="badge bg-success rounded-3">{{ returned_items|length }} Returns</span>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Item</th>
+                                                <th>Return Date</th>
+                                                <th>Quantity</th>
+                                                <th>Refund Amount</th>
+                                                <th>Refund Method</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for return in returned_items %}
+                                            <tr>
+                                                <td>{{ return.purchase_item.item_description }}</td>
+                                                <td>{{ return.return_date }}</td>
+                                                <td>{{ return.return_quantity }}</td>
+                                                <td>{{ expense.currency }} {{ return.refund_amount }}</td>
+                                                <td>{{ return.refund_method }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="row">
+                    <div class="col-12 text-end">
+                        <a href="{% url 'expenses:expense_detail' pk=expense.pk %}" class="btn btn-light me-2">Back to Expense</a>
+                        <a href="{% url 'expenses:purchase_items' pk=expense.pk %}" class="btn btn-primary">Manage Items</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

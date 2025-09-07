@@ -1,0 +1,327 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title=report_title %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Expense Management" title=report_title %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="card-title mb-0">
+                            <i class="ri-bar-chart-box-line me-2 text-primary"></i>{{ report_title }}
+                        </h5>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'expenses:report' %}" class="btn btn-outline-secondary">
+                                <i class="ri-arrow-left-line me-1"></i>Back to Reports
+                            </a>
+                            <div class="dropdown">
+                                <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="ri-download-line me-1"></i>Export
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'expenses:report' %}?report_type={{ report_type }}&date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}&include_details={{ include_details|yesno:'on,' }}&export_format=csv">
+                                            <i class="ri-file-excel-line me-2"></i>CSV
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'expenses:report' %}?report_type={{ report_type }}&date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}&include_details={{ include_details|yesno:'on,' }}&export_format=excel">
+                                            <i class="ri-file-excel-2-line me-2"></i>Excel
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'expenses:report' %}?report_type={{ report_type }}&date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}&include_details={{ include_details|yesno:'on,' }}&export_format=pdf">
+                                            <i class="ri-file-pdf-line me-2"></i>PDF
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="d-flex flex-column">
+                            <div class="mb-2">
+                                <span class="text-muted">Report Type:</span>
+                                <span class="fw-medium ms-2">
+                                    {% if report_type == 'category' %}
+                                        By Category
+                                    {% elif report_type == 'department' %}
+                                        By Department
+                                    {% elif report_type == 'employee' %}
+                                        By Employee
+                                    {% elif report_type == 'status' %}
+                                        By Status
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="mb-2">
+                                <span class="text-muted">Date Range:</span>
+                                <span class="fw-medium ms-2">
+                                    {% if date_from and date_to %}
+                                        {{ date_from|date:"M d, Y" }} to {{ date_to|date:"M d, Y" }}
+                                    {% elif date_from %}
+                                        From {{ date_from|date:"M d, Y" }}
+                                    {% elif date_to %}
+                                        Until {{ date_to|date:"M d, Y" }}
+                                    {% else %}
+                                        All time
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div>
+                                <span class="text-muted">Details Included:</span>
+                                <span class="fw-medium ms-2">{{ include_details|yesno:"Yes,No" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <div class="d-flex flex-column">
+                            <div class="mb-2">
+                                <span class="text-muted">Generated On:</span>
+                                <span class="fw-medium ms-2">{{ now|date:"F d, Y H:i" }}</span>
+                            </div>
+                            <div>
+                                <span class="text-muted">Total Amount:</span>
+                                <span class="fw-semibold text-success ms-2">${{ report_data.total_amount|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <div class="card border">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <h6 class="card-title mb-3">Summary</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>{{ report_type|title }}</th>
+                                                    <th class="text-end">Count</th>
+                                                    <th class="text-end">Amount</th>
+                                                    <th class="text-end">Percentage</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for group in report_data.groups %}
+                                                <tr>
+                                                    <td>
+                                                        {% if report_type == 'category' %}
+                                                            <span class="badge bg-info-subtle text-info">{{ group.name }}</span>
+                                                        {% elif report_type == 'department' %}
+                                                            <span class="badge bg-primary-subtle text-primary">{{ group.name }}</span>
+                                                        {% elif report_type == 'employee' %}
+                                                            <span class="badge bg-secondary-subtle text-secondary">{{ group.name }}</span>
+                                                        {% elif report_type == 'status' %}
+                                                            {% if group.name == 'APPROVED' %}
+                                                                <span class="badge bg-success-subtle text-success">{{ group.name }}</span>
+                                                            {% elif group.name == 'REJECTED' %}
+                                                                <span class="badge bg-danger-subtle text-danger">{{ group.name }}</span>
+                                                            {% elif group.name == 'UNDER_REVIEW' %}
+                                                                <span class="badge bg-warning-subtle text-warning">{{ group.name }}</span>
+                                                            {% elif group.name == 'DRAFT' %}
+                                                                <span class="badge bg-secondary-subtle text-secondary">{{ group.name }}</span>
+                                                            {% else %}
+                                                                <span class="badge bg-light text-dark">{{ group.name }}</span>
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    </td>
+                                                    <td class="text-end">{{ group.count }}</td>
+                                                    <td class="text-end">${{ group.amount|floatformat:2 }}</td>
+                                                    <td class="text-end">{{ group.percentage|floatformat:1 }}%</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                            <tfoot class="table-light">
+                                                <tr>
+                                                    <th>Total</th>
+                                                    <th class="text-end">{{ report_data.total_count }}</th>
+                                                    <th class="text-end">${{ report_data.total_amount|floatformat:2 }}</th>
+                                                    <th class="text-end">100%</th>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6 class="card-title mb-3">Distribution</h6>
+                                    <div class="chart-container" style="height: 250px;">
+                                        <canvas id="reportChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if include_details and report_data.expenses %}
+                <div class="mb-4">
+                    <h6 class="mb-3">Expense Details</h6>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Reference</th>
+                                    <th>Employee</th>
+                                    <th>Category</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for expense in report_data.expenses %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'expenses:expense_detail' expense.id %}" class="text-primary fw-medium">
+                                            {{ expense.reference }}
+                                        </a>
+                                    </td>
+                                    <td>{{ expense.employee.get_full_name }}</td>
+                                    <td>
+                                        <span class="badge bg-info-subtle text-info">
+                                            {{ expense.expense_category.name }}
+                                        </span>
+                                    </td>
+                                    <td>{{ expense.date_incurred|date:"M d, Y" }}</td>
+                                    <td>
+                                        {% if expense.status == 'APPROVED' %}
+                                            <span class="badge bg-success-subtle text-success">
+                                                <i class="ri-check-line me-1"></i>Approved
+                                            </span>
+                                        {% elif expense.status == 'REJECTED' %}
+                                            <span class="badge bg-danger-subtle text-danger">
+                                                <i class="ri-close-line me-1"></i>Rejected
+                                            </span>
+                                        {% elif expense.status == 'UNDER_REVIEW' %}
+                                            <span class="badge bg-warning-subtle text-warning">
+                                                <i class="ri-time-line me-1"></i>Under Review
+                                            </span>
+                                        {% elif expense.status == 'DRAFT' %}
+                                            <span class="badge bg-secondary-subtle text-secondary">
+                                                <i class="ri-draft-line me-1"></i>Draft
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">${{ expense.total_amount|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-light border-0">
+                <div class="text-muted small">
+                    <i class="ri-information-line me-1"></i>
+                    This report was generated based on the criteria specified. For more detailed analysis, you can export the data in various formats.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if messages %}
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+    {% for message in messages %}
+    <div class="toast align-items-center text-white bg-{{ message.tags }} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+        <div class="d-flex">
+            <div class="toast-body">
+                {% if message.tags == 'success' %}
+                    <i class="ri-check-line me-2"></i>
+                {% elif message.tags == 'error' %}
+                    <i class="ri-error-warning-line me-2"></i>
+                {% elif message.tags == 'warning' %}
+                    <i class="ri-alert-line me-2"></i>
+                {% else %}
+                    <i class="ri-information-line me-2"></i>
+                {% endif %}
+                {{ message }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block script %}
+<script src="/static/assets/libs/chart.js/chart.umd.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toastElList = [].slice.call(document.querySelectorAll('.toast'));
+    const toastList = toastElList.map(function(toastEl) {
+        return new bootstrap.Toast(toastEl);
+    });
+    toastList.forEach(toast => toast.show());
+    
+    const ctx = document.getElementById('reportChart').getContext('2d');
+    
+    const labels = [{% for group in report_data.groups %}'{{ group.name }}',{% endfor %}];
+    const data = [{% for group in report_data.groups %}{{ group.amount }},{% endfor %}];
+    const backgroundColors = [
+        'rgba(54, 162, 235, 0.6)',
+        'rgba(255, 99, 132, 0.6)',
+        'rgba(255, 206, 86, 0.6)',
+        'rgba(75, 192, 192, 0.6)',
+        'rgba(153, 102, 255, 0.6)',
+        'rgba(255, 159, 64, 0.6)',
+        'rgba(199, 199, 199, 0.6)',
+        'rgba(83, 102, 255, 0.6)',
+        'rgba(40, 159, 64, 0.6)',
+        'rgba(210, 199, 199, 0.6)'
+    ];
+    
+    const chart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: backgroundColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
+

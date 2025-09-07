@@ -1,0 +1,668 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Expense Details" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/gridjs/theme/mermaid.min.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="View Details" title="Expense"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0">Expense Information</h4>
+                <div class="dropdown">
+                    <a href="#" class="dropdown-toggle card-drop" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="ri-more-2-fill fs-18"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{% url 'expenses:expense_update' pk=expense.pk %}"><i class="ri-pencil-line align-middle me-1"></i> Edit</a></li>
+                        <li><a class="dropdown-item" href="{% url 'expenses:document_upload' pk=expense.pk %}"><i class="ri-file-upload-line align-middle me-1"></i> Upload Documents</a></li>
+                        {% if expense.expense_type.is_purchase_return %}
+                        <li><a class="dropdown-item" href="{% url 'expenses:purchase_items' pk=expense.pk %}"><i class="ri-list-check align-middle me-1"></i> Manage Items</a></li>
+                        <li><a class="dropdown-item" href="{% url 'expenses:purchase_summary' expense_id=expense.pk %}"><i class="ri-file-list-3-line align-middle me-1"></i> Purchase Summary</a></li>
+                        {% endif %}
+                        {% if expense.status == 'DRAFT' or expense.status == 'REJECTED' %}
+                        <li>
+                            <form action="{% url 'expenses:expense_delete' pk=expense.pk %}" method="post" onsubmit="return confirm('Are you sure you want to delete this expense?');">
+                                {% csrf_token %}
+                                <button type="submit" class="dropdown-item text-danger"><i class="ri-delete-bin-line align-middle me-1"></i> Delete</button>
+                            </form>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Reference</h5>
+                            <p class="fs-16 fw-semibold">{{ expense.reference }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Status</h5>
+                            <div>
+                                {% if expense.status == 'DRAFT' %}
+                                <span class="badge bg-secondary px-3 rounded-3 fs-14">Draft</span>
+                                {% elif expense.status == 'SUBMITTED' %}
+                                <span class="badge bg-info px-3 rounded-3 fs-14">Submitted</span>
+                                {% elif expense.status == 'UNDER_REVIEW' %}
+                                <span class="badge bg-warning px-3 rounded-3 fs-14">Under Review</span>
+                                {% elif expense.status == 'APPROVED' %}
+                                <span class="badge bg-success px-3 rounded-3 fs-14">Approved</span>
+                                {% elif expense.status == 'REJECTED' %}
+                                <span class="badge bg-danger px-3 rounded-3 fs-14">Rejected</span>
+                                {% elif expense.status == 'DISBURSED' %}
+                                <span class="badge bg-primary px-3 rounded-3 fs-14">Disbursed</span>
+                                {% else %}
+                                <span class="badge bg-secondary px-3 rounded-3 fs-14">{{ expense.status }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Employee</h5>
+                            <p class="fs-16">{{ expense.employee.get_full_name }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Department</h5>
+                            <p class="fs-16">{{ expense.department.name }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Job Title</h5>
+                            <p class="fs-16">{{ expense.job_title }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Location</h5>
+                            <p class="fs-16">{{ expense.location }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Request Date</h5>
+                            <p class="fs-16">{{ expense.request_date }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Date Incurred</h5>
+                            <p class="fs-16">{{ expense.date_incurred }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Expense Category</h5>
+                            <p class="fs-16">{{ expense.expense_category.name }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Expense Type</h5>
+                            <p class="fs-16">{{ expense.expense_type.name }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Total Amount</h5>
+                            <p class="fs-16 fw-semibold">{{ expense.currency }} {{ expense.total_amount }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Period</h5>
+                            <p class="fs-16">{{ expense.period }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Priority</h5>
+                            <p class="fs-16">
+                                {% if expense.priority == 'HIGH' %}
+                                <span class="badge bg-danger px-3 rounded-3">High</span>
+                                {% elif expense.priority == 'NORMAL' %}
+                                <span class="badge bg-info px-3 rounded-3">Normal</span>
+                                {% elif expense.priority == 'LOW' %}
+                                <span class="badge bg-success px-3 rounded-3">Low</span>
+                                {% else %}
+                                <span class="badge bg-secondary px-3 rounded-3">{{ expense.priority }}</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Payment Status</h5>
+                            <p class="fs-16">
+                                {% if expense.payment_status == 'PENDING' %}
+                                <span class="badge bg-warning px-3 rounded-3">Pending</span>
+                                {% elif expense.payment_status == 'PAID' %}
+                                <span class="badge bg-success px-3 rounded-3">Paid</span>
+                                {% elif expense.payment_status == 'PAID_BY_EMPLOYEE' %}
+                                <span class="badge bg-info px-3 rounded-3">Paid by Employee</span>
+                                {% elif expense.payment_status == 'ADVANCE_REQUESTED' %}
+                                <span class="badge bg-primary px-3 rounded-3">Advance</span>
+                                {% elif expense.payment_status == 'LOAN_REQUESTED' %}
+                                <span class="badge bg-primary px-3 rounded-3">Loan</span>
+                                {% else %}
+                                <span class="badge bg-secondary px-3 rounded-3">{{ expense.payment_status|default:"-" }}</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Payment Method</h5>
+                            <p class="fs-16">{{ expense.payment_method|default:"-" }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Bank Account</h5>
+                            <p class="fs-16">{{ expense.bank_account|default:"-" }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Description</h5>
+                            <p class="fs-16">{{ expense.description }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {% if expense.notes %}
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-4">
+                            <h5 class="text-primary">Notes</h5>
+                            <p class="fs-16">{{ expense.notes }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if expense.rejection_reason %}
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-4">
+                            <h5 class="text-danger">Rejection Reason</h5>
+                            <p class="fs-16">{{ expense.rejection_reason }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if expense.add_to_payroll %}
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card border mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">Payroll Information</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <h6 class="text-primary">Payroll Effect</h6>
+                                            <p class="fs-16">{{ expense.payroll_effect }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <h6 class="text-primary">Payroll Status</h6>
+                                            <p class="fs-16">
+                                                {% if expense.payroll_status %}
+                                                <span class="badge bg-info px-3 rounded-3">{{ expense.payroll_status }}</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary px-3 rounded-3">Not Set</span>
+                                                {% endif %}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <h6 class="text-primary">Installment Amount</h6>
+                                            <p class="fs-16">{{ expense.currency }} {{ expense.installment_amount|default:"0.00" }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% if expense.expense_type.is_purchase_return and purchase_summary %}
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card border mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">Purchase Summary</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <h6 class="text-primary">Vendor Name</h6>
+                                            <p class="fs-16">{{ purchase_summary.vendor_name }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <h6 class="text-primary">Purchase Location</h6>
+                                            <p class="fs-16">{{ purchase_summary.purchase_location }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <h6 class="text-primary">Purchase Reference</h6>
+                                            <p class="fs-16">{{ purchase_summary.purchase_reference|default:"-" }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <h6 class="text-primary">Subtotal</h6>
+                                            <p class="fs-16">{{ expense.currency }} {{ purchase_summary.subtotal }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <h6 class="text-primary">Tax Amount</h6>
+                                            <p class="fs-16">{{ expense.currency }} {{ purchase_summary.tax_amount }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <h6 class="text-primary">Total Returned</h6>
+                                            <p class="fs-16">{{ expense.currency }} {{ purchase_summary.total_returned }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12 text-end">
+                                        <a href="{% url 'expenses:purchase_summary' expense_id=expense.pk %}" class="btn btn-primary btn-sm">View Full Summary</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if purchase_items %}
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card border mb-4">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Purchase Items</h5>
+                                <a href="{% url 'expenses:purchase_items' pk=expense.pk %}" class="btn btn-primary btn-sm">Manage Items</a>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Item Description</th>
+                                                <th>Quantity</th>
+                                                <th>Unit Cost</th>
+                                                <th>Total Cost</th>
+                                                <th>Return Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in purchase_items %}
+                                            <tr>
+                                                <td>{{ item.item_description }}</td>
+                                                <td>{{ item.quantity }}</td>
+                                                <td>{{ expense.currency }} {{ item.unit_cost }}</td>
+                                                <td>{{ expense.currency }} {{ item.total_cost }}</td>
+                                                <td>
+                                                    {% if item.return_status == 'NOT_RETURNABLE' %}
+                                                    <span class="badge bg-secondary px-3 rounded-3">Not Returnable</span>
+                                                    {% elif item.return_status == 'RETURNABLE' %}
+                                                    <span class="badge bg-info px-3 rounded-3">Returnable</span>
+                                                    {% elif item.return_status == 'PENDING' %}
+                                                    <span class="badge bg-warning px-3 rounded-3">Pending Return</span>
+                                                    {% elif item.return_status == 'RETURNED' %}
+                                                    <span class="badge bg-success px-3 rounded-3">Returned</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary px-3 rounded-3">{{ item.return_status }}</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if documents %}
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0">Documents</h4>
+                <a href="{% url 'expenses:document_upload' pk=expense.pk %}" class="btn btn-primary btn-sm">
+                    <i class="ri-upload-2-line align-middle me-1"></i> Upload Documents
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Document Type</th>
+                                <th>File Name</th>
+                                <th>Size</th>
+                                <th>Upload Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doc in documents %}
+                            <tr>
+                                <td>{{ doc.document_type }}</td>
+                                <td>{{ doc.file_name }}</td>
+                                <td>{{ doc.file_size }} KB</td>
+                                <td>{{ doc.upload_date }}</td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <a href="{{ doc.file.url }}" class="btn btn-sm btn-info" target="_blank">
+                                            <i class="ri-eye-line"></i>
+                                        </a>
+                                        <form action="{% url 'expenses:document_delete' pk=doc.pk %}" method="post" onsubmit="return confirm('Are you sure you want to delete this document?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="ri-delete-bin-line"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center">No documents uploaded yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if audit_trail %}
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Audit Trail</h4>
+            </div>
+            <div class="card-body">
+                <div class="timeline-box">
+                    <div class="timeline">
+                        {% for audit in audit_trail %}
+                        <div class="timeline-item">
+                            <div class="timeline-dot bg-primary">
+                                <i class="ri-history-line"></i>
+                            </div>
+                            <div class="timeline-content">
+                                <h5 class="fs-15">{{ audit.action }}</h5>
+                                <p class="text-muted mb-0">{{ audit.timestamp }}</p>
+                                <p class="text-muted mb-0">By: {{ audit.user.get_full_name }}</p>
+                                {% if audit.notes %}
+                                <p class="text-muted mt-2">{{ audit.notes }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Actions</h4>
+            </div>
+            <div class="card-body">
+                {% if expense.status == 'DRAFT' %}
+                <form action="{% url 'expenses:expense_status_update' pk=expense.pk %}" method="post" class="mb-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="status" value="SUBMITTED">
+                    <button type="submit" class="btn btn-primary w-100">Submit for Approval</button>
+                </form>
+                {% endif %}
+
+                {% if expense.status == 'SUBMITTED' %}
+                <form action="{% url 'expenses:expense_status_update' pk=expense.pk %}" method="post" class="mb-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="status" value="UNDER_REVIEW">
+                    <button type="submit" class="btn btn-info w-100">Start Review</button>
+                </form>
+                {% endif %}
+
+                {% if expense.status == 'UNDER_REVIEW' %}
+                <form action="{% url 'expenses:expense_approval' pk=expense.pk %}" method="post" class="mb-3">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Decision</label>
+                        <select name="decision" class="form-select" required>
+                            <option value="">Select Decision</option>
+                            <option value="approve">Approve</option>
+                            <option value="reject">Reject</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-control" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Submit Decision</button>
+                </form>
+                {% endif %}
+
+                {% if expense.status == 'APPROVED' and not expense.disbursed_at %}
+                <form action="{% url 'expenses:expense_disbursement' pk=expense.pk %}" method="post" class="mb-3">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Disbursement Reference</label>
+                        <input type="text" name="disbursement_reference" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Payment Method</label>
+                        <select name="payment_method" class="form-select" required>
+                            <option value="">Select Payment Method</option>
+                            <option value="BANK_TRANSFER">Bank Transfer</option>
+                            <option value="CASH">Cash</option>
+                            <option value="CHECK">Check</option>
+                            <option value="PAYROLL">Payroll</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea name="notes" class="form-control" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Process Disbursement</button>
+                </form>
+                {% endif %}
+
+                {% if expense.status == 'REJECTED' %}
+                <form action="{% url 'expenses:expense_status_update' pk=expense.pk %}" method="post" class="mb-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="status" value="DRAFT">
+                    <button type="submit" class="btn btn-warning w-100">Resubmit as Draft</button>
+                </form>
+                {% endif %}
+
+                {% if expense.status == 'DRAFT' or expense.status == 'REJECTED' %}
+                <form action="{% url 'expenses:expense_delete' pk=expense.pk %}" method="post" class="mb-3" onsubmit="return confirm('Are you sure you want to delete this expense?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger w-100">Delete Expense</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if approval_workflow %}
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Approval Workflow</h4>
+            </div>
+            <div class="card-body">
+                <div class="workflow-progress">
+                    {% for step in approval_steps %}
+                    <div class="workflow-step {% if step.is_completed %}completed{% elif approval_workflow.current_step == step.step_number %}active{% endif %}">
+                        <div class="step-number">{{ step.step_number }}</div>
+                        <div class="step-content">
+                            <h5 class="fs-15">{{ step.name }}</h5>
+                            <p class="text-muted mb-0">{{ step.description }}</p>
+                            {% if step.is_completed %}
+                            <p class="text-success mb-0">
+                                <i class="ri-check-line"></i> Completed on {{ step.completed_at|date:"M d, Y" }}
+                            </p>
+                            {% elif approval_workflow.current_step == step.step_number %}
+                            <p class="text-primary mb-0">
+                                <i class="ri-time-line"></i> In Progress
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if approval_workflow.current_step < approval_workflow.total_steps and not approval_workflow.is_completed %}
+                <div class="mt-4">
+                    <form action="{% url 'expenses:workflow_advance' pk=approval_workflow.pk %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary w-100">Advance to Next Step</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if installment_plan %}
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Installment Plan</h4>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-3">
+                    <div>
+                        <h5 class="text-primary">Total Amount</h5>
+                        <p class="fs-16 fw-semibold">{{ expense.currency }} {{ installment_plan.total_amount }}</p>
+                    </div>
+                    <div>
+                        <h5 class="text-primary">Installment Amount</h5>
+                        <p class="fs-16 fw-semibold">{{ expense.currency }} {{ installment_plan.installment_amount }}</p>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between mb-3">
+                    <div>
+                        <h5 class="text-primary">Start Date</h5>
+                        <p class="fs-16">{{ installment_plan.start_date }}</p>
+                    </div>
+                    <div>
+                        <h5 class="text-primary">Installments</h5>
+                        <p class="fs-16">{{ installment_plan.number_of_installments }}</p>
+                    </div>
+                </div>
+
+                <div class="table-responsive mt-3">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for installment in installments %}
+                            <tr>
+                                <td>{{ installment.installment_number }}</td>
+                                <td>{{ installment.scheduled_date }}</td>
+                                <td>{{ expense.currency }} {{ installment.amount }}</td>
+                                <td>
+                                    {% if installment.is_processed %}
+                                    <span class="badge bg-success px-3 rounded-3">Processed</span>
+                                    {% else %}
+                                    <span class="badge bg-warning px-3 rounded-3">Pending</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Style the workflow steps
+        const workflowSteps = document.querySelectorAll('.workflow-step');
+        workflowSteps.forEach((step, index) => {
+            if (index < workflowSteps.length - 1) {
+                step.classList.add('with-line');
+            }
+        });
+    });
+</script>
+{% endblock %}
+
+
+

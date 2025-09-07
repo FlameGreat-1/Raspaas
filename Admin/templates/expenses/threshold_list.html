@@ -1,0 +1,324 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Expense Deduction Thresholds" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Expense Management" title="Deduction Thresholds"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="card-title mb-0">
+                            <i class="ri-money-dollar-circle-line me-2 text-primary"></i>Deduction Thresholds
+                            <span class="badge bg-primary-subtle text-primary ms-2">{{ thresholds.count }}</span>
+                        </h5>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'expenses:threshold_create' %}" class="btn btn-primary text-nowrap">
+                                <i class="ri-add-line me-1"></i>Update Global Threshold
+                            </a>
+                            <a href="{% url 'expenses:employee_threshold_create' %}" class="btn btn-outline-primary text-nowrap">
+                                <i class="ri-user-add-line me-1"></i>Add Employee Threshold
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header border-0">
+                <h5 class="card-title mb-0">
+                    <i class="ri-settings-line me-2 text-primary"></i>Global Threshold
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="avatar-lg mx-auto mb-3">
+                        <div class="avatar-title bg-primary-subtle text-primary rounded-circle">
+                            <i class="ri-money-dollar-circle-line fs-24"></i>
+                        </div>
+                    </div>
+                    <h4 class="mb-1">LKR {{ current_threshold.default_threshold_amount|floatformat:2 }}</h4>
+                    <p class="text-muted mb-0">Maximum Deduction Amount</p>
+                </div>
+                
+                <div class="progress mb-2" style="height: 8px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ current_threshold.minimum_salary_protection_percent }}%;" 
+                         aria-valuenow="{{ current_threshold.minimum_salary_protection_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted small">Salary Protection</span>
+                    <span class="text-success fw-medium">{{ current_threshold.minimum_salary_protection_percent }}%</span>
+                </div>
+                
+                <div class="mt-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Last Updated</span>
+                        <span class="fw-medium">{{ current_threshold.updated_at|date:"M d, Y" }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Updated By</span>
+                        <span class="fw-medium">{{ current_threshold.created_by.get_full_name|default:"System" }}</span>
+                    </div>
+                </div>
+                
+                <div class="mt-4 text-center">
+                    <a href="{% url 'expenses:threshold_create' %}" class="btn btn-primary">
+                        <i class="ri-edit-line me-1"></i>Update Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="card-title mb-0">
+                            <i class="ri-user-settings-line me-2 text-primary"></i>Employee Thresholds
+                        </h5>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <a href="{% url 'expenses:employee_threshold_create' %}" class="btn btn-sm btn-primary">
+                            <i class="ri-add-line me-1"></i>Add Employee Threshold
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if employee_thresholds %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="border-0">Employee</th>
+                                <th class="border-0">Threshold Amount</th>
+                                <th class="border-0">Salary Protection</th>
+                                <th class="border-0">Effective Period</th>
+                                <th class="border-0">Reason</th>
+                                <th class="border-0">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for threshold in employee_thresholds %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0 me-3">
+                                            {% if threshold.employee.profile_picture %}
+                                                <img src="{{ threshold.employee.profile_picture.url }}" alt="{{ threshold.employee.get_full_name }}" class="avatar-xs rounded-circle">
+                                            {% else %}
+                                                <div class="avatar-xs">
+                                                    <span class="avatar-title rounded-circle bg-secondary-subtle text-secondary">
+                                                        {{ threshold.employee.first_name|first|upper }}{{ threshold.employee.last_name|first|upper }}
+                                                    </span>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1 fw-medium">{{ threshold.employee.get_full_name }}</h6>
+                                            <p class="text-muted mb-0 small">{{ threshold.employee.employee_code|default:threshold.employee.email }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="fw-semibold text-success">LKR {{ threshold.threshold_amount|floatformat:2 }}</span>
+                                </td>
+                                <td>
+                                    {% if threshold.minimum_salary_protection_percent %}
+                                        <div class="progress" style="height: 6px; width: 80px;">
+                                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ threshold.minimum_salary_protection_percent }}%;" 
+                                                aria-valuenow="{{ threshold.minimum_salary_protection_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <small class="mt-1 d-block">{{ threshold.minimum_salary_protection_percent }}%</small>
+                                    {% else %}
+                                        <span class="badge bg-secondary-subtle text-secondary">Global Default</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-column">
+                                        <span class="fw-medium">{{ threshold.effective_from|date:"M d, Y" }}</span>
+                                        {% if threshold.effective_to %}
+                                            <span class="text-muted small">to {{ threshold.effective_to|date:"M d, Y" }}</span>
+                                        {% else %}
+                                            <span class="badge bg-success-subtle text-success small">Ongoing</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="text-muted small">{{ threshold.reason|truncatechars:30|default:"-" }}</span>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        <a href="{% url 'expenses:employee_threshold_update' threshold.pk %}" class="btn btn-sm btn-outline-primary" title="Edit Threshold">
+                                            <i class="ri-edit-line"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" title="Delete Threshold" data-bs-toggle="modal" data-bs-target="#deleteModal{{ threshold.pk }}">
+                                            <i class="ri-delete-bin-line"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <div class="avatar-xl mx-auto mb-4">
+                        <div class="avatar-title bg-light text-muted rounded-circle">
+                            <i class="ri-user-settings-line fs-36"></i>
+                        </div>
+                    </div>
+                    <h5 class="mb-3">No Employee Thresholds</h5>
+                    <p class="text-muted mb-4">
+                        No employee-specific deduction thresholds have been set up yet.
+                        All employees will use the global threshold settings.
+                    </p>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <a href="{% url 'expenses:employee_threshold_create' %}" class="btn btn-primary">
+                            <i class="ri-add-line me-1"></i>Add Employee Threshold
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card bg-primary-subtle border-0">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6 class="text-primary mb-2">
+                            <i class="ri-information-line me-2"></i>About Deduction Thresholds
+                        </h6>
+                        <ul class="text-primary mb-0 small">
+                            <li>Global threshold applies to all employees by default</li>
+                            <li>Employee-specific thresholds override the global settings</li>
+                            <li>Salary protection ensures employees retain a minimum percentage of their salary</li>
+                            <li>Thresholds are used when processing expense deductions through payroll</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'expenses:payroll_processing' %}" class="btn btn-outline-primary btn-sm">
+                                <i class="ri-money-dollar-circle-line me-1"></i>Payroll Processing
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% for threshold in employee_thresholds %}
+<div class="modal fade" id="deleteModal{{ threshold.pk }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ threshold.pk }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel{{ threshold.pk }}">Delete Employee Threshold</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'expenses:employee_threshold_delete' threshold.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <div class="avatar-lg mx-auto mb-3">
+                            <div class="avatar-title bg-danger-subtle text-danger rounded-circle">
+                                <i class="ri-delete-bin-line fs-24"></i>
+                            </div>
+                        </div>
+                        <h5 class="mb-3">Delete Threshold</h5>
+                        <p class="text-muted mb-0">Are you sure you want to delete the threshold for <strong>{{ threshold.employee.get_full_name }}</strong>?</p>
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="ri-alert-line me-2"></i>
+                        <strong>Warning:</strong> This employee will revert to using the global threshold settings.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="ri-delete-bin-line me-1"></i>Delete Threshold
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% if messages %}
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+    {% for message in messages %}
+    <div class="toast align-items-center text-white bg-{{ message.tags }} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+        <div class="d-flex">
+            <div class="toast-body">
+                {% if message.tags == 'success' %}
+                    <i class="ri-check-line me-2"></i>
+                {% elif message.tags == 'error' %}
+                    <i class="ri-error-warning-line me-2"></i>
+                {% elif message.tags == 'warning' %}
+                    <i class="ri-alert-line me-2"></i>
+                {% else %}
+                    <i class="ri-information-line me-2"></i>
+                {% endif %}
+                {{ message }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block script %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toastElList = [].slice.call(document.querySelectorAll('.toast'));
+    const toastList = toastElList.map(function(toastEl) {
+        return new bootstrap.Toast(toastEl);
+    });
+    toastList.forEach(toast => toast.show());
+
+    const choicesElements = document.querySelectorAll('.form-select');
+    choicesElements.forEach(element => {
+        new Choices(element, {
+            searchEnabled: false,
+            removeItemButton: false,
+            shouldSort: false
+        });
+    });
+});
+</script>
+{% endblock %}
+

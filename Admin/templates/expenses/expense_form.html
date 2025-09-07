@@ -1,0 +1,643 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Expense Form" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+<link rel="stylesheet" href="/static/assets/libs/dropzone/min/dropzone.min.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Create/Edit" title="Expense"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-bottom">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h4 class="card-title mb-0">{% if form.instance.pk %}Edit Expense{% else %}Create New Expense{% endif %}</h4>
+                        <p class="text-muted mb-0">Record expense details for tracking and approval</p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <button type="submit" form="expenseForm" class="btn btn-primary text-nowrap">
+                                <i class="ri-save-line me-1"></i>Save Expense
+                            </button>
+                            <a href="{% url 'expenses:expense_list' %}" class="btn btn-outline-secondary text-nowrap">
+                                <i class="ri-arrow-left-line me-1"></i>Cancel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" id="expenseForm" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger" role="alert">
+                        <h6 class="alert-heading">Please correct the following errors:</h6>
+                        {% for error in form.non_field_errors %}
+                        <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-user-3-line me-2"></i>Basic Information
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.employee.id_for_label }}">Employee <span class="text-danger">*</span></label>
+                                            {{ form.employee }}
+                                            {% if form.employee.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.employee.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.department.id_for_label }}">Department</label>
+                                            {{ form.department }}
+                                            {% if form.department.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.department.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Auto-populated from employee profile</div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.job_title.id_for_label }}">Role <span class="text-danger">*</span></label>
+                                            {{ form.job_title }}
+                                            {% if form.job_title.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.job_title.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Enter the employee's role</div>
+                                        </div>                                        
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.location.id_for_label }}">Location <span class="text-danger">*</span></label>
+                                            {{ form.location }}
+                                            {% if form.location.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.location.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Where the expense occurred</div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.request_date.id_for_label }}">Request Date <span class="text-danger">*</span></label>
+                                            {{ form.request_date }}
+                                            {% if form.request_date.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.request_date.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Date the expense request was submitted</div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.date_incurred.id_for_label }}">Date Incurred <span class="text-danger">*</span></label>
+                                            {{ form.date_incurred }}
+                                            {% if form.date_incurred.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.date_incurred.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Date when the expense actually occurred</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-money-dollar-circle-line me-2"></i>Expense Details
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.expense_category.id_for_label }}">Expense Category <span class="text-danger">*</span></label>
+                                            {{ form.expense_category }}
+                                            {% if form.expense_category.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.expense_category.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Select the appropriate expense category</div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.expense_type.id_for_label }}">Expense Type <span class="text-danger">*</span></label>
+                                            {{ form.expense_type }}
+                                            {% if form.expense_type.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.expense_type.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Select the specific expense type</div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.total_amount.id_for_label }}">Total Amount <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">LKR</span>
+                                                {{ form.total_amount }}
+                                            </div>
+                                            {% if form.total_amount.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.total_amount.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Total amount of the expense</div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.period.id_for_label }}">Period</label>
+                                            {{ form.period }}
+                                            {% if form.period.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.period.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Monthly or yearly expense period</div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.priority.id_for_label }}">Priority</label>
+                                            {{ form.priority }}
+                                            {% if form.priority.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.priority.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Urgency level of this expense</div>
+                                        </div>
+                                        
+                                        <div class="col-md-12 mb-3">
+                                            <label class="form-label" for="{{ form.description.id_for_label }}">Description <span class="text-danger">*</span></label>
+                                            {{ form.description }}
+                                            {% if form.description.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.description.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Detailed explanation of the expense</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-bank-card-line me-2"></i>Payment Information
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.payment_status.id_for_label }}">Payment Status <span class="text-danger">*</span></label>
+                                            {{ form.payment_status }}
+                                            {% if form.payment_status.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.payment_status.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Current payment status of this expense</div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.payment_method.id_for_label }}">Payment Method</label>
+                                            {{ form.payment_method }}
+                                            {% if form.payment_method.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.payment_method.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Method used for payment</div>
+                                        </div>
+                                        
+                                        <div class="col-md-12 mb-3">
+                                            <label class="form-label" for="{{ form.bank_account.id_for_label }}">Bank Account</label>
+                                            {{ form.bank_account }}
+                                            {% if form.bank_account.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.bank_account.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Auto-populated from employee profile</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-money-dollar-box-line me-2"></i>Payroll Integration
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-12 mb-3">
+                                            <div class="form-check form-switch">
+                                                {{ form.add_to_payroll }}
+                                                <label class="form-check-label" for="{{ form.add_to_payroll.id_for_label }}">Add to Payroll</label>
+                                            </div>
+                                            <div class="form-text">Check if this expense affects employee payroll</div>
+                                            {% if form.add_to_payroll.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.add_to_payroll.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3 payroll-field" style="display: none;">
+                                            <label class="form-label" for="{{ form.payroll_effect.id_for_label }}">Payroll Effect <span class="text-danger">*</span></label>
+                                            {{ form.payroll_effect }}
+                                            {% if form.payroll_effect.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.payroll_effect.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">How this expense affects payroll</div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3 installment-field" style="display: none;">
+                                            <label class="form-label" for="{{ form.installment_amount.id_for_label }}">Installment Amount <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">LKR</span>
+                                                {{ form.installment_amount }}
+                                            </div>
+                                            {% if form.installment_amount.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.installment_amount.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Amount to deduct per pay period</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-file-list-3-line me-2"></i>Documentation
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-12 mb-3">
+                                            <div class="form-check form-switch">
+                                                {{ form.receipt_attached }}
+                                                <label class="form-check-label" for="{{ form.receipt_attached.id_for_label }}">Receipt Attached</label>
+                                            </div>
+                                            <div class="form-text">Check if you have receipts to upload</div>
+                                            {% if form.receipt_attached.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.receipt_attached.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-check-double-line me-2"></i>Approval Information
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.approver.id_for_label }}">Approver <span class="text-danger">*</span></label>
+                                            {{ form.approver }}
+                                            {% if form.approver.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.approver.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Person who will approve this expense</div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.status.id_for_label }}">Status</label>
+                                            {{ form.status }}
+                                            {% if form.status.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.status.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Current status of this expense</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4">
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-information-line me-2"></i>Guidelines
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="alert alert-info">
+                                        <h6 class="alert-heading">Important Notes:</h6>
+                                        <ul class="mb-0 ps-3">
+                                            <li>All fields marked with <span class="text-danger">*</span> are required</li>
+                                            <li>Date incurred should not be in the future</li>
+                                            <li>Attach receipts for all expenses when available</li>
+                                            <li>For reimbursements, select "Paid by Employee" status</li>
+                                            <li>For advances, select "Advance Requested" status</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-money-dollar-circle-line me-2"></i>Payroll Effects
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="alert alert-warning">
+                                        <h6 class="alert-heading">Payroll Integration:</h6>
+                                        <p class="mb-2">When "Add to Payroll" is checked:</p>
+                                        <ul class="mb-0 ps-3">
+                                            <li>For employee reimbursements: Amount will be added to next payroll</li>
+                                            <li>For advances/loans: Amount will be deducted from next payroll</li>
+                                            <li>For large amounts: Can be deducted in installments</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-shield-check-line me-2"></i>Approval Process
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="text-center">
+                                        <div class="avatar-lg mx-auto mb-3">
+                                            <div class="avatar-title bg-primary-subtle text-primary rounded-circle">
+                                                <i class="ri-time-line fs-24"></i>
+                                            </div>
+                                        </div>
+                                        <h6 class="mb-1">Pending Submission</h6>
+                                        <p class="text-muted mb-0 fs-13">This expense will be sent for approval after saving</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="text-end">
+                                <a href="{% url 'expenses:expense_list' %}" class="btn btn-outline-secondary me-2 text-nowrap">
+                                    <i class="ri-close-line me-1"></i>Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary text-nowrap">
+                                    <i class="ri-save-line me-1"></i>Save Expense
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block js %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectElements = document.querySelectorAll('select');
+        const choicesInstances = {};
+        
+        selectElements.forEach(function(select) {
+            if (select.id === 'id_employee') {
+                choicesInstances[select.id] = new Choices(select, {
+                    searchEnabled: true,
+                    placeholder: true,
+                    placeholderValue: 'Select an employee...',
+                    removeItemButton: true
+                });
+            } else if (select.id === 'id_expense_category') {
+                choicesInstances[select.id] = new Choices(select, {
+                    searchEnabled: true,
+                    placeholder: true,
+                    placeholderValue: 'Select a category...',
+                    removeItemButton: true
+                });
+            } else if (select.id === 'id_expense_type') {
+                choicesInstances[select.id] = new Choices(select, {
+                    searchEnabled: true,
+                    placeholder: true,
+                    placeholderValue: 'Select a type...',
+                    removeItemButton: true
+                });
+            } else {
+                choicesInstances[select.id] = new Choices(select, {
+                    searchEnabled: false,
+                    placeholder: true,
+                    placeholderValue: 'Select...',
+                    removeItemButton: false
+                });
+            }
+        });
+        
+        const employeeSelect = document.getElementById('id_employee');
+        const departmentField = document.getElementById('id_department');
+        const jobTitleField = document.getElementById('id_job_title');
+        const bankAccountField = document.getElementById('id_bank_account');
+        
+        if (employeeSelect) {
+            employeeSelect.addEventListener('change', function() {
+                const employeeId = this.value;
+                
+                // Commented out fetch code that was causing 404 errors
+                /*
+                if (employeeId) {
+                    fetch(`/accounts/employees/${employeeId}/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.department && choicesInstances['id_department']) {
+                                choicesInstances['id_department'].setChoiceByValue(data.department);
+                            }
+                            
+                            if (data.bank_account && bankAccountField) {
+                                bankAccountField.value = data.bank_account;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching employee data:', error);
+                        });
+                }
+                */
+
+            });
+            
+            if (employeeSelect.value) {
+                setTimeout(() => {
+                    employeeSelect.dispatchEvent(new Event('change'));
+                }, 500);
+            }
+        }
+        
+        const categorySelect = document.getElementById('id_expense_category');
+        const typeSelect = document.getElementById('id_expense_type');
+        
+        if (categorySelect && typeSelect) {
+            categorySelect.addEventListener('change', function() {
+                const categoryId = this.value;
+                
+                if (categoryId) {
+                    if (choicesInstances['id_expense_type']) {
+                        choicesInstances['id_expense_type'].setChoices(
+                            [{ value: '', label: 'Loading...', disabled: true }],
+                            'value',
+                            'label',
+                            true
+                        );
+                    }
+                    
+                    fetch(`/expenses/api/types/?category=${categoryId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (Array.isArray(data) && data.length > 0) {
+                                const choices = data.map(type => ({
+                                    value: type.id.toString(),
+                                    label: type.name
+                                }));
+                                
+                                if (choicesInstances['id_expense_type']) {
+                                    choicesInstances['id_expense_type'].setChoices(
+                                        choices,
+                                        'value',
+                                        'label',
+                                        true
+                                    );
+                                }
+                            } else {
+                                if (choicesInstances['id_expense_type']) {
+                                    choicesInstances['id_expense_type'].setChoices(
+                                        [{ value: '', label: 'No types available for this category', disabled: true }],
+                                        'value',
+                                        'label',
+                                        true
+                                    );
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching expense types:', error);
+                            if (choicesInstances['id_expense_type']) {
+                                choicesInstances['id_expense_type'].setChoices(
+                                    [{ value: '', label: 'Error loading types', disabled: true }],
+                                    'value',
+                                    'label',
+                                    true
+                                );
+                            }
+                        });
+                } else {
+                    if (choicesInstances['id_expense_type']) {
+                        choicesInstances['id_expense_type'].setChoices(
+                            [{ value: '', label: 'Select a category first', disabled: true }],
+                            'value',
+                            'label',
+                            true
+                        );
+                    }
+                }
+            });
+            
+            if (categorySelect.value) {
+                setTimeout(() => {
+                    categorySelect.dispatchEvent(new Event('change'));
+                }, 500);
+            } else if (choicesInstances['id_expense_type']) {
+                choicesInstances['id_expense_type'].setChoices(
+                    [{ value: '', label: 'Select a category first', disabled: true }],
+                    'value',
+                    'label',
+                    true
+                );
+            }
+        }
+        
+        const addToPayrollCheckbox = document.getElementById('id_add_to_payroll');
+        const payrollFields = document.querySelectorAll('.payroll-field');
+        const payrollEffectSelect = document.getElementById('id_payroll_effect');
+        const installmentFields = document.querySelectorAll('.installment-field');
+        
+        function togglePayrollFields() {
+            payrollFields.forEach(field => {
+                field.style.display = addToPayrollCheckbox.checked ? 'block' : 'none';
+            });
+            
+            if (!addToPayrollCheckbox.checked) {
+                installmentFields.forEach(field => {
+                    field.style.display = 'none';
+                });
+            } else if (payrollEffectSelect.value === 'DEDUCT_IN_INSTALLMENTS') {
+                installmentFields.forEach(field => {
+                    field.style.display = 'block';
+                });
+            }
+        }
+        
+        function toggleInstallmentFields() {
+            if (addToPayrollCheckbox.checked && payrollEffectSelect.value === 'DEDUCT_IN_INSTALLMENTS') {
+                installmentFields.forEach(field => {
+                    field.style.display = 'block';
+                });
+            } else {
+                installmentFields.forEach(field => {
+                    field.style.display = 'none';
+                });
+            }
+        }
+        
+        if (addToPayrollCheckbox && payrollEffectSelect) {
+            addToPayrollCheckbox.addEventListener('change', togglePayrollFields);
+            payrollEffectSelect.addEventListener('change', toggleInstallmentFields);
+            
+            togglePayrollFields();
+            toggleInstallmentFields();
+        }
+        
+    });
+    </script>
+    {% endblock %}
+    

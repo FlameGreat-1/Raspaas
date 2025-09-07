@@ -1,0 +1,249 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Export Expenses" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Expense Management" title="Export Expenses"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light border-0">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="card-title mb-0">
+                            <i class="ri-download-line me-2 text-primary"></i>Export Expenses
+                        </h5>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <a href="{% url 'expenses:expense_list' %}" class="btn btn-outline-secondary">
+                            <i class="ri-arrow-left-line me-1"></i>Back to Expenses
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-lg-8 mx-auto">
+        <div class="card">
+            <div class="card-header border-0">
+                <h5 class="card-title mb-0">Export Expense Data</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                        <p class="mb-0"><i class="ri-error-warning-line me-1"></i>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Export Format <span class="text-danger">*</span></label>
+                        {{ form.export_format }}
+                        {% if form.export_format.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.export_format.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">Select the format for your exported data</div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Date From</label>
+                                {{ form.date_from }}
+                                {% if form.date_from.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.date_from.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <div class="form-text">Start date for export period</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Date To</label>
+                                {{ form.date_to }}
+                                {% if form.date_to.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.date_to.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <div class="form-text">End date for export period</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="form-check">
+                            {{ form.include_details }}
+                            <label class="form-check-label" for="id_include_details">
+                                Include Expense Details
+                            </label>
+                            {% if form.include_details.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.include_details.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">When checked, detailed expense information will be included in the export</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="form-check">
+                            {{ form.include_audit_trail }}
+                            <label class="form-check-label" for="id_include_audit_trail">
+                                Include Audit Trail
+                            </label>
+                            {% if form.include_audit_trail.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.include_audit_trail.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            <div class="form-text">When checked, expense history and approval information will be included</div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0">
+                                <i class="ri-information-line fs-18"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h6 class="alert-heading mb-1">Export Information</h6>
+                                <p class="mb-0">Exported data can be used for accounting, auditing, or analysis purposes. For large datasets, CSV or Excel formats are recommended.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end mt-4">
+                        <a href="{% url 'expenses:expense_list' %}" class="btn btn-secondary me-2">
+                            <i class="ri-close-line me-1"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ri-download-line me-1"></i>Export Data
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-lg-8 mx-auto">
+        <div class="card bg-primary-subtle border-0">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6 class="text-primary mb-2">
+                            <i class="ri-information-line me-2"></i>Export Format Details
+                        </h6>
+                        <ul class="text-primary mb-0 small">
+                            <li><strong>CSV:</strong> Simple text format, compatible with most spreadsheet applications</li>
+                            <li><strong>Excel:</strong> Native Excel format with formatting and multiple sheets</li>
+                            <li><strong>PDF:</strong> Formatted document suitable for printing and sharing</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'expenses:report' %}" class="btn btn-outline-primary btn-sm">
+                                <i class="ri-bar-chart-box-line me-1"></i>Generate Reports
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if messages %}
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
+    {% for message in messages %}
+    <div class="toast align-items-center text-white bg-{{ message.tags }} border-0" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+        <div class="d-flex">
+            <div class="toast-body">
+                {% if message.tags == 'success' %}
+                    <i class="ri-check-line me-2"></i>
+                {% elif message.tags == 'error' %}
+                    <i class="ri-error-warning-line me-2"></i>
+                {% elif message.tags == 'warning' %}
+                    <i class="ri-alert-line me-2"></i>
+                {% else %}
+                    <i class="ri-information-line me-2"></i>
+                {% endif %}
+                {{ message }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block script %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="/static/assets/libs/air-datepicker/air-datepicker.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toastElList = [].slice.call(document.querySelectorAll('.toast'));
+    const toastList = toastElList.map(function(toastEl) {
+        return new bootstrap.Toast(toastEl);
+    });
+    toastList.forEach(toast => toast.show());
+    
+    const choicesElements = document.querySelectorAll('select');
+    choicesElements.forEach(element => {
+        new Choices(element, {
+            searchEnabled: false,
+            removeItemButton: false,
+            shouldSort: false
+        });
+    });
+    
+    new AirDatepicker('#id_date_from', {
+        dateFormat: 'yyyy-MM-dd',
+        autoClose: true
+    });
+    
+    new AirDatepicker('#id_date_to', {
+        dateFormat: 'yyyy-MM-dd',
+        autoClose: true
+    });
+});
+</script>
+{% endblock %}
+

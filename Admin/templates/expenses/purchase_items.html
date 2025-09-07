@@ -1,0 +1,257 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Purchase Items" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block content %}
+{% with title_sub="Manage" title="Purchase Items"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0">Add Purchase Item</h4>
+                <div>
+                    <a href="{% url 'expenses:expense_detail' pk=expense.pk %}" class="btn btn-light">
+                        <i class="ri-arrow-left-line align-middle me-1"></i> Back to Expense
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="alert alert-info">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <i class="ri-information-line fs-18 align-middle me-2"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="alert-heading">Purchase Information</h5>
+                                    <p class="mb-0">Reference: <strong>{{ expense.reference }}</strong> | Vendor: <strong>{{ expense.purchase_summary.vendor_name }}</strong> | Total: <strong>{{ expense.currency }} {{ expense.total_amount }}</strong></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    {{ form.expense }}
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label" for="{{ form.item_description.id_for_label }}">Item Description</label>
+                            {{ form.item_description }}
+                            {% if form.item_description.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.item_description.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label" for="{{ form.quantity.id_for_label }}">Quantity</label>
+                            {{ form.quantity }}
+                            {% if form.quantity.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.quantity.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label" for="{{ form.unit_cost.id_for_label }}">Unit Cost</label>
+                            <div class="input-group">
+                                <span class="input-group-text">{{ expense.currency }}</span>
+                                {{ form.unit_cost }}
+                            </div>
+                            {% if form.unit_cost.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.unit_cost.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label" for="{{ form.total_cost.id_for_label }}">Total Cost</label>
+                            <div class="input-group">
+                                <span class="input-group-text">{{ expense.currency }}</span>
+                                {{ form.total_cost }}
+                            </div>
+                            {% if form.total_cost.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.total_cost.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.return_status.id_for_label }}">Return Status</label>
+                            {{ form.return_status }}
+                            {% if form.return_status.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.return_status.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ form.category.id_for_label }}">Category</label>
+                            {{ form.category }}
+                            {% if form.category.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.category.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label" for="{{ form.notes.id_for_label }}">Notes</label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.notes.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12 text-end">
+                            <a href="{% url 'expenses:expense_detail' pk=expense.pk %}" class="btn btn-light me-2">Cancel</a>
+                            <button type="submit" name="save_and_continue" class="btn btn-info me-2">Add & Continue</button>
+                            <button type="submit" class="btn btn-primary">Add & Return</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-4">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Purchase Summary</h4>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-3">
+                    <div>
+                        <h5 class="text-primary">Subtotal</h5>
+                        <p class="fs-16 fw-semibold">{{ expense.currency }} {{ expense.purchase_summary.subtotal }}</p>
+                    </div>
+                    <div>
+                        <h5 class="text-primary">Tax Amount</h5>
+                        <p class="fs-16 fw-semibold">{{ expense.currency }} {{ expense.purchase_summary.tax_amount }}</p>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between mb-3">
+                    <div>
+                        <h5 class="text-primary">Total Amount</h5>
+                        <p class="fs-16 fw-semibold">{{ expense.currency }} {{ expense.purchase_summary.total_amount }}</p>
+                    </div>
+                    <div>
+                        <h5 class="text-primary">Total Returned</h5>
+                        <p class="fs-16 fw-semibold">{{ expense.currency }} {{ expense.purchase_summary.total_returned }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Added Items</h4>
+            </div>
+            <div class="card-body">
+                {% if items %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr>
+                                <td>
+                                    <p class="mb-0 fw-semibold">{{ item.item_description }}</p>
+                                    <small class="text-muted">Qty: {{ item.quantity }} x {{ expense.currency }} {{ item.unit_cost }}</small>
+                                </td>
+                                <td>{{ expense.currency }} {{ item.total_cost }}</td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        {% if item.return_status == 'RETURNABLE' or item.return_status == 'PENDING' %}
+                                        <a href="{% url 'expenses:purchase_item_return' pk=item.pk %}" class="btn btn-sm btn-warning">
+                                            <i class="ri-arrow-go-back-line"></i>
+                                        </a>
+                                        {% endif %}
+                                        <form action="{% url 'expenses:purchase_item_delete' pk=item.pk %}" method="post" onsubmit="return confirm('Are you sure you want to delete this item?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="ri-delete-bin-line"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center py-3">
+                                    <i class="ri-shopping-basket-line fs-24 text-muted mb-2"></i>
+                                    <p class="mb-0">No items added yet</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="ri-shopping-basket-line fs-3 text-muted mb-2"></i>
+                    <p class="mb-0">No items added yet</p>
+                    <p class="text-muted">Use the form to add purchase items</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Calculate total cost
+        const quantityInput = document.getElementById('{{ form.quantity.id_for_label }}');
+        const unitCostInput = document.getElementById('{{ form.unit_cost.id_for_label }}');
+        const totalCostInput = document.getElementById('{{ form.total_cost.id_for_label }}');
+        
+        function calculateTotal() {
+            const quantity = parseFloat(quantityInput.value) || 0;
+            const unitCost = parseFloat(unitCostInput.value) || 0;
+            const total = quantity * unitCost;
+            totalCostInput.value = total.toFixed(2);
+        }
+        
+        if (quantityInput && unitCostInput && totalCostInput) {
+            quantityInput.addEventListener('input', calculateTotal);
+            unitCostInput.addEventListener('input', calculateTotal);
+            calculateTotal();
+        }
+    });
+</script>
+{% endblock %}
+

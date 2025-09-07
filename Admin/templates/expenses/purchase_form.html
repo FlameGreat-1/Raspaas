@@ -1,0 +1,889 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Purchase Expense" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+<link rel="stylesheet" href="/static/assets/libs/air-datepicker/air-datepicker.css">
+<link rel="stylesheet" href="/static/assets/libs/dropzone/min/dropzone.min.css">
+{% endblock %}
+{% block content %}
+{% with title_sub="Create" title="Purchase Expense"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header border-bottom">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h4 class="card-title mb-0">Create Purchase Expense</h4>
+                        <p class="text-muted mb-0">Record purchase details and items</p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="d-flex gap-2 justify-content-end">
+                            <button type="submit" form="purchaseForm" class="btn btn-primary text-nowrap">
+                                <i class="ri-save-line me-1"></i>Save Purchase
+                            </button>
+                            <a href="{% url 'expenses:expense_list' %}" class="btn btn-outline-secondary text-nowrap">
+                                <i class="ri-arrow-left-line me-1"></i>Cancel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" id="purchaseForm" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger" role="alert">
+                        <h6 class="alert-heading">Please correct the following errors:</h6>
+                        {% for error in form.non_field_errors %}
+                        <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-lg-10">
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-store-2-line me-2"></i>Vendor Information
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label" for="{{ form.vendor_name.id_for_label }}">Vendor Name <span class="text-danger">*</span></label>
+                                            {{ form.vendor_name }}
+                                            {% if form.vendor_name.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.vendor_name.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Name of the supplier or vendor</div>
+                                        </div>
+                                        
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label" for="{{ form.purchase_location.id_for_label }}">Purchase Location <span class="text-danger">*</span></label>
+                                            {{ form.purchase_location }}
+                                            {% if form.purchase_location.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.purchase_location.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Where the purchase was made</div>
+                                        </div>
+                                        
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label" for="{{ form.purchase_reference.id_for_label }}">Purchase Reference</label>
+                                            <input type="text" class="form-control" value="Auto-generated" readonly disabled>
+                                            {{ form.purchase_reference.as_hidden }}
+                                            {% if form.purchase_reference.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.purchase_reference.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">System will generate a reference number</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-money-dollar-circle-line me-2"></i>Purchase Amount
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label" for="{{ form.subtotal.id_for_label }}">Subtotal <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">LKR</span>
+                                                {{ form.subtotal }}
+                                            </div>
+                                            {% if form.subtotal.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.subtotal.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Total before tax</div>
+                                        </div>
+                                        
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label" for="{{ form.tax_amount.id_for_label }}">Tax Amount</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">LKR</span>
+                                                {{ form.tax_amount }}
+                                            </div>
+                                            {% if form.tax_amount.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.tax_amount.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Tax applied to purchase</div>
+                                        </div>
+                                        
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Total Amount</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">LKR</span>
+                                                <input type="text" class="form-control" id="totalAmount" readonly>
+                                            </div>
+                                            <div class="form-text">Subtotal + Tax</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-user-3-line me-2"></i>Basic Information
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label" for="{{ form.employee.id_for_label }}">Employee <span class="text-danger">*</span></label>
+                                            {{ form.employee }}
+                                            {% if form.employee.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.employee.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Employee making the purchase</div>
+                                        </div>
+                                        
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label" for="{{ form.department.id_for_label }}">Department</label>
+                                            {{ form.department }}
+                                            {% if form.department.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.department.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Auto-populated from employee profile</div>
+                                        </div>
+                                        
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label" for="{{ form.job_title.id_for_label }}">Job Title</label>
+                                            {{ form.job_title }}
+                                            {% if form.job_title.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.job_title.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Auto-populated from employee profile</div>
+                                        </div>
+                                        
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label" for="{{ form.request_date.id_for_label }}">Request Date <span class="text-danger">*</span></label>
+                                            {{ form.request_date }}
+                                            {% if form.request_date.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.request_date.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Date the purchase request was submitted</div>
+                                        </div>
+                                        
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label" for="{{ form.date_incurred.id_for_label }}">Date Incurred <span class="text-danger">*</span></label>
+                                            {{ form.date_incurred }}
+                                            {% if form.date_incurred.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.date_incurred.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Date when the purchase actually occurred</div>
+                                        </div>
+                                        
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label" for="{{ form.location.id_for_label }}">Location <span class="text-danger">*</span></label>
+                                            {{ form.location }}
+                                            {% if form.location.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.location.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Company location for this expense</div>
+                                        </div>
+                                        
+                                        <div class="col-md-12 mb-3">
+                                            <label class="form-label" for="{{ form.description.id_for_label }}">Description <span class="text-danger">*</span></label>
+                                            {{ form.description }}
+                                            {% if form.description.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.description.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Detailed explanation of the purchase</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-bank-card-line me-2"></i>Payment Information
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label" for="{{ form.payment_status.id_for_label }}">Payment Status <span class="text-danger">*</span></label>
+                                            {{ form.payment_status }}
+                                            {% if form.payment_status.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.payment_status.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Current payment status of this purchase</div>
+                                        </div>
+                                        
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label" for="{{ form.payment_method.id_for_label }}">Payment Method <span class="text-danger">*</span></label>
+                                            {{ form.payment_method }}
+                                            {% if form.payment_method.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.payment_method.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Method used for payment</div>
+                                        </div>
+                                        
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label" for="{{ form.bank_account.id_for_label }}">Bank Account</label>
+                                            {{ form.bank_account }}
+                                            {% if form.bank_account.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.bank_account.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Auto-populated from employee profile</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <div class="form-check form-switch mt-2">
+                                                {{ form.add_to_payroll }}
+                                                <label class="form-check-label" for="{{ form.add_to_payroll.id_for_label }}">Add to Payroll</label>
+                                            </div>
+                                            <div class="form-text">Check if this purchase affects employee payroll</div>
+                                            {% if form.add_to_payroll.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.add_to_payroll.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <div class="col-md-4 mb-3 payroll-field" style="display: none;">
+                                            <label class="form-label" for="{{ form.payroll_effect.id_for_label }}">Payroll Effect <span class="text-danger">*</span></label>
+                                            {{ form.payroll_effect }}
+                                            {% if form.payroll_effect.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.payroll_effect.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">How this purchase affects payroll</div>
+                                        </div>
+                                        
+                                        <div class="col-md-4 mb-3 installment-field" style="display: none;">
+                                            <label class="form-label" for="{{ form.installment_amount.id_for_label }}">Installment Amount <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">LKR</span>
+                                                {{ form.installment_amount }}
+                                            </div>
+                                            {% if form.installment_amount.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.installment_amount.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Amount to deduct per pay period</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-file-list-3-line me-2"></i>Documentation
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-12 mb-3">
+                                            <div class="form-check form-switch">
+                                                {{ form.receipt_attached }}
+                                                <label class="form-check-label" for="{{ form.receipt_attached.id_for_label }}">Receipt Attached</label>
+                                            </div>
+                                            <div class="form-text">Check if you have receipts to upload</div>
+                                            {% if form.receipt_attached.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.receipt_attached.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <div class="col-md-12 receipt-upload-area" style="display: none;">
+                                            <div id="receipt-dropzone" class="dropzone border rounded p-3">
+                                                <div class="dz-message needsclick">
+                                                    <div class="mb-3">
+                                                        <i class="display-4 text-muted ri-upload-cloud-2-line"></i>
+                                                    </div>
+                                                    <h4>Drop files here or click to upload</h4>
+                                                    <p class="text-muted">Upload receipts and supporting documents</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-check-double-line me-2"></i>Approval Information
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.approver.id_for_label }}">Approver <span class="text-danger">*</span></label>
+                                            {{ form.approver }}
+                                            {% if form.approver.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.approver.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Person who will approve this purchase</div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label" for="{{ form.status.id_for_label }}">Status</label>
+                                            {{ form.status }}
+                                            {% if form.status.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.status.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Current status of this purchase</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-shopping-basket-line me-2"></i>Purchase Items
+                                    </h5>
+                                    <button type="button" class="btn btn-sm btn-primary" onclick="addNewItem()">
+                                        <i class="ri-add-line me-1"></i>Add Item
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive-xl">
+                                        <table class="table table-bordered" id="itemsTable">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th width="180">Item Name</th>
+                                                    <th width="250">Item Description</th>
+                                                    <th width="100">Quantity</th>
+                                                    <th width="150">Unit Cost</th>
+                                                    <th width="150">Total Cost</th>
+                                                    <th width="150">Return Status</th>
+                                                    <th width="80">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr id="noItemsRow">
+                                                    <td colspan="7" class="text-center py-3">
+                                                        <i class="ri-shopping-basket-line fs-24 text-muted mb-2 d-block"></i>
+                                                        <p class="mb-0">No items added yet</p>
+                                                        <p class="text-muted">Click "Add Item" to add purchase items</p>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                            <tfoot>
+                                                <tr>
+                                                    <td colspan="3" class="text-end fw-bold">Items Total:</td>
+                                                    <td colspan="4">
+                                                        <span class="fw-bold" id="itemsTotal">LKR 0.00</span>
+                                                    </td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-2">
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-information-line me-2"></i>Guidelines
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="alert alert-info">
+                                        <h6 class="alert-heading">Important Notes:</h6>
+                                        <ul class="mb-0 ps-3">
+                                            <li>All fields marked with <span class="text-danger">*</span> are required</li>
+                                            <li>Date incurred should not be in the future</li>
+                                            <li>Attach receipts for all purchases when available</li>
+                                            <li>For reimbursements, select "Paid by Employee" status</li>
+                                            <li>Add all purchased items before submitting</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-money-dollar-circle-line me-2"></i>Payroll Effects
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="alert alert-warning">
+                                        <h6 class="alert-heading">Payroll Integration:</h6>
+                                        <p class="mb-2">When "Add to Payroll" is checked:</p>
+                                        <ul class="mb-0 ps-3">
+                                            <li>For employee reimbursements: Amount will be added to next payroll</li>
+                                            <li>For advances/loans: Amount will be deducted from next payroll</li>
+                                            <li>For large amounts: Can be deducted in installments</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-shopping-basket-line me-2"></i>Item Instructions
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="alert alert-primary">
+                                        <h6 class="alert-heading">Adding Items:</h6>
+                                        <ul class="mb-0 ps-3">
+                                            <li>Click "Add Item" to add each purchased item</li>
+                                            <li>Enter a clear description for each item</li>
+                                            <li>Quantity and unit cost will calculate total automatically</li>
+                                            <li>Set return status for items that may be returned</li>
+                                            <li>Assign appropriate category for accounting</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-shield-check-line me-2"></i>Approval Process
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="text-center">
+                                        <div class="avatar-lg mx-auto mb-3">
+                                            <div class="avatar-title bg-primary-subtle text-primary rounded-circle">
+                                                <i class="ri-time-line fs-24"></i>
+                                            </div>
+                                        </div>
+                                        <h6 class="mb-1">Pending Submission</h6>
+                                        <p class="text-muted mb-0 fs-13">This purchase will be sent for approval after saving</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="text-end">
+                                <a href="{% url 'expenses:expense_list' %}" class="btn btn-outline-secondary me-2 text-nowrap">
+                                    <i class="ri-close-line me-1"></i>Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary text-nowrap">
+                                    <i class="ri-save-line me-1"></i>Save Purchase
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Hidden template for new item row -->
+                    <template id="itemRowTemplate">
+                        <tr class="item-row">
+                            <td>
+                                <input type="text" name="items[INDEX][category]" class="form-control item-category" placeholder="Enter item name">
+                            </td>
+                            <td>
+                                <input type="text" name="items[INDEX][item_description]" class="form-control item-description" placeholder="Enter item description" required>
+                            </td>
+                            <td>
+                                <input type="number" name="items[INDEX][quantity]" class="form-control item-quantity" min="1" value="1" required>
+                            </td>
+                            <td>
+                                <div class="input-group">
+                                    <span class="input-group-text">LKR</span>
+                                    <input type="number" name="items[INDEX][unit_cost]" class="form-control item-unit-cost" min="0" step="0.01" value="0.00" required>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="input-group">
+                                    <span class="input-group-text">LKR</span>
+                                    <input type="number" name="items[INDEX][total_cost]" class="form-control item-total-cost" readonly value="0.00">
+                                </div>
+                            </td>
+                            <td>
+                                <select name="items[INDEX][return_status]" class="form-select item-return-status" required>
+                                    <option value="NOT_RETURNABLE">Not Returnable</option>
+                                    <option value="RETURNABLE">Returnable</option>
+                                    <option value="PENDING">Pending Decision</option>
+                                </select>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-danger remove-item">
+                                    <i class="ri-delete-bin-line"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </template>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block js %}
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="/static/assets/libs/dropzone/min/dropzone.min.js"></script>
+
+<script>
+let itemIndex = 0;
+
+window.addNewItem = function() {
+    const itemsTable = document.getElementById('itemsTable');
+    const itemsTableBody = itemsTable.querySelector('tbody');
+    const noItemsRow = document.getElementById('noItemsRow');
+    
+    if (noItemsRow) {
+        noItemsRow.style.display = 'none';
+    }
+    
+    const newRow = document.createElement('tr');
+    newRow.className = 'item-row';
+    newRow.innerHTML = `
+        <td>
+            <input type="text" name="items[${itemIndex}][category]" class="form-control item-category" placeholder="Enter item name">
+        </td>
+        <td>
+            <input type="text" name="items[${itemIndex}][item_description]" class="form-control item-description" placeholder="Enter item description" required>
+        </td>
+        <td>
+            <input type="number" name="items[${itemIndex}][quantity]" class="form-control item-quantity" min="1" value="1" onchange="calculateItemTotal(this)" required>
+        </td>
+        <td>
+            <div class="input-group">
+                <span class="input-group-text">LKR</span>
+                <input type="number" name="items[${itemIndex}][unit_cost]" class="form-control item-unit-cost" min="0" step="0.01" value="0.00" onchange="calculateItemTotal(this)" required>
+            </div>
+        </td>
+        <td>
+            <div class="input-group">
+                <span class="input-group-text">LKR</span>
+                <input type="number" name="items[${itemIndex}][total_cost]" class="form-control item-total-cost" readonly value="0.00">
+            </div>
+        </td>
+        <td>
+            <select name="items[${itemIndex}][return_status]" class="form-select item-return-status" required>
+                <option value="NOT_RETURNABLE">Not Returnable</option>
+                <option value="RETURNABLE">Returnable</option>
+                <option value="PENDING">Pending Decision</option>
+            </select>
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeItem(this)">
+                <i class="ri-delete-bin-line"></i>
+            </button>
+        </td>
+    `;
+    
+    itemsTableBody.appendChild(newRow);
+    itemIndex++;
+    calculateItemTotal(newRow.querySelector('.item-quantity'));
+}
+
+window.removeItem = function(button) {
+    const row = button.closest('tr');
+    row.remove();
+    
+    const itemsTable = document.getElementById('itemsTable');
+    const itemsTableBody = itemsTable.querySelector('tbody');
+    const noItemsRow = document.getElementById('noItemsRow');
+    
+    if (itemsTableBody.querySelectorAll('.item-row').length === 0 && noItemsRow) {
+        noItemsRow.style.display = '';
+    }
+    
+    updateItemsTotal();
+}
+
+window.calculateItemTotal = function(input) {
+    const row = input.closest('tr');
+    const quantityInput = row.querySelector('.item-quantity');
+    const unitCostInput = row.querySelector('.item-unit-cost');
+    const totalCostInput = row.querySelector('.item-total-cost');
+    
+    const quantity = parseFloat(quantityInput.value) || 0;
+    const unitCost = parseFloat(unitCostInput.value) || 0;
+    const total = quantity * unitCost;
+    
+    totalCostInput.value = total.toFixed(2);
+    updateItemsTotal();
+}
+
+function updateItemsTotal() {
+    let total = 0;
+    const totalInputs = document.querySelectorAll('.item-total-cost');
+    totalInputs.forEach(input => {
+        total += parseFloat(input.value) || 0;
+    });
+    
+    const itemsTotalDisplay = document.getElementById('itemsTotal');
+    if (itemsTotalDisplay) {
+        itemsTotalDisplay.textContent = `LKR ${total.toFixed(2)}`;
+    }
+    
+    const subtotalInput = document.getElementById('id_subtotal');
+    if (subtotalInput) {
+        subtotalInput.value = total.toFixed(2);
+        
+        const taxAmountInput = document.getElementById('id_tax_amount');
+        const totalAmountDisplay = document.getElementById('totalAmount');
+        
+        if (taxAmountInput && totalAmountDisplay) {
+            const taxAmount = parseFloat(taxAmountInput.value) || 0;
+            const grandTotal = total + taxAmount;
+            totalAmountDisplay.value = grandTotal.toFixed(2);
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const selectElements = document.querySelectorAll('select');
+    const choicesInstances = {};
+    
+    selectElements.forEach(function(select) {
+        if (select.id === 'id_employee') {
+            choicesInstances[select.id] = new Choices(select, {
+                searchEnabled: true,
+                placeholder: true,
+                placeholderValue: 'Select an employee...',
+                removeItemButton: true
+            });
+        } else {
+            choicesInstances[select.id] = new Choices(select, {
+                searchEnabled: false,
+                placeholder: true,
+                placeholderValue: 'Select...',
+                removeItemButton: false
+            });
+        }
+    });
+    
+    const employeeSelect = document.getElementById('id_employee');
+    const departmentField = document.getElementById('id_department');
+    const jobTitleField = document.getElementById('id_job_title');
+    const bankAccountField = document.getElementById('id_bank_account');
+    
+    if (employeeSelect) {
+        employeeSelect.addEventListener('change', function() {
+            const employeeId = this.value;
+            
+            if (employeeId) {
+                fetch(`/api/employees/${employeeId}/`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.department && choicesInstances['id_department']) {
+                            choicesInstances['id_department'].setChoiceByValue(data.department);
+                        }
+                        
+                        if (data.job_title && jobTitleField) {
+                            jobTitleField.value = data.job_title;
+                        }
+                        
+                        if (data.bank_account && bankAccountField) {
+                            bankAccountField.value = data.bank_account;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching employee data:', error);
+                    });
+            }
+        });
+        
+        if (employeeSelect.value) {
+            setTimeout(() => {
+                employeeSelect.dispatchEvent(new Event('change'));
+            }, 500);
+        }
+    }
+    
+    const subtotalInput = document.getElementById('id_subtotal');
+    const taxAmountInput = document.getElementById('id_tax_amount');
+    const totalAmountDisplay = document.getElementById('totalAmount');
+    
+    function calculateTotal() {
+        const subtotal = parseFloat(subtotalInput.value) || 0;
+        const taxAmount = parseFloat(taxAmountInput.value) || 0;
+        const total = subtotal + taxAmount;
+        totalAmountDisplay.value = total.toFixed(2);
+    }
+    
+    if (subtotalInput && taxAmountInput && totalAmountDisplay) {
+        subtotalInput.addEventListener('input', calculateTotal);
+        taxAmountInput.addEventListener('input', calculateTotal);
+        calculateTotal();
+    }
+    
+    const addToPayrollCheckbox = document.getElementById('id_add_to_payroll');
+    const payrollFields = document.querySelectorAll('.payroll-field');
+    const payrollEffectSelect = document.getElementById('id_payroll_effect');
+    const installmentFields = document.querySelectorAll('.installment-field');
+    
+    function togglePayrollFields() {
+        payrollFields.forEach(field => {
+            field.style.display = addToPayrollCheckbox.checked ? 'block' : 'none';
+        });
+        
+        if (!addToPayrollCheckbox.checked) {
+            installmentFields.forEach(field => {
+                field.style.display = 'none';
+            });
+        } else if (payrollEffectSelect.value === 'DEDUCT_IN_INSTALLMENTS') {
+            installmentFields.forEach(field => {
+                field.style.display = 'block';
+            });
+        }
+    }
+    
+    function toggleInstallmentFields() {
+        if (addToPayrollCheckbox.checked && payrollEffectSelect.value === 'DEDUCT_IN_INSTALLMENTS') {
+            installmentFields.forEach(field => {
+                field.style.display = 'block';
+            });
+        } else {
+            installmentFields.forEach(field => {
+                field.style.display = 'none';
+            });
+        }
+    }
+    
+    if (addToPayrollCheckbox && payrollEffectSelect) {
+        addToPayrollCheckbox.addEventListener('change', togglePayrollFields);
+        payrollEffectSelect.addEventListener('change', toggleInstallmentFields);
+        
+        togglePayrollFields();
+        toggleInstallmentFields();
+    }
+    
+    const receiptAttachedCheckbox = document.getElementById('id_receipt_attached');
+    const receiptUploadArea = document.querySelector('.receipt-upload-area');
+    
+    if (receiptAttachedCheckbox && receiptUploadArea) {
+        receiptAttachedCheckbox.addEventListener('change', function() {
+            receiptUploadArea.style.display = this.checked ? 'block' : 'none';
+        });
+        
+        receiptUploadArea.style.display = receiptAttachedCheckbox.checked ? 'block' : 'none';
+    }
+    
+    if (document.getElementById('receipt-dropzone')) {
+        Dropzone.autoDiscover = false;
+        
+        const myDropzone = new Dropzone("#receipt-dropzone", {
+            url: "{% url 'expenses:document_upload' pk=form.instance.pk|default:0 %}",
+            paramName: "file",
+            maxFilesize: 10,
+            acceptedFiles: ".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx",
+            addRemoveLinks: true,
+            autoProcessQueue: false,
+            uploadMultiple: true,
+            parallelUploads: 5,
+            maxFiles: 10,
+            headers: {
+                "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        });
+    }
+    
+    const purchaseForm = document.getElementById('purchaseForm');
+    if (purchaseForm) {
+        purchaseForm.addEventListener('submit', function(e) {
+            const itemRows = document.querySelectorAll('.item-row');
+            if (itemRows.length === 0) {
+                e.preventDefault();
+                alert('Please add at least one purchase item before submitting.');
+                return false;
+            }
+            
+            if (receiptAttachedCheckbox && receiptAttachedCheckbox.checked) {
+                const dropzone = Dropzone.instances[0];
+                if (dropzone && dropzone.getQueuedFiles().length > 0) {
+                    e.preventDefault();
+                    
+                    const formData = new FormData(this);
+                    
+                    fetch(this.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (data.expense_id) {
+                                dropzone.options.url = `/expenses/document_upload/${data.expense_id}/`;
+                            }
+                            
+                            dropzone.processQueue();
+                            
+                            dropzone.on("queuecomplete", function() {
+                                window.location.href = data.redirect_url || "/expenses/expenses/";
+                            });
+                        } else {
+                            alert('Please correct the errors in the form before uploading files.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error submitting form:', error);
+                        alert('An error occurred while saving the purchase. Please try again.');
+                    });
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
