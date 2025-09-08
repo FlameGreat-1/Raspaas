@@ -1,4 +1,3 @@
-# expenses/services.py
 from decimal import Decimal
 from django.utils import timezone
 from django.db import transaction
@@ -10,7 +9,6 @@ from .utils import PayrollStatus, PayrollEffect
 class ExpensePayrollService:
     @staticmethod
     def get_payroll_amounts(employee_id):
-        """Tell Payroll what to add/deduct for this employee"""
         pending_expenses = Expense.active.filter(
             employee_id=employee_id,
             status="APPROVED",
@@ -18,18 +16,16 @@ class ExpensePayrollService:
             payroll_status=PayrollStatus.PENDING_PAYROLL_PROCESSING.value,
         )
 
-        # Get additions based on payroll_effect
         addition_expenses = pending_expenses.filter(
-            payroll_effect=PayrollEffect.ADDITION.value
+            payroll_effect=PayrollEffect.ADD_TO_NEXT_PAYROLL.value
         )
         addition_amount = sum(
             expense.installment_amount or expense.total_amount
             for expense in addition_expenses
         )
 
-        # Get deductions based on payroll_effect
         deduction_expenses = pending_expenses.filter(
-            payroll_effect=PayrollEffect.DEDUCTION.value
+            payroll_effect=PayrollEffect.DEDUCT_FROM_NEXT_PAYROLL.value
         )
         deduction_amount = sum(
             expense.installment_amount or expense.total_amount
@@ -47,7 +43,6 @@ class ExpensePayrollService:
     @staticmethod
     @transaction.atomic
     def mark_as_processed(expense_ids, payroll_reference, payroll_period):
-        """Update expense records after payroll processing"""
         processed_date = timezone.now().date()
         results = {"success_count": 0, "failed_count": 0, "details": []}
 
@@ -55,27 +50,22 @@ class ExpensePayrollService:
             try:
                 expense = Expense.active.get(id=expense_id)
 
-                # Get the amount that was processed
                 processed_amount = expense.installment_amount or expense.total_amount
 
-                # Calculate remaining amount
                 remaining = max(
                     Decimal("0.00"), expense.total_amount - processed_amount
                 )
                 if expense.remaining_amount:
-                    # If there was already a remaining amount, update it
                     remaining = max(
                         Decimal("0.00"), expense.remaining_amount - processed_amount
                     )
 
-                # Determine operation type from payroll_effect
                 operation = (
                     "ADD"
-                    if expense.payroll_effect == PayrollEffect.ADDITION.value
+                    if expense.payroll_effect == PayrollEffect.ADD_TO_NEXT_PAYROLL.value
                     else "DEDUCT"
                 )
 
-                # Create payroll integration record
                 integration = PayrollExpenseIntegration.objects.create(
                     expense=expense,
                     payroll_period=payroll_period,
@@ -87,12 +77,18 @@ class ExpensePayrollService:
                     payroll_reference=payroll_reference,
                 )
 
-                # Update expense record
-                expense.payroll_status = (
-                    PayrollStatus.PROCESSED.value
-                    if remaining <= Decimal("0.00")
-                    else PayrollStatus.PARTIALLY_PROCESSED.value
-                )
+                if expense.payroll_effect == PayrollEffect.ADD_TO_NEXT_PAYROLL.value:
+                    expense.payroll_status = (
+                        PayrollStatus.ADDED_TO_PAYROLL.value
+                        if remaining <= Decimal("0.00")
+                        else PayrollStatus.PARTIALLY_PROCESSED.value
+                    )
+                else:
+                    expense.payroll_status = (
+                        PayrollStatus.DEDUCTED_FROM_PAYROLL.value
+                        if remaining <= Decimal("0.00")
+                        else PayrollStatus.PARTIALLY_PROCESSED.value
+                    )
                 expense.last_payroll_sync = timezone.now()
                 expense.last_processed_amount = processed_amount
                 expense.remaining_amount = remaining
@@ -105,7 +101,6 @@ class ExpensePayrollService:
                     ]
                 )
 
-                # Create audit trail
                 ExpenseAuditTrail.objects.create(
                     expense=expense,
                     action=f"Processed in payroll for period {payroll_period}",

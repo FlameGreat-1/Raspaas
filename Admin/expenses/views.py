@@ -651,8 +651,50 @@ class PurchaseExpenseCreateView(LoginRequiredMixin, CreateView):
         form.instance.reference = generate_expense_reference()
 
         response = super().form_valid(form)
-
         expense = self.object
+
+        # Process purchase items from the form data
+        items_data = {}
+        for key, value in self.request.POST.items():
+            # Look for items[INDEX][field_name] pattern
+            if key.startswith('items[') and ']' in key:
+                parts = key.split('[')
+                if len(parts) >= 3:
+                    index = parts[1].rstrip(']')
+                    field = parts[2].rstrip(']')
+                    
+                    if index not in items_data:
+                        items_data[index] = {}
+                        
+                    items_data[index][field] = value
+        
+        # Create purchase items
+        for index, item_data in items_data.items():
+            if 'item_description' in item_data and item_data['item_description'].strip():
+                try:
+                    quantity = Decimal(item_data.get('quantity', '1'))
+                    unit_cost = Decimal(item_data.get('unit_cost', '0'))
+                    total_cost = Decimal(item_data.get('total_cost', '0'))
+                    
+                    PurchaseItem.objects.create(
+                        expense=expense,
+                        item_description=item_data.get('item_description', ''),
+                        category=item_data.get('category', ''),
+                        quantity=quantity,
+                        unit_cost=unit_cost,
+                        total_cost=total_cost,
+                        return_status=item_data.get('return_status', 'NOT_RETURNABLE'),
+                        created_by=self.request.user,
+                        is_active=True
+                    )
+                except (ValueError, decimal.InvalidOperation) as e:
+                    # Log error but continue with other items
+                    print(f"Error creating purchase item: {e}")
+                    pass
+        
+        # Update purchase summary totals
+        if hasattr(expense, 'purchase_summary'):
+            expense.purchase_summary.update_totals()
 
         if expense.receipt_attached:
             messages.info(
@@ -662,12 +704,32 @@ class PurchaseExpenseCreateView(LoginRequiredMixin, CreateView):
         messages.success(
             self.request, f"Purchase expense {expense.reference} created successfully."
         )
-        
+
         # Override the success URL if save_and_add_items is in the POST data
-        if 'save_and_add_items' in self.request.POST:
+        if "save_and_add_items" in self.request.POST:
             return redirect("expenses:purchase_items", pk=self.object.pk)
-            
+
         return response
+
+    def form_invalid(self, form):
+        print("Form is invalid!")
+        print("Form errors:", form.errors)
+        print("Non-field errors:", form.non_field_errors())
+
+        # Print submitted data
+        print("Submitted data:")
+        for field_name, field in form.fields.items():
+            print(
+                f"Field '{field_name}' value:",
+                self.request.POST.get(field_name, "Not submitted"),
+            )
+
+        # Print each field's errors
+        for field_name, field in form.fields.items():
+            if field_name in form.errors:
+                print(f"Field '{field_name}' errors:", form.errors[field_name])
+
+        return super().form_invalid(form)
 
     def get_success_url(self):
         if self.object.receipt_attached:
@@ -698,6 +760,27 @@ class PurchaseItemsView(LoginRequiredMixin, View):
             item.created_by = request.user
             item.save()
 
+            # Update purchase summary totals after adding an item
+            if hasattr(expense, "purchase_summary"):
+                expense.purchase_summary.update_totals()
+            else:
+                # Create purchase summary if it doesn't exist
+                subtotal = item.total_cost
+                PurchaseSummary.objects.create(
+                    expense=expense,
+                    vendor_name=(
+                        expense.employee.get_full_name()
+                        if expense.employee
+                        else "Unknown"
+                    ),
+                    purchase_location=expense.location or "Main office",
+                    purchase_reference=f"PUR-{timezone.now().strftime('%Y%m%d')}-{''.join(random.choices(string.ascii_uppercase + string.digits, k=6))}",
+                    subtotal=subtotal,
+                    tax_amount=Decimal("0.00"),
+                    total_amount=subtotal,
+                    created_by=request.user,
+                )
+
             ExpenseAuditTrail.objects.create(
                 expense=expense,
                 action=f"Purchase item added: {item.item_description}",
@@ -715,7 +798,6 @@ class PurchaseItemsView(LoginRequiredMixin, View):
         context = {"expense": expense, "form": form, "items": items}
 
         return render(request, "expenses/purchase_items.html", context)
-
 
 class PurchaseItemDeleteView(LoginRequiredMixin, View):
     def post(self, request, pk):
@@ -768,15 +850,50 @@ class PurchaseItemReturnView(LoginRequiredMixin, UpdateView):
 class PurchaseSummaryView(LoginRequiredMixin, DetailView):
     model = PurchaseSummary
     template_name = 'expenses/purchase_summary_detail.html'
-    context_object_name = 'summary'
+    context_object_name = 'purchase_summary'
     
     def get_object(self, queryset=None):
         expense_id = self.kwargs.get('expense_id')
-        return get_object_or_404(PurchaseSummary, expense_id=expense_id)
+        obj = get_object_or_404(PurchaseSummary, expense_id=expense_id)
+        print(f"Found PurchaseSummary: {obj}, ID: {obj.pk}, Expense ID: {obj.expense.pk}")
+        return obj
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['purchase_items'] = self.object.expense.purchase_items.filter(is_active=True)
+        
+        # Debug purchase items
+        all_items = self.object.expense.purchase_items.all()
+        active_items = self.object.expense.purchase_items.filter(is_active=True)
+        
+        print(f"Expense ID: {self.object.expense.pk}")
+        print(f"Expense Reference: {self.object.expense.reference}")
+        print(f"Total purchase items: {all_items.count()}")
+        print(f"Active purchase items: {active_items.count()}")
+        
+        # Print details of each item
+        if all_items.exists():
+            print("All purchase items:")
+            for idx, item in enumerate(all_items):
+                print(f"  Item {idx+1}: {item}, Active: {item.is_active}")
+                print(f"    Description: {getattr(item, 'item_description', 'N/A')}")
+                print(f"    Quantity: {getattr(item, 'quantity', 'N/A')}")
+                print(f"    Unit Cost: {getattr(item, 'unit_cost', 'N/A')}")
+                print(f"    Total Cost: {getattr(item, 'total_cost', 'N/A')}")
+        else:
+            print("No purchase items found for this expense")
+        
+        # Debug purchase summary
+        print(f"Purchase Summary: {self.object}")
+        print(f"  Vendor: {self.object.vendor_name}")
+        print(f"  Location: {self.object.purchase_location}")
+        print(f"  Reference: {self.object.purchase_reference}")
+        print(f"  Subtotal: {self.object.subtotal}")
+        print(f"  Tax: {self.object.tax_amount}")
+        print(f"  Total: {self.object.total_amount}")
+        
+        # Use all items for now to debug
+        context['purchase_items'] = all_items
+        context['expense'] = self.object.expense
         return context
 
 class AutoCreateWorkflowMixin:

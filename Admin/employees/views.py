@@ -25,8 +25,11 @@ from django.core.exceptions import PermissionDenied
 from django.conf import settings
 import json
 import csv
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 from decimal import Decimal
+import calendar
+from attendance.models import Attendance, MonthlyAttendanceSummary
+from payroll.models import PayrollPeriod
 
 from accounts.models import CustomUser, Department, Role, SystemConfiguration
 from accounts.utils import log_user_activity
@@ -1479,3 +1482,154 @@ def salary_analysis_report_view(request):
     }
 
     return render(request, "employee/salary-analysis-report.html", context)
+
+
+@login_required
+def employee_calendar(request):
+    now = datetime.now()
+    year_param = request.GET.get("year", str(now.year))
+    year = int(year_param.replace(",", ""))
+    month = int(request.GET.get("month", now.month))
+
+    User = get_user_model()
+    employee_id = request.GET.get("employee_id")
+    if request.user.is_staff and employee_id:
+        try:
+            employee = User.objects.get(id=employee_id)
+        except User.DoesNotExist:
+            employee = request.user
+    else:
+        employee = request.user
+
+    start_date = (now - timedelta(days=30)).replace(day=1)
+    end_date = (now + timedelta(days=60)).replace(day=28)
+
+    attendance_records = Attendance.objects.filter(
+        employee=employee, date__gte=start_date, date__lte=end_date
+    )
+
+    payroll_periods = PayrollPeriod.objects.filter(
+        start_date__lte=end_date, end_date__gte=start_date
+    )
+
+    attendance_events = []
+    for record in attendance_records:
+        color_class = "bg-success-subtle"
+        if record.status == "ABSENT":
+            color_class = "bg-danger-subtle"
+        elif record.status == "LATE":
+            color_class = "bg-warning-subtle"
+        elif record.status == "HALF_DAY":
+            color_class = "bg-info-subtle"
+        elif record.status == "LEAVE":
+            color_class = "bg-secondary-subtle"
+        elif record.status == "HOLIDAY":
+            color_class = "bg-primary-subtle"
+
+        event = {
+            "id": f"attendance-{record.id}",
+            "title": f"Attendance: {record.get_status_display()}",
+            "start": record.date.strftime("%Y-%m-%d"),
+            "className": color_class,
+            "borderColor": color_class.replace("-subtle", ""),
+            "description": f"Work time: {record.formatted_work_time}",
+            "type": "attendance",
+            "extendedProps": {
+                "attendance_id": str(record.id),
+                "status": record.status,
+                "first_in": (
+                    record.first_in_time.strftime("%H:%M")
+                    if record.first_in_time
+                    else "N/A"
+                ),
+                "last_out": (
+                    record.last_out_time.strftime("%H:%M")
+                    if record.last_out_time
+                    else "N/A"
+                ),
+                "work_time": record.formatted_work_time,
+                "performance": f"{record.performance_score}%",
+                "punctuality": f"{record.punctuality_score}%",
+            },
+        }
+        attendance_events.append(event)
+
+    payroll_events = []
+    for period in payroll_periods:
+        if period.processing_date:
+            event = {
+                "id": f"payroll-processing-{period.id}",
+                "title": f"Payroll Processing: {period.period_name}",
+                "start": period.processing_date.strftime("%Y-%m-%d"),
+                "className": "bg-info-subtle",
+                "borderColor": "bg-info",
+                "description": f"Processing date for {period.period_name}",
+                "type": "payroll",
+                "extendedProps": {
+                    "payroll_id": str(period.id),
+                    "period_name": period.period_name,
+                    "status": period.status,
+                    "event_type": "processing",
+                },
+            }
+            payroll_events.append(event)
+
+        if period.cutoff_date:
+            event = {
+                "id": f"payroll-cutoff-{period.id}",
+                "title": f"Payroll Cutoff: {period.period_name}",
+                "start": period.cutoff_date.strftime("%Y-%m-%d"),
+                "className": "bg-warning-subtle",
+                "borderColor": "bg-warning",
+                "description": f"Cutoff date for {period.period_name}",
+                "type": "payroll",
+                "extendedProps": {
+                    "payroll_id": str(period.id),
+                    "period_name": period.period_name,
+                    "status": period.status,
+                    "event_type": "cutoff",
+                },
+            }
+            payroll_events.append(event)
+
+    monthly_summary = MonthlyAttendanceSummary.objects.filter(
+        employee=employee, year=year, month=month
+    ).first()
+
+    if not monthly_summary:
+        _, num_days = calendar.monthrange(year, month)
+        working_days = 0
+        for day in range(1, num_days + 1):
+            weekday = calendar.weekday(year, month, day)
+            if weekday < 5:
+                working_days += 1
+
+        class DefaultSummary:
+            def __init__(self):
+                self.working_days = working_days
+                self.attended_days = 0
+                self.late_days = 0
+                self.absent_days = 0
+                self.attendance_percentage = 0
+                self.punctuality_score = 0
+                self.efficiency_score = 0
+
+        monthly_summary = DefaultSummary()
+
+    all_events = attendance_events + payroll_events
+
+    month_name = calendar.month_name[month]
+
+    context = {
+        "employee": employee,
+        "events_json": json.dumps(all_events),
+        "monthly_summary": monthly_summary,
+        "year": year,
+        "month": month,
+        "month_name": month_name,
+    }
+
+    all_employees = User.objects.filter(is_active=True).order_by("first_name")
+    context["all_employees"] = all_employees
+
+    return render(request, "employee/calendar.html", context)

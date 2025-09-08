@@ -97,54 +97,7 @@
                                     </div>
                                 </div>
                             </div>
-                            
-                            <div class="card border mb-3">
-                                <div class="card-header bg-light">
-                                    <h5 class="card-title mb-0">
-                                        <i class="ri-money-dollar-circle-line me-2"></i>Purchase Amount
-                                    </h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-4 mb-3">
-                                            <label class="form-label" for="{{ form.subtotal.id_for_label }}">Subtotal <span class="text-danger">*</span></label>
-                                            <div class="input-group">
-                                                <span class="input-group-text">LKR</span>
-                                                {{ form.subtotal }}
-                                            </div>
-                                            {% if form.subtotal.errors %}
-                                            <div class="invalid-feedback d-block">
-                                                {% for error in form.subtotal.errors %}{{ error }}{% endfor %}
-                                            </div>
-                                            {% endif %}
-                                            <div class="form-text">Total before tax</div>
-                                        </div>
-                                        
-                                        <div class="col-md-4 mb-3">
-                                            <label class="form-label" for="{{ form.tax_amount.id_for_label }}">Tax Amount</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text">LKR</span>
-                                                {{ form.tax_amount }}
-                                            </div>
-                                            {% if form.tax_amount.errors %}
-                                            <div class="invalid-feedback d-block">
-                                                {% for error in form.tax_amount.errors %}{{ error }}{% endfor %}
-                                            </div>
-                                            {% endif %}
-                                            <div class="form-text">Tax applied to purchase</div>
-                                        </div>
-                                        
-                                        <div class="col-md-4 mb-3">
-                                            <label class="form-label">Total Amount</label>
-                                            <div class="input-group">
-                                                <span class="input-group-text">LKR</span>
-                                                <input type="text" class="form-control" id="totalAmount" readonly>
-                                            </div>
-                                            <div class="form-text">Subtotal + Tax</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        
                             <div class="card border mb-3">
                                 <div class="card-header bg-light">
                                     <h5 class="card-title mb-0">
@@ -335,19 +288,7 @@
                                                 {% for error in form.receipt_attached.errors %}{{ error }}{% endfor %}
                                             </div>
                                             {% endif %}
-                                        </div>
-                                        
-                                        <div class="col-md-12 receipt-upload-area" style="display: none;">
-                                            <div id="receipt-dropzone" class="dropzone border rounded p-3">
-                                                <div class="dz-message needsclick">
-                                                    <div class="mb-3">
-                                                        <i class="display-4 text-muted ri-upload-cloud-2-line"></i>
-                                                    </div>
-                                                    <h4>Drop files here or click to upload</h4>
-                                                    <p class="text-muted">Upload receipts and supporting documents</p>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        </div>                                                   
                                     </div>
                                 </div>
                             </div>
@@ -429,7 +370,56 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <div class="card border mb-3">
+                                <div class="card-header bg-light">
+                                    <h5 class="card-title mb-0">
+                                        <i class="ri-money-dollar-circle-line me-2"></i>Purchase Amount
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label" for="{{ form.subtotal.id_for_label }}">Subtotal <span class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">LKR</span>
+                                                {{ form.subtotal }}
+                                            </div>
+                                            {% if form.subtotal.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.subtotal.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Total before tax</div>
+                                        </div>
+                                        
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label" for="{{ form.tax_amount.id_for_label }}">Tax Amount</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">LKR</span>
+                                                {{ form.tax_amount }}
+                                            </div>
+                                            {% if form.tax_amount.errors %}
+                                            <div class="invalid-feedback d-block">
+                                                {% for error in form.tax_amount.errors %}{{ error }}{% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            <div class="form-text">Tax applied to purchase</div>
+                                        </div>
+                                        
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Total Amount</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">LKR</span>
+                                                <input type="text" class="form-control" id="totalAmount" readonly>
+                                            </div>
+                                            <div class="form-text">Subtotal + Tax</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+
                         <div class="col-lg-2">
                             <div class="card border mb-3">
                                 <div class="card-header bg-light">
@@ -570,7 +560,6 @@
 {% endblock %}
 {% block js %}
 <script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
-<script src="/static/assets/libs/dropzone/min/dropzone.min.js"></script>
 
 <script>
 let itemIndex = 0;
@@ -714,6 +703,7 @@ document.addEventListener('DOMContentLoaded', function() {
         employeeSelect.addEventListener('change', function() {
             const employeeId = this.value;
             
+            /* 
             if (employeeId) {
                 fetch(`/api/employees/${employeeId}/`)
                     .then(response => {
@@ -739,6 +729,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         console.error('Error fetching employee data:', error);
                     });
             }
+            */
         });
         
         if (employeeSelect.value) {
@@ -806,36 +797,6 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleInstallmentFields();
     }
     
-    const receiptAttachedCheckbox = document.getElementById('id_receipt_attached');
-    const receiptUploadArea = document.querySelector('.receipt-upload-area');
-    
-    if (receiptAttachedCheckbox && receiptUploadArea) {
-        receiptAttachedCheckbox.addEventListener('change', function() {
-            receiptUploadArea.style.display = this.checked ? 'block' : 'none';
-        });
-        
-        receiptUploadArea.style.display = receiptAttachedCheckbox.checked ? 'block' : 'none';
-    }
-    
-    if (document.getElementById('receipt-dropzone')) {
-        Dropzone.autoDiscover = false;
-        
-        const myDropzone = new Dropzone("#receipt-dropzone", {
-            url: "{% url 'expenses:document_upload' pk=form.instance.pk|default:0 %}",
-            paramName: "file",
-            maxFilesize: 10,
-            acceptedFiles: ".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx",
-            addRemoveLinks: true,
-            autoProcessQueue: false,
-            uploadMultiple: true,
-            parallelUploads: 5,
-            maxFiles: 10,
-            headers: {
-                "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
-            }
-        });
-    }
-    
     const purchaseForm = document.getElementById('purchaseForm');
     if (purchaseForm) {
         purchaseForm.addEventListener('submit', function(e) {
@@ -844,43 +805,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 alert('Please add at least one purchase item before submitting.');
                 return false;
-            }
-            
-            if (receiptAttachedCheckbox && receiptAttachedCheckbox.checked) {
-                const dropzone = Dropzone.instances[0];
-                if (dropzone && dropzone.getQueuedFiles().length > 0) {
-                    e.preventDefault();
-                    
-                    const formData = new FormData(this);
-                    
-                    fetch(this.action, {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            if (data.expense_id) {
-                                dropzone.options.url = `/expenses/document_upload/${data.expense_id}/`;
-                            }
-                            
-                            dropzone.processQueue();
-                            
-                            dropzone.on("queuecomplete", function() {
-                                window.location.href = data.redirect_url || "/expenses/expenses/";
-                            });
-                        } else {
-                            alert('Please correct the errors in the form before uploading files.');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error submitting form:', error);
-                        alert('An error occurred while saving the purchase. Please try again.');
-                    });
-                }
             }
         });
     }

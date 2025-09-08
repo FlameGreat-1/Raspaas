@@ -3,6 +3,8 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from decimal import Decimal
 from accounts.models import CustomUser, Department
+import random
+import string
 
 from .models import (
     Expense,
@@ -252,7 +254,6 @@ class ExpenseForm(forms.ModelForm):
 
         return cleaned_data
 
-
 class ExpenseDocumentForm(forms.ModelForm):
     class Meta:
         model = ExpenseDocument
@@ -304,7 +305,6 @@ class ExpenseDocumentForm(forms.ModelForm):
 
         return file
 
-
 class PurchaseItemForm(forms.ModelForm):
     class Meta:
         model = PurchaseItem
@@ -332,6 +332,8 @@ class PurchaseItemForm(forms.ModelForm):
             self.fields["expense"].widget = forms.HiddenInput()
 
         self.fields["department"].queryset = Department.objects.filter(is_active=True)
+        self.fields["notes"].required = False
+        self.fields["category"].required = False
 
     def clean(self):
         cleaned_data = super().clean()
@@ -463,13 +465,20 @@ class PurchaseExpenseForm(forms.ModelForm):
             is_active=True, is_staff=True
         )
 
+        self.fields["currency"].required = False
+        self.fields["notes"].required = False
+        self.fields["period"].required = False
+        self.fields["priority"].required = False
+        self.fields["total_amount"].required = False
+
         try:
             purchase_return_category = ExpenseCategory.active.get(
                 is_employee_expense=True
             )
-            purchase_return_type = ExpenseType.active.get(
+            purchase_return_type = ExpenseType.active.filter(
                 category=purchase_return_category, is_purchase_return=True
-            )
+            ).first()
+
             self.instance.expense_category = purchase_return_category
             self.instance.expense_type = purchase_return_type
         except (ExpenseCategory.DoesNotExist, ExpenseType.DoesNotExist):
@@ -498,6 +507,7 @@ class PurchaseExpenseForm(forms.ModelForm):
         if subtotal:
             total_amount = subtotal + (tax_amount or Decimal("0.00"))
             cleaned_data["total_amount"] = total_amount
+            self.instance.total_amount = total_amount
 
         request_date = cleaned_data.get("request_date")
         date_incurred = cleaned_data.get("date_incurred")
@@ -516,9 +526,10 @@ class PurchaseExpenseForm(forms.ModelForm):
             purchase_return_category = ExpenseCategory.active.get(
                 is_employee_expense=True
             )
-            purchase_return_type = ExpenseType.active.get(
+            purchase_return_type = ExpenseType.active.filter(
                 category=purchase_return_category, is_purchase_return=True
-            )
+            ).first()
+
             instance.expense_category = purchase_return_category
             instance.expense_type = purchase_return_type
         except (ExpenseCategory.DoesNotExist, ExpenseType.DoesNotExist):
@@ -530,6 +541,14 @@ class PurchaseExpenseForm(forms.ModelForm):
             vendor_name = self.cleaned_data.get("vendor_name")
             purchase_location = self.cleaned_data.get("purchase_location")
             purchase_reference = self.cleaned_data.get("purchase_reference")
+
+            if not purchase_reference:
+                date_str = timezone.now().strftime("%Y%m%d")
+                random_str = "".join(
+                    random.choices(string.ascii_uppercase + string.digits, k=6)
+                )
+                purchase_reference = f"PUR-{date_str}-{random_str}"
+
             subtotal = self.cleaned_data.get("subtotal")
             tax_amount = self.cleaned_data.get("tax_amount", Decimal("0.00"))
             total_amount = subtotal + tax_amount
@@ -555,7 +574,6 @@ class PurchaseExpenseForm(forms.ModelForm):
                 )
 
         return instance
-
 
 class ExpenseDeductionThresholdForm(forms.ModelForm):
     class Meta:

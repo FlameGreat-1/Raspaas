@@ -47,6 +47,7 @@ from .utils import (
     safe_payroll_calculation,
     log_payroll_activity,
 )
+from expenses.services import ExpensePayrollService 
 
 logger = logging.getLogger(__name__)
 
@@ -601,6 +602,8 @@ class Payslip(models.Model):
     meal_per_day = models.DecimalField(
         max_digits=6, decimal_places=2, default=Decimal("0.00")
     )
+    expense_additions = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    expense_deductions = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
 
     monthly_summary = models.ForeignKey(
         MonthlyAttendanceSummary,
@@ -698,21 +701,49 @@ class Payslip(models.Model):
     def total_overtime_pay(self):
         return self.regular_overtime + self.friday_overtime
 
+
     def calculate_payroll(self):
         self.calculate_basic_components()
         self.calculate_role_specific_allowances()
         self.calculate_overtime_pay()
         self.calculate_deductions()
+
+        expense_data = ExpensePayrollService.get_payroll_amounts(self.employee.id)
+
+        self.expense_additions = expense_data["addition_amount"]
+        self.expense_deductions = expense_data["deduction_amount"]
+        expense_ids = expense_data["expense_ids"]
+
         self.calculate_totals()
         self.status = "CALCULATED"
         self.save()
 
-        log_payroll_activity(self.calculated_by, 'PAYSLIP_CALCULATED', {
-            'payslip_id': str(self.id),
-            'employee_code': self.employee.employee_code,
-            'gross_salary': float(self.gross_salary),
-            'net_salary': float(self.net_salary)
-        })
+        if expense_ids:
+            try:
+                payroll_period = f"{calendar.month_name[self.payroll_period.month]} {self.payroll_period.year}"
+                result = ExpensePayrollService.mark_as_processed(
+                    expense_ids=expense_ids,
+                    payroll_reference=self.reference_number,
+                    payroll_period=payroll_period,
+                )
+                print(f"Expense processing result: {result}")  # Add logging to see the result
+            except Exception as e:
+                # Log the error but don't let it prevent payslip calculation
+                print(f"Error processing expenses: {str(e)}")
+                # You might want to add proper logging here
+                import traceback
+                print(traceback.format_exc())  # Print the full traceback for debugging
+
+        log_payroll_activity(
+            self.calculated_by,
+            "PAYSLIP_CALCULATED",
+            {
+                "payslip_id": str(self.id),
+                "employee_code": self.employee.employee_code,
+                "gross_salary": float(self.gross_salary),
+                "net_salary": float(self.net_salary),
+            },
+        )
 
     def calculate_basic_components(self):
         basic_components = PayrollCalculator.calculate_basic_salary_components(
@@ -804,6 +835,7 @@ class Payslip(models.Model):
             + self.total_overtime_pay
             + self.religious_pay
             + self.friday_salary
+            + self.expense_additions
         )
 
         self.total_deductions = (
@@ -813,6 +845,7 @@ class Payslip(models.Model):
             + self.advance_deduction
             + self.employee_epf_contribution
             + self.income_tax
+            + self.expense_deductions
         )
 
         self.net_salary = self.gross_salary - self.total_deductions

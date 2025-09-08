@@ -173,6 +173,14 @@
                                                         <td class="text-end">{{ payslip.total_overtime_pay|floatformat:2 }}</td>
                                                     </tr>
                                                     <tr>
+                                                        <th class="ps-0" scope="row">Expense Reimbursements:</th>
+                                                        <td class="text-end">{{ payslip.expense_additions|floatformat:2 }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th class="ps-0" scope="row">Expense Deductions:</th>
+                                                        <td class="text-end text-danger">{{ payslip.expense_deductions|floatformat:2 }}</td>
+                                                    </tr>                                                    
+                                                    <tr>
                                                         <th class="ps-0" scope="row">Total Deductions:</th>
                                                         <td class="text-end text-danger">{{ payslip.total_deductions|floatformat:2 }}</td>
                                                     </tr>

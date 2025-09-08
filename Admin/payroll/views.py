@@ -464,26 +464,26 @@ class PayslipViews:
         template_name = 'payroll/payslip_list.html'
         context_object_name = 'payslips'
         paginate_by = 20
-        
+
         def get_queryset(self):
             queryset = Payslip.objects.all().select_related('employee', 'payroll_period')
-            
+
             period_id = self.request.GET.get('period_id')
             if period_id:
                 queryset = queryset.filter(payroll_period_id=period_id)
-            
+
             department_id = self.request.GET.get('department_id')
             if department_id:
                 queryset = queryset.filter(employee__department_id=department_id)
-            
+
             role_id = self.request.GET.get('role_id')
             if role_id:
                 queryset = queryset.filter(employee__role_id=role_id)
-            
+
             status_filter = self.request.GET.get('status')
             if status_filter:
                 queryset = queryset.filter(status=status_filter)
-            
+
             search_query = self.request.GET.get('search')
             if search_query:
                 queryset = queryset.filter(
@@ -492,24 +492,29 @@ class PayslipViews:
                     Q(employee__employee_code__icontains=search_query) |
                     Q(reference_number__icontains=search_query)
                 )
-            
+
             sort_by = self.request.GET.get('sort_by')
             if not sort_by:
                 queryset = queryset.order_by('-payroll_period__year', '-payroll_period__month')
             else:
                 sort_fields = sort_by.split(',')
                 queryset = queryset.order_by(*sort_fields)
-            
+
             return queryset
-        
+
         def get_context_data(self, **kwargs):
             context = super().get_context_data(**kwargs)
-            
+
+            payslips = context['payslips']
+            for payslip in payslips:
+                profile = EmployeeDataManager.get_employee_profile(payslip.employee)
+                payslip.employee_profile_id = profile.id
+ 
             periods = PayrollPeriod.objects.all().order_by('-year', '-month')
             departments = Department.objects.filter(is_active=True)
             roles = Role.objects.filter(is_active=True)
             statuses = [status[0] for status in Payslip.STATUS_CHOICES]
-            
+
             context.update({
                 'page_title': 'Payslips',
                 'periods': periods,
@@ -525,22 +530,23 @@ class PayslipViews:
                 'can_calculate_payslips': True,
                 'can_approve_payslips': True,
             })
-            
+
             return context
-    
+
     class PayslipDetailView(LoginRequiredMixin, DetailView):
         model = Payslip
         template_name = 'payroll/payslip_detail.html'
         context_object_name = 'payslip'
-        
+
         def get_context_data(self, **kwargs):
             context = super().get_context_data(**kwargs)
             payslip = self.object
-            
+
             employee = payslip.employee
             profile = EmployeeDataManager.get_employee_profile(employee)
             monthly_summary = payslip.monthly_summary
             
+
             attendance_data = {}
             if monthly_summary:
                 attendance_data = {
@@ -554,27 +560,28 @@ class PayslipViews:
                     'attendance_percentage': monthly_summary.attendance_percentage,
                     'punctuality_score': monthly_summary.punctuality_score,
                 }
-            
+
             payslip_items = []
-            
+
             earnings = [
-                {'name': 'Basic Salary', 'amount': payslip.basic_salary},
-                {'name': 'Bonus 1', 'amount': payslip.bonus_1},
-                {'name': 'Bonus 2', 'amount': payslip.bonus_2},
-                {'name': 'Transport Allowance', 'amount': payslip.transport_allowance},
-                {'name': 'Telephone Allowance', 'amount': payslip.telephone_allowance},
-                {'name': 'Fuel Allowance', 'amount': payslip.fuel_allowance},
-                {'name': 'Meal Allowance', 'amount': payslip.meal_allowance},
-                {'name': 'Attendance Bonus', 'amount': payslip.attendance_bonus},
-                {'name': 'Performance Bonus', 'amount': payslip.performance_bonus},
-                {'name': 'Interim Allowance', 'amount': payslip.interim_allowance},
-                {'name': 'Education Allowance', 'amount': payslip.education_allowance},
-                {'name': 'Regular Overtime', 'amount': payslip.regular_overtime},
-                {'name': 'Friday Overtime', 'amount': payslip.friday_overtime},
-                {'name': 'Religious Pay', 'amount': payslip.religious_pay},
-                {'name': 'Friday Salary', 'amount': payslip.friday_salary},
+                {"name": "Basic Salary", "amount": payslip.basic_salary},
+                {"name": "Bonus 1", "amount": payslip.bonus_1},
+                {"name": "Bonus 2", "amount": payslip.bonus_2},
+                {"name": "Transport Allowance", "amount": payslip.transport_allowance},
+                {"name": "Telephone Allowance", "amount": payslip.telephone_allowance},
+                {"name": "Fuel Allowance", "amount": payslip.fuel_allowance},
+                {"name": "Meal Allowance", "amount": payslip.meal_allowance},
+                {"name": "Attendance Bonus", "amount": payslip.attendance_bonus},
+                {"name": "Performance Bonus", "amount": payslip.performance_bonus},
+                {"name": "Interim Allowance", "amount": payslip.interim_allowance},
+                {"name": "Education Allowance", "amount": payslip.education_allowance},
+                {"name": "Regular Overtime", "amount": payslip.regular_overtime},
+                {"name": "Friday Overtime", "amount": payslip.friday_overtime},
+                {"name": "Religious Pay", "amount": payslip.religious_pay},
+                {"name": "Friday Salary", "amount": payslip.friday_salary},
+                {"name": "Expense Reimbursements", "amount": payslip.expense_additions},
             ]
-            
+
             deductions = [
                 {'name': 'EPF Employee Contribution', 'amount': payslip.employee_epf_contribution},
                 {'name': 'Leave Deduction', 'amount': payslip.leave_deduction},
@@ -582,19 +589,20 @@ class PayslipViews:
                 {'name': 'Lunch Violation Penalty', 'amount': payslip.lunch_violation_penalty},
                 {'name': 'Advance Deduction', 'amount': payslip.advance_deduction},
                 {'name': 'Income Tax', 'amount': payslip.income_tax},
+                {'name': 'Expense Deductions', 'amount': payslip.expense_deductions},
             ]
-            
+
             employer_contributions = [
                 {'name': 'EPF Employer Contribution', 'amount': payslip.employer_epf_contribution},
                 {'name': 'ETF Contribution', 'amount': payslip.etf_contribution},
             ]
-            
+
             active_advances = SalaryAdvance.objects.filter(
                 employee=employee, 
                 status='ACTIVE',
                 outstanding_amount__gt=0
             )
-            
+
             context.update({
                 'page_title': f'Payslip: {payslip.reference_number}',
                 'employee': employee,
@@ -609,90 +617,90 @@ class PayslipViews:
                 'can_print': payslip.status in ['CALCULATED', 'APPROVED', 'PAID'],
                 'can_email': payslip.status in ['APPROVED', 'PAID'],
             })
-            
+
             return context
-    
+
     class PayslipCalculateView(LoginRequiredMixin, View):
         def post(self, request, pk):
             payslip = get_object_or_404(Payslip, pk=pk)
-            
+
             if payslip.status not in ['DRAFT']:
                 messages.error(request, f"Cannot calculate payslip in {payslip.status} status.")
                 return HttpResponseRedirect(reverse('payroll:payslip_detail', kwargs={'pk': payslip.pk}))
-            
+
             try:
                 payslip.calculated_by = request.user
                 payslip.calculate_payroll()
-                
+
                 messages.success(request, f"Payslip for {payslip.employee.get_full_name()} calculated successfully.")
                 return HttpResponseRedirect(reverse('payroll:payslip_detail', kwargs={'pk': payslip.pk}))
-            
+
             except Exception as e:
                 logger.error(f"Error calculating payslip {payslip.id}: {str(e)}")
                 messages.error(request, f"Error calculating payslip: {str(e)}")
                 return HttpResponseRedirect(reverse('payroll:payslip_detail', kwargs={'pk': payslip.pk}))
-    
+
     class PayslipApproveView(LoginRequiredMixin, View):
         def post(self, request, pk):
             payslip = get_object_or_404(Payslip, pk=pk)
-            
+
             if payslip.status != 'CALCULATED':
                 messages.error(request, f"Cannot approve payslip in {payslip.status} status.")
                 return HttpResponseRedirect(reverse('payroll:payslip_detail', kwargs={'pk': payslip.pk}))
-            
+
             try:
                 payslip.approve(request.user)
-                
+
                 messages.success(request, f"Payslip for {payslip.employee.get_full_name()} approved successfully.")
                 return HttpResponseRedirect(reverse('payroll:payslip_detail', kwargs={'pk': payslip.pk}))
-            
+
             except Exception as e:
                 logger.error(f"Error approving payslip {payslip.id}: {str(e)}")
                 messages.error(request, f"Error approving payslip: {str(e)}")
                 return HttpResponseRedirect(reverse('payroll:payslip_detail', kwargs={'pk': payslip.pk}))
-            
+
     class BulkPayslipCalculateView(LoginRequiredMixin, View):
         def get(self, request):
             periods = PayrollPeriod.objects.filter(status__in=['DRAFT', 'PROCESSING']).order_by('-year', '-month')
             departments = Department.objects.filter(is_active=True)
             roles = Role.objects.filter(is_active=True)
-            
+
             context = {
                 'page_title': 'Bulk Calculate Payslips',
                 'periods': periods,
                 'departments': departments,
                 'roles': roles,
             }
-            
+
             return render(request, 'payroll/bulk_calculate.html', context)
-        
+
         def post(self, request):
             period_id = request.POST.get('period_id')
             department_id = request.POST.get('department_id')
             role_id = request.POST.get('role_id')
-            
+
             if not period_id:
                 messages.error(request, "Payroll period is required.")
                 return HttpResponseRedirect(reverse('payroll:bulk_calculate'))
-            
+
             try:
                 period = PayrollPeriod.objects.get(pk=period_id)
-                
+
                 if period.status not in ['DRAFT', 'PROCESSING']:
                     messages.error(request, f"Cannot calculate payslips for period in {period.status} status.")
                     return HttpResponseRedirect(reverse('payroll:bulk_calculate'))
-                
+
                 employees = CustomUser.active.filter(status="ACTIVE")
-                
+
                 if department_id:
                     employees = employees.filter(department_id=department_id)
-                
+
                 if role_id:
                     employees = employees.filter(role_id=role_id)
-                
+
                 with transaction.atomic():
                     calculated_payslips = Payslip.objects.bulk_calculate(period, employees)
-                    
+
                     log_payroll_activity(
                         request.user,
                         "BULK_PAYROLL_CALCULATED",
@@ -702,148 +710,148 @@ class PayslipViews:
                             "calculated_count": len(calculated_payslips),
                         },
                     )
-                    
+
                     messages.success(request, f"Calculated {len(calculated_payslips)} payslips successfully.")
-                    
+
                     if period.status == 'DRAFT' and len(calculated_payslips) > 0:
                         period.status = 'PROCESSING'
                         period.save(update_fields=['status'])
-                    
+
                     return HttpResponseRedirect(reverse('payroll:period_detail', kwargs={'pk': period.id}))
-            
+
             except PayrollPeriod.DoesNotExist:
                 messages.error(request, "Invalid payroll period.")
                 return HttpResponseRedirect(reverse('payroll:bulk_calculate'))
-            
+
             except Exception as e:
                 logger.error(f"Error in bulk calculate: {str(e)}")
                 messages.error(request, f"Error calculating payslips: {str(e)}")
                 return HttpResponseRedirect(reverse('payroll:bulk_calculate'))
-    
+
     class BulkPayslipApproveView(LoginRequiredMixin, View):
         def get(self, request):
             periods = PayrollPeriod.objects.filter(status__in=['PROCESSING', 'COMPLETED']).order_by('-year', '-month')
             departments = Department.objects.filter(is_active=True)
             roles = Role.objects.filter(is_active=True)
-            
+
             context = {
                 'page_title': 'Bulk Approve Payslips',
                 'periods': periods,
                 'departments': departments,
                 'roles': roles,
             }
-            
+
             return render(request, 'payroll/bulk_approve.html', context)
-        
+
         def post(self, request):
             period_id = request.POST.get('period_id')
             department_id = request.POST.get('department_id')
             role_id = request.POST.get('role_id')
-            
+
             if not period_id:
                 messages.error(request, "Payroll period is required.")
                 return HttpResponseRedirect(reverse('payroll:bulk_approve'))
-            
+
             try:
                 period = PayrollPeriod.objects.get(pk=period_id)
-                
+
                 if period.status not in ['PROCESSING', 'COMPLETED']:
                     messages.error(request, f"Cannot approve payslips for period in {period.status} status.")
                     return HttpResponseRedirect(reverse('payroll:bulk_approve'))
-                
+
                 employees = None
-                
+
                 if department_id or role_id:
                     employees = CustomUser.active.filter(status="ACTIVE")
-                    
+
                     if department_id:
                         employees = employees.filter(department_id=department_id)
-                    
+
                     if role_id:
                         employees = employees.filter(role_id=role_id)
-                
+
                 with transaction.atomic():
                     approved_count, failed_approvals = Payslip.objects.bulk_approve(period, request.user, employees)
-                    
+
                     if failed_approvals:
                         for failure in failed_approvals[:5]:
                             messages.warning(request, failure)
-                        
+
                         if len(failed_approvals) > 5:
                             messages.warning(request, f"... and {len(failed_approvals) - 5} more failures.")
-                    
+
                     messages.success(request, f"Approved {approved_count} payslips successfully.")
-                    
+
                     if period.status == 'PROCESSING' and approved_count > 0:
                         calculated_count = Payslip.objects.filter(
                             payroll_period=period, 
                             status='CALCULATED'
                         ).count()
-                        
+
                         if calculated_count == 0:
                             period.mark_as_completed(request.user)
                             messages.success(request, f"Payroll period {period.period_name} marked as completed.")
-                    
+
                     return HttpResponseRedirect(reverse('payroll:period_detail', kwargs={'pk': period.id}))
-            
+
             except PayrollPeriod.DoesNotExist:
                 messages.error(request, "Invalid payroll period.")
                 return HttpResponseRedirect(reverse('payroll:bulk_approve'))
-            
+
             except Exception as e:
                 logger.error(f"Error in bulk approve: {str(e)}")
                 messages.error(request, f"Error approving payslips: {str(e)}")
                 return HttpResponseRedirect(reverse('payroll:bulk_approve'))
-    
+
     class EmployeePayslipHistoryView(LoginRequiredMixin, ListView):
         model = Payslip
         template_name = 'payroll/employee_payslip_history.html'
         context_object_name = 'payslips'
         paginate_by = 12
-        
+
         def get_queryset(self):
             employee_id = self.kwargs.get('employee_id')
             employee = get_object_or_404(CustomUser, pk=employee_id)
-            
+
             queryset = Payslip.objects.filter(employee=employee).select_related('payroll_period')
-            
+
             year = self.request.GET.get('year')
             if year and year.isdigit():
                 queryset = queryset.filter(payroll_period__year=int(year))
-            
+
             status = self.request.GET.get('status')
             if status:
                 queryset = queryset.filter(status=status)
-            
+
             return queryset.order_by('-payroll_period__year', '-payroll_period__month')
-        
+
         def get_context_data(self, **kwargs):
             context = super().get_context_data(**kwargs)
-            
+
             employee_id = self.kwargs.get('employee_id')
             employee = get_object_or_404(CustomUser, pk=employee_id)
             profile = EmployeeDataManager.get_employee_profile(employee)
-            
+
             years = Payslip.objects.filter(employee=employee).values_list(
                 'payroll_period__year', flat=True
             ).distinct().order_by('-payroll_period__year')
-            
+
             statuses = [status[0] for status in Payslip.STATUS_CHOICES]
-            
+
             ytd_data = None
             current_year = datetime.now().year
-            
+
             if years and current_year in years:
                 ytd_result = calculate_employee_year_to_date(employee.id, current_year)
                 if ytd_result['status'] == 'success':
                     ytd_data = ytd_result['ytd_data']
-            
+
             active_advances = SalaryAdvance.objects.filter(
                 employee=employee, 
                 status='ACTIVE',
                 outstanding_amount__gt=0
             )
-            
+
             context.update({
                 'page_title': f'Payslip History: {employee.get_full_name()}',
                 'employee': employee,
@@ -857,17 +865,17 @@ class PayslipViews:
                 'can_view_detail': True,
                 'can_print_payslip': True,
             })
-            
+
             return context
 
     class EmployeePayslipSelectView(LoginRequiredMixin, TemplateView):
         template_name = 'payroll/employee_payslip_select.html'
-        
+
         def get_context_data(self, **kwargs):
             context = super().get_context_data(**kwargs)
             context['employees'] = CustomUser.active.filter(status="ACTIVE").order_by('first_name', 'last_name')
             return context
-            
+
         def post(self, request):
             employee_id = request.POST.get('employee_id')
             if employee_id:
@@ -884,41 +892,49 @@ class PayslipViews:
         model = Payslip
         template_name = 'payroll/print_payslip.html'
         context_object_name = 'payslip'
-        
+
         def get_context_data(self, **kwargs):
             context = super().get_context_data(**kwargs)
             payslip = self.object
-            
+
             employee = payslip.employee
             profile = EmployeeDataManager.get_employee_profile(employee)
-            
+
             earnings = [
-                {'name': 'Basic Salary', 'amount': payslip.basic_salary},
-                {'name': 'Bonus 1', 'amount': payslip.bonus_1},
-                {'name': 'Bonus 2', 'amount': payslip.bonus_2},
-                {'name': 'Transport Allowance', 'amount': payslip.transport_allowance},
-                {'name': 'Telephone Allowance', 'amount': payslip.telephone_allowance},
-                {'name': 'Fuel Allowance', 'amount': payslip.fuel_allowance},
-                {'name': 'Meal Allowance', 'amount': payslip.meal_allowance},
-                {'name': 'Attendance Bonus', 'amount': payslip.attendance_bonus},
-                {'name': 'Performance Bonus', 'amount': payslip.performance_bonus},
-                {'name': 'Interim Allowance', 'amount': payslip.interim_allowance},
-                {'name': 'Education Allowance', 'amount': payslip.education_allowance},
-                {'name': 'Regular Overtime', 'amount': payslip.regular_overtime},
-                {'name': 'Friday Overtime', 'amount': payslip.friday_overtime},
-                {'name': 'Religious Pay', 'amount': payslip.religious_pay},
-                {'name': 'Friday Salary', 'amount': payslip.friday_salary},
+                {"name": "Basic Salary", "amount": payslip.basic_salary},
+                {"name": "Bonus 1", "amount": payslip.bonus_1},
+                {"name": "Bonus 2", "amount": payslip.bonus_2},
+                {"name": "Transport Allowance", "amount": payslip.transport_allowance},
+                {"name": "Telephone Allowance", "amount": payslip.telephone_allowance},
+                {"name": "Fuel Allowance", "amount": payslip.fuel_allowance},
+                {"name": "Meal Allowance", "amount": payslip.meal_allowance},
+                {"name": "Attendance Bonus", "amount": payslip.attendance_bonus},
+                {"name": "Performance Bonus", "amount": payslip.performance_bonus},
+                {"name": "Interim Allowance", "amount": payslip.interim_allowance},
+                {"name": "Education Allowance", "amount": payslip.education_allowance},
+                {"name": "Regular Overtime", "amount": payslip.regular_overtime},
+                {"name": "Friday Overtime", "amount": payslip.friday_overtime},
+                {"name": "Religious Pay", "amount": payslip.religious_pay},
+                {"name": "Friday Salary", "amount": payslip.friday_salary},
+                {"name": "Expense Reimbursements", "amount": payslip.expense_additions},
             ]
-            
+
             deductions = [
-                {'name': 'EPF Employee Contribution', 'amount': payslip.employee_epf_contribution},
-                {'name': 'Leave Deduction', 'amount': payslip.leave_deduction},
-                {'name': 'Late Penalty', 'amount': payslip.late_penalty},
-                {'name': 'Lunch Violation Penalty', 'amount': payslip.lunch_violation_penalty},
-                {'name': 'Advance Deduction', 'amount': payslip.advance_deduction},
-                {'name': 'Income Tax', 'amount': payslip.income_tax},
+                {
+                    "name": "EPF Employee Contribution",
+                    "amount": payslip.employee_epf_contribution,
+                },
+                {"name": "Leave Deduction", "amount": payslip.leave_deduction},
+                {"name": "Late Penalty", "amount": payslip.late_penalty},
+                {
+                    "name": "Lunch Violation Penalty",
+                    "amount": payslip.lunch_violation_penalty,
+                },
+                {"name": "Advance Deduction", "amount": payslip.advance_deduction},
+                {"name": "Income Tax", "amount": payslip.income_tax},
+                {"name": "Expense Deductions", "amount": payslip.expense_deductions},
             ]
-            
+
             context.update({
                 'page_title': f'Print Payslip: {payslip.reference_number}',
                 'employee': employee,
@@ -931,7 +947,7 @@ class PayslipViews:
                 'company_email': SystemConfiguration.get_setting('COMPANY_EMAIL', 'Company Email'),
                 'print_date': timezone.now().date(),
             })
-            
+
             return context
 
 class SalaryAdvanceViews:

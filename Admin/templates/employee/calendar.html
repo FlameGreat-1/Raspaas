@@ -1,0 +1,468 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+{% load calendar_tags %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Attendance & Payroll Calendar" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<style>
+    .fc-event {
+        cursor: pointer;
+    }
+    .fc-day-today {
+        background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
+        position: relative;
+    }
+    .attendance-badge, .payroll-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+    }
+    .summary-card {
+        transition: all 0.3s ease;
+    }
+    .summary-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--bs-gray-600);
+    }
+    .employee-selector {
+        background-color: var(--bs-light);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .month-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .month-nav .btn-group {
+        margin-right: 1rem;
+    }
+    .current-day-indicator {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background-color: #28a745;
+        color: white;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        z-index: 5;
+    }
+    .today-star-indicator {
+        color: #28a745 !important;
+        font-size: 16px !important;
+        position: absolute !important;
+        top: 5px !important;
+        right: 5px !important;
+        z-index: 10 !important;
+    }
+    .fc-col-header-cell-cushion {
+        font-weight: bold;
+        color: var(--bs-dark);
+    }
+    .fc-daygrid-day-number {
+        font-weight: 500;
+    }
+    .day-of-week-label {
+        font-size: 0.8rem;
+        color: var(--bs-gray-600);
+        margin-bottom: 2px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Applications" title="Attendance & Payroll Calendar"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xl-9">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    {% if request.user.is_staff %}
+                    <div class="employee-selector" style="flex: 1; max-width: 400px;">
+                        <form method="get" id="employeeForm">
+                            <label for="employee_select" class="form-label mb-2">Select Employee:</label>
+                            <select id="employee_select" name="employee_id" class="form-select" onchange="document.getElementById('employeeForm').submit()">
+                                <option value="{{ request.user.id }}" {% if employee.id == request.user.id %}selected{% endif %}>Me ({{ request.user.get_full_name }})</option>
+                                {% for emp in all_employees %}
+                                <option value="{{ emp.id }}" {% if employee.id == emp.id %}selected{% endif %}>{{ emp.get_full_name }} ({{ emp.employee_code }})</option>
+                                {% endfor %}
+                            </select>
+                            <input type="hidden" name="year" id="year_input" value="{{ year }}">
+                            <input type="hidden" name="month" id="month_input" value="{{ month }}">
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div id="calendar" style="min-height: 500px;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3">
+        {% if monthly_summary %}
+        <div class="card mb-4 summary-card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Monthly Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded text-center">
+                            <div class="stat-value text-primary">{{ monthly_summary.working_days }}</div>
+                            <div class="stat-label">Working Days</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded text-center">
+                            <div class="stat-value text-success">{{ monthly_summary.attended_days }}</div>
+                            <div class="stat-label">Present Days</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded text-center">
+                            <div class="stat-value text-warning">{{ monthly_summary.late_days }}</div>
+                            <div class="stat-label">Late Days</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-light rounded text-center">
+                            <div class="stat-value text-danger">{{ monthly_summary.absent_days }}</div>
+                            <div class="stat-label">Absent Days</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>Attendance Rate</span>
+                        <span class="badge bg-success-subtle text-success">{{ monthly_summary.attendance_percentage }}%</span>
+                    </div>
+                    <div class="progress mb-3" style="height: 6px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ monthly_summary.attendance_percentage }}%"></div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>Punctuality Score</span>
+                        <span class="badge bg-info-subtle text-info">{{ monthly_summary.punctuality_score }}%</span>
+                    </div>
+                    <div class="progress mb-3" style="height: 6px;">
+                        <div class="progress-bar bg-info" role="progressbar" style="width: {{ monthly_summary.punctuality_score }}%"></div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>Efficiency Score</span>
+                        <span class="badge bg-primary-subtle text-primary">{{ monthly_summary.efficiency_score }}%</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar bg-primary" role="progressbar" style="width: {{ monthly_summary.efficiency_score }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        <div class="card summary-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Legend</h5>
+            </div>
+            <div class="card-body">
+                <h6 class="mb-3">Attendance Status</h6>
+                <div class="mb-1">
+                    <div class="external-event bg-success-subtle border-2 border-start border-success text-success py-2 px-3 rounded mb-2">
+                        <i class="mdi mdi-checkbox-blank-circle me-2"></i> Present
+                    </div>
+                </div>
+                <div class="mb-1">
+                    <div class="external-event bg-danger-subtle border-2 border-start border-danger text-danger py-2 px-3 rounded mb-2">
+                        <i class="mdi mdi-checkbox-blank-circle me-2"></i> Absent
+                    </div>
+                </div>
+                <div class="mb-1">
+                    <div class="external-event bg-warning-subtle border-2 border-start border-warning text-warning py-2 px-3 rounded mb-2">
+                        <i class="mdi mdi-checkbox-blank-circle me-2"></i> Late
+                    </div>
+                </div>
+                <div class="mb-1">
+                    <div class="external-event bg-info-subtle border-2 border-start border-info text-info py-2 px-3 rounded mb-2">
+                        <i class="mdi mdi-checkbox-blank-circle me-2"></i> Half Day
+                    </div>
+                </div>
+                <div class="mb-1">
+                    <div class="external-event bg-secondary-subtle border-2 border-start border-secondary text-secondary py-2 px-3 rounded mb-2">
+                        <i class="mdi mdi-checkbox-blank-circle me-2"></i> Leave
+                    </div>
+                </div>
+                <div class="mb-1">
+                    <div class="external-event bg-primary-subtle border-2 border-start border-primary text-primary py-2 px-3 rounded mb-2">
+                        <i class="mdi mdi-checkbox-blank-circle me-2"></i> Holiday
+                    </div>
+                </div>
+                
+                <h6 class="mt-4 mb-3">Payroll Events</h6>
+                <div class="mb-1">
+                    <div class="external-event bg-info-subtle border-2 border-start border-info text-info py-2 px-3 rounded mb-2">
+                        <i class="mdi mdi-checkbox-blank-circle me-2"></i> Processing Date
+                    </div>
+                </div>
+                <div class="mb-1">
+                    <div class="external-event bg-warning-subtle border-2 border-start border-warning text-warning py-2 px-3 rounded mb-2">
+                        <i class="mdi mdi-checkbox-blank-circle me-2"></i> Cutoff Date
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Details Modal -->
+<div class="modal fade" id="attendanceDetailsModal" aria-hidden="true" aria-labelledby="attendanceDetailsModalLabel" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0">
+            <div class="modal-header p-3 bg-light">
+                <h5 class="modal-title" id="attendanceDetailsTitle">Attendance Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-hidden="true"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-4">
+                    <div id="attendanceStatusBadge" class="badge bg-success d-inline-block p-2 fs-6"></div>
+                    <h5 class="mt-3" id="attendanceDate"></h5>
+                </div>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="border rounded p-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="ri-time-line me-2 text-primary"></i>
+                                <h6 class="mb-0">Time Details</h6>
+                            </div>
+                            <div class="d-flex justify-content-between mt-3">
+                                <span class="text-muted">First In:</span>
+                                <span class="fw-medium" id="attendanceFirstIn"></span>
+                            </div>
+                            <div class="d-flex justify-content-between mt-2">
+                                <span class="text-muted">Last Out:</span>
+                                <span class="fw-medium" id="attendanceLastOut"></span>
+                            </div>
+                            <div class="d-flex justify-content-between mt-2">
+                                <span class="text-muted">Work Time:</span>
+                                <span class="fw-medium" id="attendanceWorkTime"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="border rounded p-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="ri-bar-chart-line me-2 text-primary"></i>
+                                <h6 class="mb-0">Performance</h6>
+                            </div>
+                            <div class="d-flex justify-content-between mt-3">
+                                <span class="text-muted">Performance:</span>
+                                <span class="fw-medium" id="attendancePerformance"></span>
+                            </div>
+                            <div class="d-flex justify-content-between mt-2">
+                                <span class="text-muted">Punctuality:</span>
+                                <span class="fw-medium" id="attendancePunctuality"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payroll Details Modal -->
+<div class="modal fade" id="payrollDetailsModal" aria-hidden="true" aria-labelledby="payrollDetailsModalLabel" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0">
+            <div class="modal-header p-3 bg-light">
+                <h5 class="modal-title" id="payrollDetailsTitle">Payroll Event</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-hidden="true"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-4">
+                    <div id="payrollEventTypeBadge" class="badge bg-info d-inline-block p-2 fs-6"></div>
+                    <h5 class="mt-3" id="payrollDate"></h5>
+                </div>
+                
+                <div class="border rounded p-3">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="ri-money-dollar-circle-line me-2 text-primary"></i>
+                        <h6 class="mb-0">Payroll Details</h6>
+                    </div>
+                    <div class="d-flex justify-content-between mt-3">
+                        <span class="text-muted">Period:</span>
+                        <span class="fw-medium" id="payrollPeriod"></span>
+                    </div>
+                    <div class="d-flex justify-content-between mt-2">
+                        <span class="text-muted">Status:</span>
+                        <span class="fw-medium" id="payrollStatus"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<script src="/static/assets/libs/sweetalert2/sweetalert2.all.js"></script>
+<script src="/static/assets/js/app.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const events = {{ events_json|safe }};
+    
+    const calendarEl = document.getElementById('calendar');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,listWeek'
+        },
+        events: events,
+        editable: false,
+        droppable: false,
+        selectable: true,
+        themeSystem: 'bootstrap5',
+        height: 'auto',
+        dayMaxEvents: true,
+        firstDay: 1,
+        showNonCurrentDates: true,
+        fixedWeekCount: false,
+        eventTimeFormat: {
+            hour: '2-digit',
+            minute: '2-digit',
+            meridiem: false
+        },
+        dayHeaderFormat: { weekday: 'long' },
+        dayCellDidMount: function(info) {
+            const today = new Date();
+            if (info.date.getDate() === today.getDate() && 
+                info.date.getMonth() === today.getMonth() && 
+                info.date.getFullYear() === today.getFullYear()) {
+                
+                const star = document.createElement('i');
+                star.className = 'ri-star-fill today-star-indicator';
+                star.style.color = '#28a745';
+                star.style.fontSize = '16px';
+                star.style.position = 'absolute';
+                star.style.top = '5px';
+                star.style.right = '5px';
+                star.style.zIndex = '10';
+                info.el.appendChild(star);
+            }
+            
+            const dayOfWeek = info.date.toLocaleString('en-US', { weekday: 'short' });
+            const dayLabel = document.createElement('div');
+            dayLabel.className = 'day-of-week-label';
+            dayLabel.textContent = dayOfWeek;
+            dayLabel.style.fontSize = '0.8rem';
+            dayLabel.style.color = 'var(--bs-gray-600)';
+            dayLabel.style.marginBottom = '2px';
+            
+            if (info.el.firstChild) {
+                info.el.insertBefore(dayLabel, info.el.firstChild);
+            } else {
+                info.el.appendChild(dayLabel);
+            }        
+        },
+        eventClick: function(info) {
+            const event = info.event;
+            const eventType = event.extendedProps.type;
+            
+            if (eventType === 'attendance') {
+                document.getElementById('attendanceDate').textContent = info.event.start.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                
+                const statusBadge = document.getElementById('attendanceStatusBadge');
+                statusBadge.textContent = event.extendedProps.status;
+                
+                statusBadge.className = 'badge d-inline-block p-2 fs-6';
+                switch(event.extendedProps.status) {
+                    case 'PRESENT': statusBadge.classList.add('bg-success'); break;
+                    case 'ABSENT': statusBadge.classList.add('bg-danger'); break;
+                    case 'LATE': statusBadge.classList.add('bg-warning'); break;
+                    case 'HALF_DAY': statusBadge.classList.add('bg-info'); break;
+                    case 'LEAVE': statusBadge.classList.add('bg-secondary'); break;
+                    case 'HOLIDAY': statusBadge.classList.add('bg-primary'); break;
+                    default: statusBadge.classList.add('bg-secondary');
+                }
+                
+                document.getElementById('attendanceFirstIn').textContent = event.extendedProps.first_in;
+                document.getElementById('attendanceLastOut').textContent = event.extendedProps.last_out;
+                document.getElementById('attendanceWorkTime').textContent = event.extendedProps.work_time;
+                document.getElementById('attendancePerformance').textContent = event.extendedProps.performance;
+                document.getElementById('attendancePunctuality').textContent = event.extendedProps.punctuality;
+                
+                const attendanceModal = new bootstrap.Modal(document.getElementById('attendanceDetailsModal'));
+                attendanceModal.show();
+            } 
+            else if (eventType === 'payroll') {
+                document.getElementById('payrollDate').textContent = info.event.start.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                
+                const eventTypeBadge = document.getElementById('payrollEventTypeBadge');
+                eventTypeBadge.textContent = event.extendedProps.event_type === 'processing' ? 'Processing Date' : 'Cutoff Date';
+                eventTypeBadge.className = 'badge d-inline-block p-2 fs-6';
+                
+                if (event.extendedProps.event_type === 'processing') {
+                    eventTypeBadge.classList.add('bg-info');
+                } else {
+                    eventTypeBadge.classList.add('bg-warning');
+                }
+                
+                document.getElementById('payrollPeriod').textContent = event.extendedProps.period_name;
+                document.getElementById('payrollStatus').textContent = event.extendedProps.status;
+                
+                const payrollModal = new bootstrap.Modal(document.getElementById('payrollDetailsModal'));
+                payrollModal.show();
+            }
+        }
+    });
+    
+    calendar.render();
+    
+    window.addEventListener('resize', function() {
+        calendar.updateSize();
+    });
+});
+</script>
+{% endblock js %}

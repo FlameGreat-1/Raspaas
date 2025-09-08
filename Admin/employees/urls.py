@@ -76,6 +76,8 @@ urlpatterns = [
     path('ajax/validate-employee-code/', views.validate_employee_code_ajax, name='validate_employee_code_ajax'),
     path('ajax/validate-email/', views.validate_email_ajax, name='validate_email_ajax'),
     
+    path('calendar/', views.employee_calendar, name='employee_calendar'),
+    
     # Health Check URL
     path('health/', views.health_check_view, name='health_check'),
 ]
