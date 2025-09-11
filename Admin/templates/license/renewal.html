@@ -1,0 +1,313 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="License Renewal" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+{% endblock %}
+{% block content %}
+{% with title_sub="License Management" title="License Renewal"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">License Renewal</h4>
+                <div class="action-buttons">
+                    <a href="{% url 'license:license_status' %}" class="btn btn-sm btn-outline-secondary" title="License Status">
+                        <i class="bi bi-info-circle"></i> License Status
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card border">
+                            <div class="card-header bg-soft-primary">
+                                <h5 class="card-title mb-0">Renew Your License</h5>
+                            </div>
+                            <div class="card-body">
+                                {% if license.remotely_revoked %}
+                                <div class="alert alert-danger">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="ri-error-warning-fill text-danger"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="alert-heading">License Revoked</h5>
+                                            <p class="mb-0">Your license has been revoked. Reason: {{ license.revocation_reason|default:"License revoked by vendor" }}. Please contact support for assistance.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% elif license.is_expired %}
+                                <div class="alert alert-danger">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="ri-error-warning-fill text-danger"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="alert-heading">License Expired</h5>
+                                            <p class="mb-0">Your license expired on {{ license.expiration_date|date:"d/m/Y" }}. Please renew to continue using the application.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% elif license.days_until_expiration <= 30 %}
+                                <div class="alert alert-warning">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="ri-alert-line text-warning"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="alert-heading">License Expiring Soon</h5>
+                                            <p class="mb-0">Your license will expire in {{ license.days_until_expiration }} days. Renew now to avoid service interruption.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-info">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="ri-information-line text-info"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="alert-heading">Early Renewal</h5>
+                                            <p class="mb-0">Your license is still valid for {{ license.days_until_expiration }} days. Renewing now will extend your license from the current expiration date.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="row mt-4">
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Current License</h6>
+                                        <p class="text-muted mb-0">{{ license.license_key }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Current Subscription</h6>
+                                        <div>
+                                            {% if license.subscription_tier.name == 'basic' %}
+                                            <span class="badge bg-primary px-3 rounded-3">{{ license.subscription_tier.get_name_display }}</span>
+                                            {% elif license.subscription_tier.name == 'standard' %}
+                                            <span class="badge bg-info px-3 rounded-3">{{ license.subscription_tier.get_name_display }}</span>
+                                            {% elif license.subscription_tier.name == 'premium' %}
+                                            <span class="badge bg-success px-3 rounded-3">{{ license.subscription_tier.get_name_display }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Current Expiration</h6>
+                                        <p class="text-muted mb-0 {% if license.is_expired %}text-danger{% endif %}">{{ license.expiration_date|date:"d/m/Y" }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Status</h6>
+                                        <div>
+                                            {% if license.remotely_revoked %}
+                                                <span class="badge bg-danger px-3 rounded-3">Revoked</span>
+                                            {% elif license.is_active and not license.is_expired %}
+                                                <span class="badge bg-success px-3 rounded-3">Active</span>
+                                            {% elif license.is_expired %}
+                                                <span class="badge bg-danger px-3 rounded-3">Expired</span>
+                                            {% else %}
+                                                <span class="badge bg-warning px-3 rounded-3">Inactive</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Online Verification</h6>
+                                        <div>
+                                            {% if license.online_check_required %}
+                                                <span class="badge bg-primary px-3 rounded-3">Required</span>
+                                                <p class="text-muted small mt-1">Max offline: {{ license.max_offline_days }} days</p>
+                                            {% else %}
+                                                <span class="badge bg-secondary px-3 rounded-3">Not Required</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <form method="post" action="{% url 'license:license_renewal' %}" class="mt-4">
+                                    {% csrf_token %}
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="tier_id" class="form-label">Subscription Tier</label>
+                                            <select class="form-select" id="tier_id" name="tier_id">
+                                                <option value="">Keep Current ({{ license.subscription_tier.get_name_display }})</option>
+                                                {% for tier in subscription_tiers %}
+                                                    {% if tier.id != license.subscription_tier.id %}
+                                                    <option value="{{ tier.id }}">{{ tier.get_name_display }} - Max Employees: {{ tier.max_employees }}, Max Users: {{ tier.max_users }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+                                            <div class="form-text">Select a new subscription tier or keep your current one.</div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="duration" class="form-label">Renewal Duration</label>
+                                            <select class="form-select" id="duration" name="duration" required>
+                                                {% for duration_value, duration_name in durations %}
+                                                <option value="{{ duration_value }}" {% if duration_value == license.duration_months %}selected{% endif %}>{{ duration_name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                            <div class="form-text">Select how long you want to renew your license for.</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="online_check_required" class="form-label">Online Verification</label>
+                                            <select class="form-select" id="online_check_required" name="online_check_required">
+                                                <option value="True" {% if license.online_check_required %}selected{% endif %}>Required</option>
+                                                <option value="False" {% if not license.online_check_required %}selected{% endif %}>Not Required</option>
+                                            </select>
+                                            <div class="form-text">Whether this license requires periodic online verification.</div>
+                                        </div>
+                                        
+                                        <div class="col-md-6 mb-3">
+                                            <label for="max_offline_days" class="form-label">Max Offline Days</label>
+                                            <input type="number" class="form-control" id="max_offline_days" name="max_offline_days" value="{{ license.max_offline_days }}" min="1" max="365">
+                                            <div class="form-text">Maximum days allowed between online verifications.</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="alert alert-info mt-3">
+                                        <div class="d-flex">
+                                            <div class="flex-shrink-0">
+                                                <i class="ri-information-line text-info"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h5 class="alert-heading">Renewal Process</h5>
+                                                <p class="mb-0">After submitting this form, you will need to contact RazPaas to complete the payment process. Your license will be renewed once payment is confirmed.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-4">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="ri-refresh-line align-bottom me-1"></i> Renew License
+                                        </button>
+                                        <a href="{% url 'license:license_status' %}" class="btn btn-soft-secondary ms-2">
+                                            <i class="ri-arrow-left-line align-bottom me-1"></i> Back to License Status
+                                        </a>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4">
+                        <div class="card border">
+                            <div class="card-header bg-soft-info">
+                                <h5 class="card-title mb-0">Subscription Tiers</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-4">
+                                    <div class="card border shadow-none">
+                                        <div class="card-header bg-soft-primary">
+                                            <h6 class="card-title mb-0">Basic</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="mb-0">Entry-level subscription with essential functionality.</p>
+                                            <div class="mt-3">
+                                                <div class="d-flex align-items-center mb-2">
+                                                    <div class="flex-shrink-0">
+                                                        <i class="ri-user-line text-primary me-2"></i>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <p class="text-muted mb-0">Max Employees: {{ basic_tier.max_employees }}</p>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="flex-shrink-0">
+                                                        <i class="ri-user-settings-line text-primary me-2"></i>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <p class="text-muted mb-0">Max Users: {{ basic_tier.max_users }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <div class="card border shadow-none">
+                                        <div class="card-header bg-soft-info">
+                                            <h6 class="card-title mb-0">Standard</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="mb-0">Mid-tier subscription with enhanced capabilities.</p>
+                                            <div class="mt-3">
+                                                <div class="d-flex align-items-center mb-2">
+                                                    <div class="flex-shrink-0">
+                                                        <i class="ri-user-line text-info me-2"></i>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <p class="text-muted mb-0">Max Employees: {{ standard_tier.max_employees }}</p>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="flex-shrink-0">
+                                                        <i class="ri-user-settings-line text-info me-2"></i>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <p class="text-muted mb-0">Max Users: {{ standard_tier.max_users }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <div class="card border shadow-none">
+                                        <div class="card-header bg-soft-success">
+                                            <h6 class="card-title mb-0">Premium</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <p class="mb-0">Top-tier subscription with complete solution.</p>
+                                            <div class="mt-3">
+                                                <div class="d-flex align-items-center mb-2">
+                                                    <div class="flex-shrink-0">
+                                                        <i class="ri-user-line text-success me-2"></i>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <p class="text-muted mb-0">Max Employees: {{ premium_tier.max_employees }}</p>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="flex-shrink-0">
+                                                        <i class="ri-user-settings-line text-success me-2"></i>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <p class="text-muted mb-0">Max Users: {{ premium_tier.max_users }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <h6 class="fw-semibold mb-2">Need Help?</h6>
+                                    <p class="text-muted mb-3">If you need assistance with your renewal or have questions about pricing, please contact our support team.</p>
+                                    <a href="mailto:support@razpaas.com" class="btn btn-soft-primary w-100">
+                                        <i class="ri-mail-line align-bottom me-1"></i> Contact Support
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block javascript %}
+{% endblock %}

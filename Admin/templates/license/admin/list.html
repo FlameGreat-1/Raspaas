@@ -1,0 +1,241 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="License Management" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+{% endblock %}
+{% block content %}
+{% with title_sub="Administration" title="License Management"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">All Licenses</h4>
+                <div class="action-buttons">
+                    <a href="{% url 'license:admin_license_create' %}" class="btn btn-sm btn-primary" title="Create License">
+                        <i class="bi bi-plus-lg"></i> Create License
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <form method="get" class="d-flex gap-2">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="Search by company name or license key" name="q" value="{{ request.GET.q|default:'' }}">
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="ri-search-line"></i>
+                                </button>
+                            </div>
+                            <select class="form-select w-auto" name="status" onchange="this.form.submit()">
+                                <option value="" {% if not request.GET.status %}selected{% endif %}>All Statuses</option>
+                                <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                                <option value="expired" {% if request.GET.status == 'expired' %}selected{% endif %}>Expired</option>
+                                <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                                <option value="revoked" {% if request.GET.status == 'revoked' %}selected{% endif %}>Revoked</option>
+                            </select>
+                        </form>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'license:admin_license_list' %}" class="btn btn-outline-secondary {% if not request.GET.status %}active{% endif %}">All</a>
+                            <a href="{% url 'license:admin_license_list' %}?status=active" class="btn btn-outline-success {% if request.GET.status == 'active' %}active{% endif %}">Active</a>
+                            <a href="{% url 'license:admin_license_list' %}?status=expired" class="btn btn-outline-danger {% if request.GET.status == 'expired' %}active{% endif %}">Expired</a>
+                            <a href="{% url 'license:admin_license_list' %}?status=inactive" class="btn btn-outline-warning {% if request.GET.status == 'inactive' %}active{% endif %}">Inactive</a>
+                            <a href="{% url 'license:admin_license_list' %}?status=revoked" class="btn btn-outline-danger {% if request.GET.status == 'revoked' %}active{% endif %}">Revoked</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Company</th>
+                                <th scope="col">License Key</th>
+                                <th scope="col">Tier</th>
+                                <th scope="col">Issue Date</th>
+                                <th scope="col">Expiration</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Online Verification</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for license in licenses %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0">
+                                            <div class="avatar-sm">
+                                                <span class="avatar-title bg-soft-primary text-primary rounded-circle fs-5">
+                                                    {{ license.company.name|slice:":1" }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h6 class="mb-1">{{ license.company.name }}</h6>
+                                            <p class="text-muted mb-0">{{ license.company.contact_email }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="text-muted">{{ license.license_key|truncatechars:15 }}</span>
+                                </td>
+                                <td>
+                                    {% if license.subscription_tier.name == 'basic' %}
+                                    <span class="badge bg-primary px-3 rounded-3">{{ license.subscription_tier.get_name_display }}</span>
+                                    {% elif license.subscription_tier.name == 'standard' %}
+                                    <span class="badge bg-info px-3 rounded-3">{{ license.subscription_tier.get_name_display }}</span>
+                                    {% elif license.subscription_tier.name == 'premium' %}
+                                    <span class="badge bg-success px-3 rounded-3">{{ license.subscription_tier.get_name_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ license.issue_date|date:"d/m/Y" }}</td>
+                                <td>
+                                    <span class="{% if license.is_expired %}text-danger{% endif %}">
+                                        {{ license.expiration_date|date:"d/m/Y" }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if license.remotely_revoked %}
+                                        <span class="badge bg-danger px-3 rounded-3">Revoked</span>
+                                    {% elif license.is_active and not license.is_expired %}
+                                        <span class="badge bg-success px-3 rounded-3">Active</span>
+                                    {% elif license.is_expired %}
+                                        <span class="badge bg-danger px-3 rounded-3">Expired</span>
+                                    {% else %}
+                                        <span class="badge bg-warning px-3 rounded-3">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if license.online_check_required %}
+                                        <span class="badge bg-primary px-3 rounded-3">Required</span>
+                                        <small class="d-block text-muted mt-1">{{ license.max_offline_days }} days</small>
+                                    {% else %}
+                                        <span class="badge bg-secondary px-3 rounded-3">Not Required</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'license:admin_license_detail' license_id=license.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{% url 'license:admin_license_update' license_id=license.id %}" class="btn btn-sm btn-outline-info" title="Edit License">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        {% if not license.remotely_revoked %}
+                                        <a href="#" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#revokeModal{{ license.id }}" title="Revoke License">
+                                            <i class="bi bi-x-circle"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>                               
+                                    <!-- Revoke Modal -->
+                                    <div class="modal fade" id="revokeModal{{ license.id }}" tabindex="-1" aria-labelledby="revokeModalLabel{{ license.id }}" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="revokeModalLabel{{ license.id }}">Confirm License Revocation</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <form method="post" action="{% url 'license:admin_license_revoke' license_id=license.id %}">
+                                                    {% csrf_token %}
+                                                    <div class="modal-body">
+                                                        <p>Are you sure you want to revoke the license for <strong>{{ license.company.name }}</strong>?</p>
+                                                        <p class="text-danger">This action will immediately disable their access to the system.</p>
+                                                        <div class="mb-3">
+                                                            <label for="revocation_reason{{ license.id }}" class="form-label">Revocation Reason</label>
+                                                            <textarea class="form-control" id="revocation_reason{{ license.id }}" name="revocation_reason" rows="3" placeholder="Enter reason for revocation"></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                                                        <button type="submit" class="btn btn-danger">Revoke License</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <div class="d-flex justify-content-center">
+                                        <div class="text-center">
+                                            <img src="{% static 'assets/images/no-data.svg' %}" alt="No Licenses" class="img-fluid" style="max-height: 150px;">
+                                            <h5 class="mt-3">No licenses found</h5>
+                                            <p class="text-muted">No licenses match your search criteria or no licenses have been created yet.</p>
+                                            <a href="{% url 'license:admin_license_create' %}" class="btn btn-primary">
+                                                <i class="ri-add-line align-bottom me-1"></i> Create License
+                                            </a>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if licenses.has_other_pages %}
+                <div class="d-flex justify-content-end mt-4">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination">
+                            {% if licenses.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ licenses.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for num in licenses.paginator.page_range %}
+                                {% if licenses.number == num %}
+                                <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > licenses.number|add:'-3' and num < licenses.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if licenses.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ licenses.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ licenses.paginator.num_pages }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block javascript %}
+{% endblock %}

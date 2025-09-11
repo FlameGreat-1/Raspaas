@@ -1,4 +1,3 @@
-# Python standard library imports
 import calendar
 import csv
 import io

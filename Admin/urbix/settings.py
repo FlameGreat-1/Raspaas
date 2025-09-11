@@ -22,14 +22,8 @@ SECRET_KEY = config("SECRET_KEY", default="django-insecure-change-this-in-produc
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default=True, cast=bool)
-
-# Production-ready allowed hosts
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    ".onrender.com",
-    config("DOMAIN_NAME", default=""),
-]
+DEBUG = True
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 # Custom User Model (from Razpaas)
 AUTH_USER_MODEL = "accounts.CustomUser"
@@ -44,26 +38,29 @@ INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
     # Third party apps
-    "webpack_loader",  
-    "django_extensions",  
+    "webpack_loader",
+    "django_extensions",
     "django_celery_beat",
-    # Local apps 
+    # Local apps
     "accounts",
     "core",
     "employees",
     "attendance",
     "payroll",
     "expenses",
+    "accounting",
+    "License",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "License.middleware.LicenseMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -118,9 +115,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization (Razpaas enhanced)
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = config(
-    "TIME_ZONE", default="Asia/Colombo"
-)  # Razpaas default, configurable
+TIME_ZONE = config("TIME_ZONE", default="Asia/Colombo")  # Razpaas default, configurable
 USE_I18N = True
 USE_TZ = True
 
@@ -151,10 +146,28 @@ WEBPACK_LOADER = {
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+LICENSE_VERIFICATION_URL = "http://127.0.0.1:8000/api/verify/"
+LICENSE_ACTIVATION_URL = "http://127.0.0.1:8000/api/activate/"
+
+## LICENSE_VERIFICATION_URL = "https://license.raspaas.com/api/verify/"
+## LICENSE_ACTIVATION_URL = "https://license.raspaas.com/api/activate/"
+
 # Authentication URLs (Razpaas)
-LOGIN_URL = "/admin/login/"
-LOGIN_REDIRECT_URL = "/admin/"
-LOGOUT_REDIRECT_URL = "/admin/"
+LOGIN_URL = "/accounts/login/"  # Updated to use accounts login
+LOGIN_REDIRECT_URL = "/dashboard/"  # Redirect to dashboard after login
+LOGOUT_REDIRECT_URL = "/accounts/login/"  # Redirect to login after logout
+
+# License exempt URLs - paths that should be accessible without a license
+LICENSE_EXEMPT_URLS = [
+    "/admin/",
+    "/static/",
+    "/media/",
+    "/license/activate/",
+    "/license/required/",
+    "/license/expired/",
+    "/license/status/",
+]
+
 
 # Celery Configuration (Background Tasks) - Razpaas
 CELERY_BROKER_URL = config("REDIS_URL", default="redis://localhost:6379/0")

@@ -1,0 +1,99 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title=title %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Administration" title=title %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">{{ title }}</h4>
+                <div class="action-buttons">
+                    <a href="{% url 'license:subscription_tier_list' %}" class="btn btn-sm btn-outline-secondary" title="Back to List">
+                        <i class="bi bi-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="id_name" class="form-label">Tier Name <span class="text-danger">*</span></label>
+                        <select class="form-select" id="id_name" name="name" required>
+                            {% for value, label in form.fields.name.choices %}
+                            <option value="{{ value }}" {% if form.name.value == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="id_description" class="form-label">Description <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="id_description" name="description" rows="3" required>{{ form.description.value|default:'' }}</textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_max_employees" class="form-label">Max Employees <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="id_max_employees" name="max_employees" value="{{ form.max_employees.value|default:'50' }}" min="1" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_max_users" class="form-label">Max Users <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="id_max_users" name="max_users" value="{{ form.max_users.value|default:'5' }}" min="1" required>
+                        </div>
+                    </div>
+                    
+                    <h5 class="mt-4 mb-3">Pricing</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_price_monthly" class="form-label">Monthly Price ($) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="id_price_monthly" name="price_monthly" value="{{ form.price_monthly.value|default:'0.00' }}" min="0" step="0.01" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_price_quarterly" class="form-label">Quarterly Price ($) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="id_price_quarterly" name="price_quarterly" value="{{ form.price_quarterly.value|default:'0.00' }}" min="0" step="0.01" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_price_biannual" class="form-label">Biannual Price ($) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="id_price_biannual" name="price_biannual" value="{{ form.price_biannual.value|default:'0.00' }}" min="0" step="0.01" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_price_annual" class="form-label">Annual Price ($) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="id_price_annual" name="price_annual" value="{{ form.price_annual.value|default:'0.00' }}" min="0" step="0.01" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="id_is_active" name="is_active" {% if form.is_active.value %}checked{% endif %}>
+                            <label class="form-check-label" for="id_is_active">Active</label>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ri-save-line align-bottom me-1"></i> {{ action }} Subscription Tier
+                        </button>
+                        <a href="{% url 'license:subscription_tier_list' %}" class="btn btn-light ms-1">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Department Mappings" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+{% endblock %}
+{% block content %}
+{% with title_sub="Accounting" title="Department Mappings"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">QuickBooks Department Mappings</h4>
+                <div class="action-buttons">
+                    <a href="{% url 'accounting:add_department_mapping' %}" class="btn btn-sm btn-primary" title="Add Mapping">
+                        <i class="bi bi-plus"></i> Add Mapping
+                    </a>
+                    <a href="{% url 'accounting:dashboard' %}" class="btn btn-sm btn-outline-secondary" title="Back to Dashboard">
+                        <i class="bi bi-arrow-left"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover text-nowrap">
+                        <thead class="table-light border-0">
+                            <tr>
+                                <th class="text-muted">Department</th>
+                                <th class="text-muted">QuickBooks Department</th>
+                                <th class="text-muted">QuickBooks Class</th>
+                                <th class="text-muted">Created At</th>
+                                <th class="text-muted">Updated At</th>
+                                <th class="text-muted">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mapping in mappings %}
+                            <tr>
+                                <td class="fw-semibold">{{ mapping.department.name }}</td>
+                                <td class="fw-semibold">{{ mapping.quickbooks_department_name }}</td>
+                                <td class="fw-semibold">{{ mapping.quickbooks_class_name|default:"-" }}</td>
+                                <td class="fw-semibold">{{ mapping.created_at|date:"d/m/Y H:i" }}</td>
+                                <td class="fw-semibold">{{ mapping.updated_at|date:"d/m/Y H:i" }}</td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        <a href="{% url 'accounting:edit_department_mapping' mapping_id=mapping.id %}" class="btn btn-sm btn-soft-primary">
+                                            <i class="ri-pencil-line"></i>
+                                        </a>
+                                        <form method="post" action="{% url 'accounting:delete_department_mapping' mapping_id=mapping.id %}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this mapping?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-soft-danger">
+                                                <i class="ri-delete-bin-line"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-3">No department mappings found. <a href="{% url 'accounting:add_department_mapping' %}">Add a new mapping</a>.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                {% if unmapped_departments %}
+                <div class="card border mt-4">
+                    <div class="card-header bg-soft-warning">
+                        <h5 class="card-title mb-0">Unmapped Departments</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">The following departments do not have QuickBooks mappings:</p>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for department in unmapped_departments %}
+                            <a href="{% url 'accounting:add_department_mapping' %}" class="badge bg-light text-dark px-3 py-2 rounded-3">
+                                {{ department.name }} <i class="ri-add-line ms-1"></i>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <div>
+                        <p class="text-muted mb-0">
+                            Total: {{ mappings|length }} mappings
+                        </p>
+                    </div>
+                    <div>
+                        <a href="{% url 'accounting:dashboard' %}" class="btn btn-soft-secondary">
+                            <i class="ri-dashboard-line align-bottom me-1"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

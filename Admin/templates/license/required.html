@@ -1,0 +1,146 @@
+{% extends "license_base.html" %}
+{% load static %}
+
+{% block title %}License Required{% endblock %}
+
+{% block css %}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xxl-10">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">License Required</h4>
+                <div class="action-buttons">
+                    <a href="{% url 'license:license_activation' %}" class="btn btn-sm btn-primary" title="Activate License">
+                        <i class="bi bi-key"></i> Activate License
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card border">
+                            <div class="card-header bg-soft-danger">
+                                <h5 class="card-title mb-0">Valid License Required</h5>
+                            </div>
+                            <div class="card-body">
+                                {% if error_message %}
+                                <div class="alert alert-danger">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="ri-error-warning-fill text-danger"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="alert-heading">License Error</h5>
+                                            <p class="mb-0">{{ error_message }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-danger">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="ri-error-warning-fill text-danger"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="alert-heading">No Valid License Found</h5>
+                                            <p class="mb-0">You need a valid license to access this application. Please activate your license to continue.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="text-center my-5">
+                                    <img src="{% static 'assets/images/license-required.svg' %}" alt="License Required" class="img-fluid" style="max-height: 200px;">
+                                    <h4 class="mt-4">Access Restricted</h4>
+                                    <p class="text-muted">Your access to this application is currently restricted because you don't have a valid license.</p>
+                                </div>
+                                
+                                <div class="d-flex justify-content-center gap-2 mt-4">
+                                    <a href="{% url 'license:license_activation' %}" class="btn btn-primary">
+                                        <i class="ri-key-line align-bottom me-1"></i> Activate License
+                                    </a>
+                                    <a href="mailto:support@razpaas.com" class="btn btn-soft-secondary">
+                                        <i class="ri-mail-line align-bottom me-1"></i> Contact Support
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4">
+                        <div class="card border">
+                            <div class="card-header bg-soft-info">
+                                <h5 class="card-title mb-0">License Information</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-4">
+                                    <h6 class="fw-semibold mb-2">Why do I need a license?</h6>
+                                    <p class="text-muted mb-0">This application requires a valid license to operate. The license ensures you have access to the application according to your subscription plan.</p>
+                                </div>
+                                <hr>
+                                <div class="mb-4">
+                                    <h6 class="fw-semibold mb-2">How to get a license?</h6>
+                                    <p class="text-muted mb-0">Contact RazPaas to purchase a subscription plan that fits your needs. Once purchased, you'll receive a license key to activate your subscription.</p>
+                                </div>
+                                <hr>
+                                <div class="mb-4">
+                                    <h6 class="fw-semibold mb-2">Subscription Tiers</h6>
+                                    <div class="mt-3">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="flex-shrink-0">
+                                                <span class="badge bg-primary rounded-circle p-2"><i class="ri-checkbox-circle-fill"></i></span>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">Basic</h6>
+                                                <p class="text-muted mb-0">Essential functionality</p>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="flex-shrink-0">
+                                                <span class="badge bg-info rounded-circle p-2"><i class="ri-checkbox-circle-fill"></i></span>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">Standard</h6>
+                                                <p class="text-muted mb-0">Enhanced capabilities</p>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-shrink-0">
+                                                <span class="badge bg-success rounded-circle p-2"><i class="ri-checkbox-circle-fill"></i></span>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">Premium</h6>
+                                                <p class="text-muted mb-0">Complete solution</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="mb-4">
+                                    <h6 class="fw-semibold mb-2">Online Verification</h6>
+                                    <p class="text-muted mb-0">Some licenses require periodic online verification. Your system will need to connect to our license server at least once within the specified offline grace period to continue functioning.</p>
+                                </div>
+                                <hr>
+                                <div>
+                                    <h6 class="fw-semibold mb-2">Need Help?</h6>
+                                    <p class="text-muted mb-3">If you're having trouble activating your license or need to purchase a new one, please contact our support team.</p>
+                                    <a href="mailto:support@razpaas.com" class="btn btn-soft-primary w-100">
+                                        <i class="ri-mail-line align-bottom me-1"></i> Contact Support
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+{% endblock %}

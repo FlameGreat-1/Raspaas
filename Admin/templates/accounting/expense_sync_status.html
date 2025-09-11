@@ -1,0 +1,184 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Expense Sync Status" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+{% endblock %}
+{% block content %}
+{% with title_sub="Accounting" title="Expense Sync Status"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">Expense Sync Status</h4>
+                <div class="action-buttons">
+                    <a href="{% url 'accounting:dashboard' %}" class="btn btn-sm btn-outline-secondary" title="Back to Dashboard">
+                        <i class="bi bi-arrow-left"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <div class="card border mb-4">
+                    <div class="card-header bg-soft-primary">
+                        <h5 class="card-title mb-0">Filter Expenses</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="get" action="{% url 'accounting:expense_sync_status' %}" class="row g-3">
+                            <div class="col-md-4">
+                                <label for="status" class="form-label fw-semibold">Sync Status</label>
+                                <select name="status" id="status" class="form-select">
+                                    <option value="">All Statuses</option>
+                                    <option value="synced" {% if status == 'synced' %}selected{% endif %}>Synced</option>
+                                    <option value="pending" {% if status == 'pending' %}selected{% endif %}>Pending</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="date_from" class="form-label fw-semibold">Date From</label>
+                                <input type="date" class="form-control" id="date_from" name="date_from" value="{{ date_from|date:'Y-m-d' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="date_to" class="form-label fw-semibold">Date To</label>
+                                <input type="date" class="form-control" id="date_to" name="date_to" value="{{ date_to|date:'Y-m-d' }}">
+                            </div>
+                            <div class="col-12 d-flex">
+                                <button type="submit" class="btn btn-primary me-2">
+                                    <i class="bi bi-filter"></i> Apply Filter
+                                </button>
+                                <a href="{% url 'accounting:expense_sync_status' %}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-circle"></i> Clear Filter
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover text-nowrap">
+                        <thead class="table-light border-0">
+                            <tr>
+                                <th class="text-muted">Reference</th>
+                                <th class="text-muted">Employee</th>
+                                <th class="text-muted">Amount</th>
+                                <th class="text-muted">Date</th>
+                                <th class="text-muted">Status</th>
+                                <th class="text-muted">Last Sync</th>
+                                <th class="text-muted">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for status in page_obj %}
+                            <tr>
+                                <td class="fw-semibold">{{ status.expense_reference }}</td>
+                                <td class="fw-semibold">{{ status.employee_name }}</td>
+                                <td class="fw-semibold">{{ status.amount|floatformat:2 }}</td>
+                                <td class="fw-semibold">{{ status.expense_date|date:"d/m/Y" }}</td>
+                                <td>
+                                    {% if status.is_synced %}
+                                    <span class="badge bg-success px-3 rounded-3">Synced</span>
+                                    {% else %}
+                                    <span class="badge bg-warning px-3 rounded-3">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-semibold">
+                                    {% if status.last_sync_at %}
+                                    {{ status.last_sync_at|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-2">
+                                        {% if status.sync_log %}
+                                        <a href="{% url 'accounting:sync_log_detail' log_id=status.sync_log.id %}" class="btn btn-sm btn-soft-info" title="View Sync Log">
+                                            <i class="ri-file-list-line"></i>
+                                        </a>
+                                        {% endif %}
+                                        <form method="post" action="{% url 'accounting:trigger_sync_expense' expense_id=status.expense_id %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="redirect_url" value="{% url 'accounting:expense_sync_status' %}?status={{ status }}&date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}">
+                                            <button type="submit" class="btn btn-sm btn-soft-primary" title="Trigger Sync">
+                                                <i class="ri-refresh-line"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-3">No expense records found matching the filter criteria.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                {% if page_obj.has_other_pages %}
+                <div class="d-flex justify-content-center mt-4">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1&status={{ status }}&date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}" aria-label="First">
+                                    <span aria-hidden="true">&laquo;&laquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ status }}&date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}&status={{ status }}&date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ status }}&date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&status={{ status }}&date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}" aria-label="Last">
+                                    <span aria-hidden="true">&raquo;&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+                
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <div>
+                        <p class="text-muted mb-0">
+                            Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} expenses
+                        </p>
+                    </div>
+                    <div>
+                        <a href="{% url 'accounting:dashboard' %}" class="btn btn-soft-secondary">
+                            <i class="ri-dashboard-line align-bottom me-1"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -42,6 +42,11 @@
                             </a>
                         </li>  
                         <li class="pe-slide-item">
+                            <a href="{% url 'accounting:dashboard' %}" class="pe-nav-link">
+                                Accounting
+                            </a>
+                        </li>                        
+                        <li class="pe-slide-item">
                             <a href="{% url 'employee:employee_calendar' %}" class="pe-nav-link">
                                 Calendar
                             </a>
@@ -201,7 +206,85 @@
                             
                     
                             </ul>
-                        </li>                                               
+                        </li>  
+                        <li class="pe-slide-item pe-has-sub">
+                            <a href="#collapseLicense" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseLicense">
+                                <span class="pe-nav-sub-content">License</span>
+                                <i class="ri-arrow-down-s-line pe-nav-arrow"></i>
+                            </a>
+                            <ul class="pe-slide-menu collapse" id="collapseLicense">
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'license:license_status' %}" class="pe-nav-link">
+                                        License Status
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'license:license_renewal' %}" class="pe-nav-link">
+                                        Renew License
+                                    </a>
+                                </li>
+                                {% if request.user.is_staff %}
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'license:admin_license_list' %}" class="pe-nav-link">
+                                        Manage Licenses
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'license:admin_license_create' %}" class="pe-nav-link">
+                                        Create License
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'license:subscription_tier_list' %}" class="pe-nav-link">
+                                        Subscription
+                                    </a>
+                                </li>                                
+                                {% endif %}
+                            </ul>
+                        </li>                         
+                        <li class="pe-slide-item pe-has-sub">
+                            <a href="#collapseAccounting" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseAccounting">
+                                <span class="pe-nav-sub-content">Accounting</span>
+                                <i class="ri-arrow-down-s-line pe-nav-arrow"></i>
+                            </a>
+                            <ul class="pe-slide-menu collapse" id="collapseAccounting">
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'accounting:quickbooks_credentials' %}" class="pe-nav-link">
+                                        QuickBooks Credentials
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'accounting:account_mappings' %}" class="pe-nav-link">
+                                        Account Mappings
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'accounting:department_mappings' %}" class="pe-nav-link">
+                                        Department Mappings
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'accounting:sync_configuration' %}" class="pe-nav-link">
+                                        Sync Configuration
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'accounting:payroll_sync_status' %}" class="pe-nav-link">
+                                        Payroll Sync Status
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'accounting:expense_sync_status' %}" class="pe-nav-link">
+                                        Expense Sync Status
+                                    </a>
+                                </li>
+                                <li class="pe-slide-item">
+                                    <a href="{% url 'accounting:sync_logs' %}" class="pe-nav-link">
+                                        Sync Logs
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>                                                                    
                                                                  
                         <li class="pe-slide-item pe-has-sub">
                             <a href="#collapseSchool" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseSchool">

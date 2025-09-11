@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}License Management{% endblock %}</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'assets/css/app.min.css' %}">
+    <link rel="stylesheet" href="{% static 'assets/libs/bootstrap-icons/font/bootstrap-icons.css' %}">
+    <link rel="stylesheet" href="{% static 'assets/libs/remixicon/fonts/remixicon.css' %}">
+    <link rel="shortcut icon" href="{% static 'assets/images/favicon.png' %}">
+    {% block css %}{% endblock %}
+</head>
+<body class="license-page bg-light">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-12">
+                <div class="text-center mb-4">
+                    <img src="{% static 'assets/images/logo-md.png' %}" alt="Logo" height="50">
+                    <h2 class="mt-3">RazPaas License</h2>
+                </div>
+                
+                {% if messages %}
+                <div class="row justify-content-center">
+                    <div class="col-md-8">
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+    
+    <script src="{% static 'assets/libs/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+    {% block javascript %}{% endblock %}
+</body>
+</html>

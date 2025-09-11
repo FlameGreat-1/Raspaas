@@ -1,0 +1,200 @@
+{% extends "license_base.html" %}
+{% load static %}
+
+{% block title %}License Activation{% endblock %}
+
+{% block css %}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xxl-10">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">License Activation</h4>
+                <div class="action-buttons">
+                    <a href="{% url 'license:license_status' %}" class="btn btn-sm btn-outline-secondary" title="License Status">
+                        <i class="bi bi-info-circle"></i> License Status
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card border">
+                            <div class="card-header bg-soft-primary">
+                                <h5 class="card-title mb-0">Activate Your License</h5>
+                            </div>
+                            <div class="card-body">
+                                {% if license %}
+                                    {% if license.remotely_revoked %}
+                                    <div class="alert alert-danger">
+                                        <div class="d-flex">
+                                            <div class="flex-shrink-0">
+                                                <i class="ri-error-warning-fill text-danger"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h5 class="alert-heading">License Revoked</h5>
+                                                <p class="mb-0">Your license has been revoked. Reason: {{ license.revocation_reason|default:"License revoked by vendor" }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <div class="alert alert-success">
+                                        <div class="d-flex">
+                                            <div class="flex-shrink-0">
+                                                <i class="ri-checkbox-circle-fill text-success"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h5 class="alert-heading">License Already Activated</h5>
+                                                <p class="mb-0">Your license is already active and valid until {{ license.expiration_date|date:"d/m/Y" }}.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="row mt-4">
+                                        <div class="col-md-6 mb-3">
+                                            <h6 class="fw-semibold mb-1">License Key</h6>
+                                            <p class="text-muted mb-0">{{ license.license_key }}</p>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <h6 class="fw-semibold mb-1">Subscription Tier</h6>
+                                            <div>
+                                                <span class="badge bg-info px-3 rounded-3">{{ license.subscription_tier.get_name_display }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <h6 class="fw-semibold mb-1">Issue Date</h6>
+                                            <p class="text-muted mb-0">{{ license.issue_date|date:"d/m/Y" }}</p>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <h6 class="fw-semibold mb-1">Expiration Date</h6>
+                                            <p class="text-muted mb-0">{{ license.expiration_date|date:"d/m/Y" }}</p>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <h6 class="fw-semibold mb-1">Status</h6>
+                                            <div>
+                                                {% if license.remotely_revoked %}
+                                                    <span class="badge bg-danger px-3 rounded-3">Revoked</span>
+                                                {% elif license.is_active and not license.is_expired %}
+                                                    <span class="badge bg-success px-3 rounded-3">Active</span>
+                                                {% elif license.is_expired %}
+                                                    <span class="badge bg-danger px-3 rounded-3">Expired</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning px-3 rounded-3">Inactive</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <h6 class="fw-semibold mb-1">Days Remaining</h6>
+                                            <div>
+                                                {% if license.is_expired %}
+                                                    <span class="badge bg-danger px-3 rounded-3">Expired</span>
+                                                {% else %}
+                                                    <span class="badge bg-info px-3 rounded-3">{{ license.days_until_expiration }} days</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <h6 class="fw-semibold mb-1">Online Verification</h6>
+                                            <div>
+                                                {% if license.online_check_required %}
+                                                    <span class="badge bg-primary px-3 rounded-3">Required</span>
+                                                    <p class="text-muted small mt-1">Max offline: {{ license.max_offline_days }} days</p>
+                                                {% else %}
+                                                    <span class="badge bg-secondary px-3 rounded-3">Not Required</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <h6 class="fw-semibold mb-1">Activations</h6>
+                                            <div>
+                                                <span class="badge bg-info px-3 rounded-3">{{ license.activation_count }} of {{ license.max_activations }}</span>
+                                            </div>
+                                        </div>
+                                        {% if license.last_online_check %}
+                                        <div class="col-md-6 mb-3">
+                                            <h6 class="fw-semibold mb-1">Last Online Check</h6>
+                                            <p class="text-muted mb-0">{{ license.last_online_check|date:"d/m/Y H:i" }}</p>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="d-flex gap-2 mt-4">
+                                        <a href="{% url 'license:license_status' %}" class="btn btn-soft-primary">
+                                            <i class="ri-dashboard-line align-bottom me-1"></i> View License Details
+                                        </a>
+                                        <a href="{% url 'license:license_download' %}" class="btn btn-soft-secondary">
+                                            <i class="ri-download-line align-bottom me-1"></i> Download License File
+                                        </a>
+                                    </div>
+                                {% else %}
+                                    <form method="post" action="{% url 'license:license_activation' %}">
+                                        {% csrf_token %}
+                                        <div class="mb-4">
+                                            <label for="license_key" class="form-label">License Key</label>
+                                            <input type="text" class="form-control" id="license_key" name="license_key" 
+                                                placeholder="Enter your license key (e.g., XXXXX-XXXXX-XXXXX-XXXXX)" required>
+                                            <div class="form-text">Enter the license key provided by RazPaas.</div>
+                                        </div>
+                                        
+                                        <div class="alert alert-info">
+                                            <div class="d-flex">
+                                                <div class="flex-shrink-0">
+                                                    <i class="ri-information-line text-info"></i>
+                                                </div>
+                                                <div class="flex-grow-1 ms-3">
+                                                    <h5 class="alert-heading">License Activation</h5>
+                                                    <p class="mb-0">Activating your license will link it to this device. The system supports a limited number of activations per license. Some licenses may require periodic online verification. Please contact support if you need to transfer your license to a new device.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mt-4">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="ri-key-line align-bottom me-1"></i> Activate License
+                                            </button>
+                                        </div>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4">
+                        <div class="card border">
+                            <div class="card-header bg-soft-info">
+                                <h5 class="card-title mb-0">License Information</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-4">
+                                    <h6 class="fw-semibold mb-2">What is a License Key?</h6>
+                                    <p class="text-muted mb-0">A license key is a unique identifier that grants you access to use this software according to the terms of your subscription plan.</p>
+                                </div>
+                                <hr>
+                                <div class="mb-4">
+                                    <h6 class="fw-semibold mb-2">Online Verification</h6>
+                                    <p class="text-muted mb-0">Some licenses require periodic online verification. Your system will need to connect to our license server at least once within the specified offline grace period to continue functioning.</p>
+                                </div>
+                                <hr>
+                                <div>
+                                    <h6 class="fw-semibold mb-2">Need Help?</h6>
+                                    <p class="text-muted mb-3">If you're having trouble activating your license or need to purchase a new one, please contact our support team.</p>
+                                    <a href="mailto:support@razpaas.com" class="btn btn-soft-primary w-100">
+                                        <i class="ri-mail-line align-bottom me-1"></i> Contact Support
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+{% endblock %}

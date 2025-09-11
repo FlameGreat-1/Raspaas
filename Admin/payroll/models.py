@@ -1591,7 +1591,6 @@ class PayrollBankTransfer(models.Model):
             },
         )
 
-
 class PayrollManager(models.Manager):
     def get_active_periods(self):
         return self.filter(
@@ -2352,7 +2351,7 @@ def generate_payroll_comparison_report(year1, month1, year2, month2):
 
 class PayrollSystemMeta:
     VERSION = "1.0.0"
-    LAST_UPDATED = "2024-01-01"
+    LAST_UPDATED = "2025-01-01"
     SUPPORTED_FEATURES = [
         "policy_based_penalties",
         "role_based_allowances",

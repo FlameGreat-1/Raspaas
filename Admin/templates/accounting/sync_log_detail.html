@@ -1,0 +1,262 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Sync Log Details" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+{% endblock %}
+{% block content %}
+{% with title_sub="Accounting" title="Sync Log Details"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">Sync Log: {{ log.id }}</h4>
+                <div class="action-buttons">
+                    <a href="{% url 'accounting:sync_logs' %}" class="btn btn-sm btn-outline-secondary" title="Back to Sync Logs">
+                        <i class="bi bi-arrow-left"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card border">
+                            <div class="card-header bg-soft-primary">
+                                <h5 class="card-title mb-0">Sync Details</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Sync Type</h6>
+                                        <p class="text-muted mb-0">{{ log.get_sync_type_display }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Status</h6>
+                                        <div>
+                                            {% if log.status == 'PENDING' %}
+                                            <span class="badge bg-warning px-3 rounded-3">Pending</span>
+                                            {% elif log.status == 'IN_PROGRESS' %}
+                                            <span class="badge bg-info px-3 rounded-3">In Progress</span>
+                                            {% elif log.status == 'COMPLETED' %}
+                                            <span class="badge bg-success px-3 rounded-3">Completed</span>
+                                            {% elif log.status == 'FAILED' %}
+                                            <span class="badge bg-danger px-3 rounded-3">Failed</span>
+                                            {% elif log.status == 'PARTIAL' %}
+                                            <span class="badge bg-warning px-3 rounded-3">Partial Success</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Source Reference</h6>
+                                        <p class="text-muted mb-0">{{ log.source_reference }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">QuickBooks Reference</h6>
+                                        <p class="text-muted mb-0">{{ log.quickbooks_reference|default:"-" }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Records Processed</h6>
+                                        <p class="text-muted mb-0">{{ log.records_processed }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Records Succeeded</h6>
+                                        <p class="text-muted mb-0">{{ log.records_succeeded }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Records Failed</h6>
+                                        <p class="text-muted mb-0">{{ log.records_failed }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Retry Count</h6>
+                                        <p class="text-muted mb-0">{{ log.retry_count }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Created At</h6>
+                                        <p class="text-muted mb-0">{{ log.created_at|date:"d/m/Y H:i" }}</p>
+                                    </div>
+                                    {% if log.started_at %}
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Started At</h6>
+                                        <p class="text-muted mb-0">{{ log.started_at|date:"d/m/Y H:i" }}</p>
+                                    </div>
+                                    {% endif %}
+                                    {% if log.completed_at %}
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Completed At</h6>
+                                        <p class="text-muted mb-0">{{ log.completed_at|date:"d/m/Y H:i" }}</p>
+                                    </div>
+                                    {% endif %}
+                                    {% if log.next_retry_at %}
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Next Retry At</h6>
+                                        <p class="text-muted mb-0">{{ log.next_retry_at|date:"d/m/Y H:i" }}</p>
+                                    </div>
+                                    {% endif %}
+                                    {% if log.created_by %}
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Created By</h6>
+                                        <p class="text-muted mb-0">{{ log.created_by.get_full_name }}</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% if log.error_message %}
+                        <div class="card border mt-4">
+                            <div class="card-header bg-soft-danger">
+                                <h5 class="card-title mb-0">Error Details</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-danger mb-3">
+                                    {{ log.error_message }}
+                                </div>
+                                
+                                {% if log.error_details %}
+                                <h6 class="fw-semibold mb-2">Additional Error Information</h6>
+                                <div class="border rounded p-3 bg-light">
+                                    <pre class="mb-0">{{ log.error_details|safe }}</pre>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if related_logs %}
+                        <div class="card border mt-4">
+                            <div class="card-header bg-soft-info">
+                                <h5 class="card-title mb-0">Related Sync Logs</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover text-nowrap">
+                                        <thead class="table-light border-0">
+                                            <tr>
+                                                <th class="text-muted">ID</th>
+                                                <th class="text-muted">Status</th>
+                                                <th class="text-muted">Records</th>
+                                                <th class="text-muted">Created At</th>
+                                                <th class="text-muted">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for related_log in related_logs %}
+                                            <tr>
+                                                <td class="fw-semibold">{{ related_log.id|truncatechars:8 }}</td>
+                                                <td>
+                                                    {% if related_log.status == 'PENDING' %}
+                                                    <span class="badge bg-warning px-3 rounded-3">Pending</span>
+                                                    {% elif related_log.status == 'IN_PROGRESS' %}
+                                                    <span class="badge bg-info px-3 rounded-3">In Progress</span>
+                                                    {% elif related_log.status == 'COMPLETED' %}
+                                                    <span class="badge bg-success px-3 rounded-3">Completed</span>
+                                                    {% elif related_log.status == 'FAILED' %}
+                                                    <span class="badge bg-danger px-3 rounded-3">Failed</span>
+                                                    {% elif related_log.status == 'PARTIAL' %}
+                                                    <span class="badge bg-warning px-3 rounded-3">Partial</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="fw-semibold">
+                                                    {% if related_log.records_processed > 0 %}
+                                                    {{ related_log.records_succeeded }}/{{ related_log.records_processed }}
+                                                    {% else %}
+                                                    -
+                                                    {% endif %}
+                                                </td>
+                                                <td class="fw-semibold">{{ related_log.created_at|date:"d/m/Y H:i" }}</td>
+                                                <td>
+                                                    <a href="{% url 'accounting:sync_log_detail' log_id=related_log.id %}" class="btn btn-sm btn-soft-info">
+                                                        <i class="ri-eye-line"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-lg-4">
+                        <div class="card border">
+                            <div class="card-header bg-soft-primary">
+                                <h5 class="card-title mb-0">Sync Process</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="verti-timeline list-unstyled">
+                                    <li class="event-list active">
+                                        <div class="event-timeline-dot">
+                                            <i class="ri-record-circle-fill text-success"></i>
+                                        </div>
+                                        <div class="d-flex">
+                                            <div class="flex-grow-1">
+                                                <div>
+                                                    <h6 class="fw-semibold mb-0">Created</h6>
+                                                    <small class="text-muted">{{ log.created_at|date:"d/m/Y H:i" }}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="event-list {% if log.started_at %}active{% endif %}">
+                                        <div class="event-timeline-dot">
+                                            <i class="ri-record-circle-fill {% if log.started_at %}text-success{% else %}text-primary{% endif %}"></i>
+                                        </div>
+                                        <div class="d-flex">
+                                            <div class="flex-grow-1">
+                                                <div>
+                                                    <h6 class="fw-semibold mb-0">Started</h6>
+                                                    <small class="text-muted">{% if log.started_at %}{{ log.started_at|date:"d/m/Y H:i" }}{% else %}Pending{% endif %}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="event-list {% if log.completed_at %}active{% endif %}">
+                                        <div class="event-timeline-dot">
+                                            <i class="ri-record-circle-fill {% if log.completed_at %}text-success{% else %}text-primary{% endif %}"></i>
+                                        </div>
+                                        <div class="d-flex">
+                                            <div class="flex-grow-1">
+                                                <div>
+                                                    <h6 class="fw-semibold mb-0">Completed</h6>
+                                                    <small class="text-muted">{% if log.completed_at %}{{ log.completed_at|date:"d/m/Y H:i" }}{% else %}Pending{% endif %}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="card border mt-4">
+                            <div class="card-header bg-soft-info">
+                                <h5 class="card-title mb-0">Actions</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-grid gap-2">
+                                    <a href="{% url 'accounting:sync_logs' %}" class="btn btn-soft-primary">
+                                        <i class="ri-list-check align-bottom me-1"></i> Back to Sync Logs
+                                    </a>
+                                    <a href="{% url 'accounting:dashboard' %}" class="btn btn-soft-secondary">
+                                        <i class="ri-dashboard-line align-bottom me-1"></i> Back to Dashboard
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

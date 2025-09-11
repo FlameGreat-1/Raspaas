@@ -31,6 +31,8 @@ urlpatterns = [
     path("attendance/", include("attendance.urls")),
     path("payroll/", include("payroll.urls")),
     path("expenses/", include("expenses.urls")),
+    path("accounting/", include("accounting.urls")),
+    path("license/", include("License.urls", namespace="license")),
     path("admin/", admin.site.urls),
 ]
 

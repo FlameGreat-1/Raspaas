@@ -1,0 +1,91 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Subscription Tiers" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Administration" title="Subscription Tiers"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">Subscription Tiers</h4>
+                <div class="flex-shrink-0">
+                    <a href="{% url 'license:subscription_tier_create' %}" class="btn btn-primary">
+                        <i class="ri-add-line align-bottom me-1"></i> Add New Tier
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col">Max Employees</th>
+                                <th scope="col">Max Users</th>
+                                <th scope="col">Monthly Price</th>
+                                <th scope="col">Annual Price</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if subscription_tiers %}
+                                {% for tier in subscription_tiers %}
+                                <tr>
+                                    <td>{{ tier.get_name_display }}</td>
+                                    <td>{{ tier.max_employees }}</td>
+                                    <td>{{ tier.max_users }}</td>
+                                    <td>${{ tier.price_monthly }}</td>
+                                    <td>${{ tier.price_annual }}</td>
+                                    <td>
+                                        {% if tier.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <a href="{% url 'license:subscription_tier_edit' tier.id %}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                                <i class="ri-pencil-line"></i>
+                                            </a>
+                                            <a href="{% url 'license:subscription_tier_delete' tier.id %}" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                <i class="ri-delete-bin-line"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <div class="d-flex flex-column align-items-center">
+                                            <i class="ri-price-tag-3-line fs-1 text-muted mb-2"></i>
+                                            <h5 class="mb-1">No subscription tiers found</h5>
+                                            <p class="text-muted mb-3">You haven't created any subscription tiers yet.</p>
+                                            <a href="{% url 'license:subscription_tier_create' %}" class="btn btn-primary">
+                                                Add New Tier
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

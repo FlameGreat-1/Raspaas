@@ -1,0 +1,54 @@
+{% extends "license_base.html" %}
+{% load static %}
+
+{% block title %}Hardware Binding Test{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">Hardware Binding Test</h4>
+            </div>
+            
+            <div class="card-body">
+                <div class="alert alert-{% if match %}success{% else %}danger{% endif %}">
+                    <h5>Hardware Fingerprint Match: {% if match %}YES{% else %}NO{% endif %}</h5>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h6 class="fw-semibold mb-2">Current Hardware Fingerprint:</h6>
+                        <div class="border p-3 bg-light">
+                            <code>{{ current_fingerprint }}</code>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6 class="fw-semibold mb-2">Stored Hardware Fingerprint:</h6>
+                        <div class="border p-3 bg-light">
+                            <code>{{ stored_fingerprint }}</code>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h6 class="fw-semibold mb-2">Activation Count:</h6>
+                        <p>{{ activation_count }} of {{ max_activations }}</p>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h6 class="fw-semibold mb-2">License Verification URL:</h6>
+                        <div class="border p-3 bg-light">
+                            <code>{{ verification_url }}</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

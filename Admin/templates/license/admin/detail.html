@@ -1,0 +1,382 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="License Details" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+{% endblock %}
+{% block content %}
+{% with title_sub="Administration" title="License Details"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">License Details</h4>
+                <div class="action-buttons">
+                    <a href="{% url 'license:admin_license_update' license_id=license.id %}" class="btn btn-sm btn-primary" title="Edit License">
+                        <i class="bi bi-pencil"></i> Edit License
+                    </a>
+                    <a href="{% url 'license:admin_license_list' %}" class="btn btn-sm btn-outline-secondary ms-2" title="Back to List">
+                        <i class="bi bi-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card border">
+                            <div class="card-header bg-soft-primary">
+                                <h5 class="card-title mb-0">License Information</h5>
+                            </div>
+                            <div class="card-body">
+                                {% if license.remotely_revoked %}
+                                <div class="alert alert-danger">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="ri-error-warning-fill text-danger"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="alert-heading">License Revoked</h5>
+                                            <p class="mb-0">This license has been revoked. Reason: {{ license.revocation_reason|default:"License revoked by vendor" }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% elif license.is_expired %}
+                                <div class="alert alert-danger">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="ri-error-warning-fill text-danger"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="alert-heading">License Expired</h5>
+                                            <p class="mb-0">This license has expired on {{ license.expiration_date|date:"d/m/Y" }}.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% elif not license.is_active %}
+                                <div class="alert alert-warning">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="ri-alert-line text-warning"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="alert-heading">License Inactive</h5>
+                                            <p class="mb-0">This license has been deactivated or revoked.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% elif license.days_until_expiration <= 30 %}
+                                <div class="alert alert-warning">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="ri-alert-line text-warning"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="alert-heading">License Expiring Soon</h5>
+                                            <p class="mb-0">This license will expire in {{ license.days_until_expiration }} days.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-success">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="ri-checkbox-circle-fill text-success"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="alert-heading">License Active</h5>
+                                            <p class="mb-0">This license is active and valid until {{ license.expiration_date|date:"d/m/Y" }}.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="row mt-4">
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">License Key</h6>
+                                        <p class="text-muted mb-0">{{ license.license_key }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Company</h6>
+                                        <p class="text-muted mb-0">{{ license.company.name }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Contact Email</h6>
+                                        <p class="text-muted mb-0">{{ license.company.contact_email }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Contact Phone</h6>
+                                        <p class="text-muted mb-0">{{ license.company.contact_phone }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Subscription Tier</h6>
+                                        <div>
+                                            {% if license.subscription_tier.name == 'basic' %}
+                                            <span class="badge bg-primary px-3 rounded-3">{{ license.subscription_tier.get_name_display }}</span>
+                                            {% elif license.subscription_tier.name == 'standard' %}
+                                            <span class="badge bg-info px-3 rounded-3">{{ license.subscription_tier.get_name_display }}</span>
+                                            {% elif license.subscription_tier.name == 'premium' %}
+                                            <span class="badge bg-success px-3 rounded-3">{{ license.subscription_tier.get_name_display }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Subscription Duration</h6>
+                                        <div>
+                                            <span class="badge bg-info px-3 rounded-3">{{ license.get_duration_months_display }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Issue Date</h6>
+                                        <p class="text-muted mb-0">{{ license.issue_date|date:"d/m/Y" }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Start Date</h6>
+                                        <p class="text-muted mb-0">{{ license.start_date|date:"d/m/Y" }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Expiration Date</h6>
+                                        <p class="text-muted mb-0 {% if license.is_expired %}text-danger{% endif %}">{{ license.expiration_date|date:"d/m/Y" }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Status</h6>
+                                        <div>
+                                            {% if license.remotely_revoked %}
+                                                <span class="badge bg-danger px-3 rounded-3">Revoked</span>
+                                            {% elif license.is_active and not license.is_expired %}
+                                                <span class="badge bg-success px-3 rounded-3">Active</span>
+                                            {% elif license.is_expired %}
+                                                <span class="badge bg-danger px-3 rounded-3">Expired</span>
+                                            {% else %}
+                                                <span class="badge bg-warning px-3 rounded-3">Inactive</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Days Remaining</h6>
+                                        <div>
+                                            {% if license.is_expired %}
+                                                <span class="badge bg-danger px-3 rounded-3">Expired</span>
+                                            {% else %}
+                                                <span class="badge bg-info px-3 rounded-3">{{ license.days_until_expiration }} days</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Amount Paid</h6>
+                                        <p class="text-muted mb-0">${{ license.amount_paid }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Max Activations</h6>
+                                        <p class="text-muted mb-0">{{ license.max_activations }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Current Activations</h6>
+                                        <p class="text-muted mb-0">{{ license.activation_count }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Online Verification</h6>
+                                        <div>
+                                            {% if license.online_check_required %}
+                                                <span class="badge bg-primary px-3 rounded-3">Required</span>
+                                                <p class="text-muted small mt-1">Max offline: {{ license.max_offline_days }} days</p>
+                                            {% else %}
+                                                <span class="badge bg-secondary px-3 rounded-3">Not Required</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Last Online Check</h6>
+                                        <p class="text-muted mb-0">
+                                            {% if license.last_online_check %}
+                                            {{ license.last_online_check|date:"d/m/Y H:i" }}
+                                            {% else %}
+                                            Never
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Last Verified</h6>
+                                        <p class="text-muted mb-0">
+                                            {% if license.last_verified %}
+                                            {{ license.last_verified|date:"d/m/Y H:i" }}
+                                            {% else %}
+                                            Never
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex gap-2 mt-4">
+                                    <a href="{% url 'license:admin_license_update' license_id=license.id %}" class="btn btn-primary">
+                                        <i class="ri-pencil-line align-bottom me-1"></i> Edit License
+                                    </a>
+                                    {% if license.is_active %}
+                                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#revokeModal">
+                                        <i class="ri-delete-bin-line align-bottom me-1"></i> Revoke License
+                                    </button>
+                                    {% else %}
+                                    <a href="{% url 'license:admin_license_update' license_id=license.id %}" class="btn btn-success">
+                                        <i class="ri-refresh-line align-bottom me-1"></i> Reactivate License
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Revoke Modal -->
+                                <div class="modal fade" id="revokeModal" tabindex="-1" aria-labelledby="revokeModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="revokeModalLabel">Confirm License Revocation</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>Are you sure you want to revoke the license for <strong>{{ license.company.name }}</strong>?</p>
+                                                <p class="text-danger">This action will immediately disable their access to the system.</p>
+                                                <div class="mb-3">
+                                                    <label for="revocation_reason" class="form-label">Revocation Reason</label>
+                                                    <textarea class="form-control" id="revocation_reason" name="revocation_reason" rows="3" placeholder="Enter reason for revocation"></textarea>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                                                <form method="post" action="{% url 'license:admin_license_revoke' license_id=license.id %}">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" id="revocation_reason_input" name="revocation_reason" value="">
+                                                    <button type="submit" class="btn btn-danger">Revoke License</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4">
+                        <div class="card border">
+                            <div class="card-header bg-soft-primary">
+                                <h5 class="card-title mb-0">Company Information</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="text-center mb-4">
+                                    <div class="avatar-lg mx-auto">
+                                        <div class="avatar-title bg-soft-primary text-primary display-5 rounded-circle">
+                                            {{ license.company.name|slice:":1" }}
+                                        </div>
+                                    </div>
+                                    <h5 class="mt-3">{{ license.company.name }}</h5>
+                                    <p class="text-muted">Registered: {{ license.company.date_registered|date:"d/m/Y" }}</p>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <h6 class="fw-semibold mb-2">Contact Information</h6>
+                                    <div class="mt-3">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="flex-shrink-0">
+                                                <span class="badge bg-primary rounded-circle p-2"><i class="ri-mail-line"></i></span>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">Email</h6>
+                                                <p class="text-muted mb-0">{{ license.company.contact_email }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="flex-shrink-0">
+                                                <span class="badge bg-info rounded-circle p-2"><i class="ri-phone-line"></i></span>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">Phone</h6>
+                                                <p class="text-muted mb-0">{{ license.company.contact_phone }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-shrink-0">
+                                                <span class="badge bg-success rounded-circle p-2"><i class="ri-map-pin-line"></i></span>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">Address</h6>
+                                                <p class="text-muted mb-0">{{ license.company.address }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <hr>
+                                
+                                <div class="mb-4">
+                                    <h6 class="fw-semibold mb-2">License Usage</h6>
+                                    <div class="mt-3">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="flex-shrink-0">
+                                                <span class="badge bg-primary rounded-circle p-2"><i class="ri-computer-line"></i></span>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">Activations</h6>
+                                                <p class="text-muted mb-0">{{ license.activation_count }} of {{ license.max_activations }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="flex-shrink-0">
+                                                <span class="badge bg-info rounded-circle p-2"><i class="ri-time-line"></i></span>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">Last Verified</h6>
+                                                <p class="text-muted mb-0">
+                                                    {% if license.last_verified %}
+                                                    {{ license.last_verified|date:"d/m/Y H:i" }}
+                                                    {% else %}
+                                                    Never
+                                                    {% endif %}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-shrink-0">
+                                                <span class="badge bg-success rounded-circle p-2"><i class="ri-global-line"></i></span>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">Online Verification</h6>
+                                                <p class="text-muted mb-0">
+                                                    {% if license.online_check_required %}
+                                                    Required (Max {{ license.max_offline_days }} days offline)
+                                                    {% else %}
+                                                    Not Required
+                                                    {% endif %}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block javascript %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const reasonTextarea = document.getElementById('revocation_reason');
+        const reasonInput = document.getElementById('revocation_reason_input');
+        
+        if (reasonTextarea && reasonInput) {
+            reasonTextarea.addEventListener('input', function() {
+                reasonInput.value = reasonTextarea.value;
+            });
+        }
+    });
+</script>
+{% endblock %}
+

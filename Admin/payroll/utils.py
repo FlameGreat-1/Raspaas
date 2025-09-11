@@ -374,8 +374,6 @@ class PayrollValidationHelper:
             errors.append("Overtime hours cannot be negative")
 
         return len(errors) == 0, errors
-
-
 class PayrollDeductionCalculator:
     @staticmethod
     def calculate_absence_deductions(

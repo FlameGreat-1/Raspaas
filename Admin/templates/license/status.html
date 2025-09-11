@@ -1,0 +1,308 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="License Status" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+{% endblock %}
+{% block content %}
+{% with title_sub="License Management" title="License Status"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">License Status</h4>
+                <div class="action-buttons">
+                    <a href="{% url 'license:license_download' %}" class="btn btn-sm btn-outline-secondary" title="Download License">
+                        <i class="bi bi-download"></i> Download License
+                    </a>
+                    {% if license.is_expired %}
+                    <a href="{% url 'license:license_renewal' %}" class="btn btn-sm btn-primary ms-2" title="Renew License">
+                        <i class="bi bi-arrow-clockwise"></i> Renew License
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card border">
+                            <div class="card-header bg-soft-primary">
+                                <h5 class="card-title mb-0">License Details</h5>
+                            </div>
+                            <div class="card-body">
+                                {% if license.remotely_revoked %}
+                                <div class="alert alert-danger">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="ri-error-warning-fill text-danger"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="alert-heading">License Revoked</h5>
+                                            <p class="mb-0">Your license has been revoked. Reason: {{ license.revocation_reason|default:"License revoked by vendor" }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% elif license.is_expired %}
+                                <div class="alert alert-danger">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="ri-error-warning-fill text-danger"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="alert-heading">License Expired</h5>
+                                            <p class="mb-0">Your license has expired. Please renew your subscription to continue using the application.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% elif license.days_until_expiration <= 7 %}
+                                <div class="alert alert-warning">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="ri-alert-line text-warning"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="alert-heading">License Expiring Soon</h5>
+                                            <p class="mb-0">Your license will expire in {{ license.days_until_expiration }} days. Please renew your subscription to avoid service interruption.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-success">
+                                    <div class="d-flex">
+                                        <div class="flex-shrink-0">
+                                            <i class="ri-checkbox-circle-fill text-success"></i>
+                                        </div>
+                                        <div class="flex-grow-1 ms-3">
+                                            <h5 class="alert-heading">License Active</h5>
+                                            <p class="mb-0">Your license is active and valid until {{ license.expiration_date|date:"d/m/Y" }}.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="row mt-4">
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Company</h6>
+                                        <p class="text-muted mb-0">{{ license.company.name }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">License Key</h6>
+                                        <p class="text-muted mb-0">{{ license.license_key }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Subscription Tier</h6>
+                                        <div>
+                                            {% if license.subscription_tier.name == 'basic' %}
+                                            <span class="badge bg-primary px-3 rounded-3">{{ license.subscription_tier.get_name_display }}</span>
+                                            {% elif license.subscription_tier.name == 'standard' %}
+                                            <span class="badge bg-info px-3 rounded-3">{{ license.subscription_tier.get_name_display }}</span>
+                                            {% elif license.subscription_tier.name == 'premium' %}
+                                            <span class="badge bg-success px-3 rounded-3">{{ license.subscription_tier.get_name_display }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Subscription Duration</h6>
+                                        <div>
+                                            <span class="badge bg-info px-3 rounded-3">{{ license.get_duration_months_display }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Issue Date</h6>
+                                        <p class="text-muted mb-0">{{ license.issue_date|date:"d/m/Y" }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Start Date</h6>
+                                        <p class="text-muted mb-0">{{ license.start_date|date:"d/m/Y" }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Expiration Date</h6>
+                                        <p class="text-muted mb-0 {% if license.is_expired %}text-danger{% endif %}">{{ license.expiration_date|date:"d/m/Y" }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Status</h6>
+                                        <div>
+                                            {% if license.remotely_revoked %}
+                                                <span class="badge bg-danger px-3 rounded-3">Revoked</span>
+                                            {% elif license.is_active and not license.is_expired %}
+                                                <span class="badge bg-success px-3 rounded-3">Active</span>
+                                            {% elif license.is_expired %}
+                                                <span class="badge bg-danger px-3 rounded-3">Expired</span>
+                                            {% else %}
+                                                <span class="badge bg-warning px-3 rounded-3">Inactive</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Days Remaining</h6>
+                                        <div>
+                                            {% if license.is_expired %}
+                                                <span class="badge bg-danger px-3 rounded-3">Expired</span>
+                                            {% else %}
+                                                <span class="badge bg-info px-3 rounded-3">{{ license.days_until_expiration }} days</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Max Employees</h6>
+                                        <p class="text-muted mb-0">{{ license.subscription_tier.max_employees }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Max Users</h6>
+                                        <p class="text-muted mb-0">{{ license.subscription_tier.max_users }}</p>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Online Verification</h6>
+                                        <div>
+                                            {% if license.online_check_required %}
+                                                <span class="badge bg-primary px-3 rounded-3">Required</span>
+                                                <p class="text-muted small mt-1">Max offline: {{ license.max_offline_days }} days</p>
+                                            {% else %}
+                                                <span class="badge bg-secondary px-3 rounded-3">Not Required</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <h6 class="fw-semibold mb-1">Last Online Check</h6>
+                                        <p class="text-muted mb-0">
+                                            {% if license.last_online_check %}
+                                            {{ license.last_online_check|date:"d/m/Y H:i" }}
+                                            {% else %}
+                                            Never
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex gap-2 mt-4">
+                                    <a href="{% url 'license:license_download' %}" class="btn btn-soft-primary">
+                                        <i class="ri-download-line align-bottom me-1"></i> Download License File
+                                    </a>
+                                    {% if license.is_expired %}
+                                    <a href="{% url 'license:license_renewal' %}" class="btn btn-primary">
+                                        <i class="ri-refresh-line align-bottom me-1"></i> Renew License
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4">
+                        <div class="card border">
+                            <div class="card-header bg-soft-primary">
+                                <h5 class="card-title mb-0">Subscription Information</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-4">
+                                    <h6 class="fw-semibold mb-2">Current Plan: {{ license.subscription_tier.get_name_display }}</h6>
+                                    <p class="text-muted mb-0">{{ license.subscription_tier.description }}</p>
+                                </div>
+                                <hr>
+                                <div class="mb-4">
+                                    <h6 class="fw-semibold mb-2">Plan Limitations</h6>
+                                    <div class="mt-3">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="flex-shrink-0">
+                                                <span class="badge bg-primary rounded-circle p-2"><i class="ri-user-line"></i></span>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">Max Employees</h6>
+                                                <p class="text-muted mb-0">{{ license.subscription_tier.max_employees }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="flex-shrink-0">
+                                                <span class="badge bg-info rounded-circle p-2"><i class="ri-user-settings-line"></i></span>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">Max Users</h6>
+                                                <p class="text-muted mb-0">{{ license.subscription_tier.max_users }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-shrink-0">
+                                                <span class="badge bg-success rounded-circle p-2"><i class="ri-calendar-line"></i></span>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">Subscription Period</h6>
+                                                <p class="text-muted mb-0">{{ license.get_duration_months_display }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="mb-4">
+                                    <h6 class="fw-semibold mb-2">License Usage</h6>
+                                    <div class="mt-3">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="flex-shrink-0">
+                                                <span class="badge bg-primary rounded-circle p-2"><i class="ri-computer-line"></i></span>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">Activations</h6>
+                                                <p class="text-muted mb-0">{{ license.activation_count }} of {{ license.max_activations }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="flex-shrink-0">
+                                                <span class="badge bg-info rounded-circle p-2"><i class="ri-time-line"></i></span>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">Last Verified</h6>
+                                                <p class="text-muted mb-0">
+                                                    {% if license.last_verified %}
+                                                    {{ license.last_verified|date:"d/m/Y H:i" }}
+                                                    {% else %}
+                                                    Never
+                                                    {% endif %}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-shrink-0">
+                                                <span class="badge bg-success rounded-circle p-2"><i class="ri-global-line"></i></span>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">Online Verification</h6>
+                                                <p class="text-muted mb-0">
+                                                    {% if license.online_check_required %}
+                                                    Required (Max {{ license.max_offline_days }} days offline)
+                                                    {% else %}
+                                                    Not Required
+                                                    {% endif %}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div>
+                                    <h6 class="fw-semibold mb-2">Need Help?</h6>
+                                    <p class="text-muted mb-3">If you need to upgrade your plan or have questions about your license, please contact our support team.</p>
+                                    <a href="mailto:support@razpaas.com" class="btn btn-soft-primary w-100">
+                                        <i class="ri-mail-line align-bottom me-1"></i> Contact Support
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block javascript %}
+{% endblock %}
+
+      Give feedback to improve this answer.  

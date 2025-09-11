@@ -1,0 +1,185 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Sync Configuration" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+{% block css %}
+{% endblock %}
+{% block content %}
+{% with title_sub="Accounting" title="Sync Configuration"%}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-xxl-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <h4 class="card-title mb-0 flex-grow-1">QuickBooks Sync Configuration</h4>
+                <div class="action-buttons">
+                    <a href="{% url 'accounting:dashboard' %}" class="btn btn-sm btn-outline-secondary" title="Back to Dashboard">
+                        <i class="bi bi-arrow-left"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card border">
+                            <div class="card-header bg-soft-primary">
+                                <h5 class="card-title mb-0">Sync Settings</h5>
+                            </div>
+                            <div class="card-body">
+                                <form method="post" action="{% url 'accounting:sync_configuration' %}">
+                                    {% csrf_token %}
+                                    
+                                    <div class="mb-4">
+                                        <h6 class="fw-semibold mb-3">Sync Modules</h6>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="payroll_sync_enabled" name="payroll_sync_enabled" {% if config.payroll_sync_enabled %}checked{% endif %}>
+                                                    <label class="form-check-label fw-semibold" for="payroll_sync_enabled">Enable Payroll Sync</label>
+                                                </div>
+                                                <p class="text-muted small mt-1">Sync payroll periods and payslips to QuickBooks</p>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="expense_sync_enabled" name="expense_sync_enabled" {% if config.expense_sync_enabled %}checked{% endif %}>
+                                                    <label class="form-check-label fw-semibold" for="expense_sync_enabled">Enable Expense Sync</label>
+                                                </div>
+                                                <p class="text-muted small mt-1">Sync expenses and reimbursements to QuickBooks</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-4">
+                                        <h6 class="fw-semibold mb-3">Sync Frequency</h6>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="sync_frequency" class="form-label fw-semibold">Scheduled Sync Frequency</label>
+                                                <select class="form-select" id="sync_frequency" name="sync_frequency">
+                                                    {% for value, display in sync_frequencies %}
+                                                    <option value="{{ value }}" {% if config.sync_frequency == value %}selected{% endif %}>{{ display }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <p class="text-muted small mt-1">How often the system should sync data with QuickBooks</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-4">
+                                        <h6 class="fw-semibold mb-3">Sync Modes</h6>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="realtime_sync_enabled" name="realtime_sync_enabled" {% if config.realtime_sync_enabled %}checked{% endif %}>
+                                                    <label class="form-check-label fw-semibold" for="realtime_sync_enabled">Enable Realtime Sync</label>
+                                                </div>
+                                                <p class="text-muted small mt-1">Sync data immediately when changes occur</p>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" role="switch" id="scheduled_sync_enabled" name="scheduled_sync_enabled" {% if config.scheduled_sync_enabled %}checked{% endif %}>
+                                                    <label class="form-check-label fw-semibold" for="scheduled_sync_enabled">Enable Scheduled Sync</label>
+                                                </div>
+                                                <p class="text-muted small mt-1">Sync data on a regular schedule</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-4">
+                                        <h6 class="fw-semibold mb-3">Retry Settings</h6>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="max_retries" class="form-label fw-semibold">Maximum Retry Attempts</label>
+                                                <input type="number" class="form-control" id="max_retries" name="max_retries" min="0" max="10" value="{{ config.max_retries }}">
+                                                <p class="text-muted small mt-1">Number of times to retry failed sync operations</p>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="retry_delay_minutes" class="form-label fw-semibold">Retry Delay (minutes)</label>
+                                                <input type="number" class="form-control" id="retry_delay_minutes" name="retry_delay_minutes" min="1" max="60" value="{{ config.retry_delay_minutes }}">
+                                                <p class="text-muted small mt-1">Minutes to wait before retrying a failed sync</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-end mt-4">
+                                        <a href="{% url 'accounting:dashboard' %}" class="btn btn-outline-secondary me-2">
+                                            Cancel
+                                        </a>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="ri-save-line align-bottom me-1"></i> Save Configuration
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-4">
+                        <div class="card border">
+                            <div class="card-header bg-soft-info">
+                                <h5 class="card-title mb-0">Current Configuration</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <h6 class="fw-semibold mb-2">Sync Modules</h6>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <span class="badge {% if config.payroll_sync_enabled %}bg-success{% else %}bg-danger{% endif %} px-3 rounded-3">
+                                            Payroll: {% if config.payroll_sync_enabled %}Enabled{% else %}Disabled{% endif %}
+                                        </span>
+                                        <span class="badge {% if config.expense_sync_enabled %}bg-success{% else %}bg-danger{% endif %} px-3 rounded-3">
+                                            Expenses: {% if config.expense_sync_enabled %}Enabled{% else %}Disabled{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <h6 class="fw-semibold mb-2">Sync Frequency</h6>
+                                    <span class="badge bg-info px-3 rounded-3">
+                                        {{ config.get_sync_frequency_display }}
+                                    </span>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <h6 class="fw-semibold mb-2">Sync Modes</h6>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <span class="badge {% if config.realtime_sync_enabled %}bg-success{% else %}bg-danger{% endif %} px-3 rounded-3">
+                                            Realtime: {% if config.realtime_sync_enabled %}Enabled{% else %}Disabled{% endif %}
+                                        </span>
+                                        <span class="badge {% if config.scheduled_sync_enabled %}bg-success{% else %}bg-danger{% endif %} px-3 rounded-3">
+                                            Scheduled: {% if config.scheduled_sync_enabled %}Enabled{% else %}Disabled{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <h6 class="fw-semibold mb-2">Retry Settings</h6>
+                                    <p class="text-muted mb-0">Max Retries: {{ config.max_retries }}</p>
+                                    <p class="text-muted mb-0">Retry Delay: {{ config.retry_delay_minutes }} minutes</p>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <h6 class="fw-semibold mb-2">Last Updated</h6>
+                                    <p class="text-muted mb-0">{{ config.updated_at|date:"d/m/Y H:i" }}</p>
+                                </div>
+                                
+                                <div class="d-grid mt-4">
+                                    <a href="{% url 'accounting:dashboard' %}" class="btn btn-soft-secondary">
+                                        <i class="ri-dashboard-line align-bottom me-1"></i> Back to Dashboard
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

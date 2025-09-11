@@ -4,6 +4,7 @@ from django.template import TemplateDoesNotExist
 from django.http import HttpResponse
 from accounts.models import SystemConfiguration
 from django.contrib import messages
+from django.db.models import Q
 
 
 def home_view(request):
@@ -33,7 +34,6 @@ def dynamic_view(request, page):
 
         search_query = request.GET.get("search")
         if search_query:
-            from django.db.models import Q
 
             queryset = queryset.filter(
                 Q(key__icontains=search_query)
