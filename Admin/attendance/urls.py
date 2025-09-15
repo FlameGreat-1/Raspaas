@@ -48,5 +48,10 @@ urlpatterns = [
     path('leave/balances/<int:balance_id>/', views.Leave.as_view(), name='leave_balance_detail'),  # Integer for LeaveBalance
     path('employee/<int:employee_id>/leave/', views.Leave.as_view(), name='employee_leave_requests'),
     path('employee/<int:employee_id>/leave/balances/', views.Leave.as_view(), name='employee_leave_balances'),
-
+    
+    path('import/', views.AttendanceImportView.as_view(), name='import'),
+    path('import/progress/<uuid:job_id>/', views.CheckImportProgressView.as_view(), name='check_import_progress'),
+    path('import/cancel/<uuid:job_id>/', views.CancelImportView.as_view(), name='cancel_import'),
+    path('import/template/download/', views.download_template, name='template_download'),
+    path('import/results/<uuid:job_id>/', views.AttendanceImportResultsView.as_view(), name='import_results'),
 ]

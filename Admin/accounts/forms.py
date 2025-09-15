@@ -8,12 +8,11 @@ from django.contrib.auth.forms import (
 from django.contrib.auth import authenticate, get_user_model
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from django.core.validators import RegexValidator, EmailValidator
+from django.core.validators import FileExtensionValidator, RegexValidator, EmailValidator
 from django.contrib.admin.widgets import AdminDateWidget
 from decimal import Decimal
 from .models import Department, Role, AuditLog, SystemConfiguration, CustomUser
 from employees.models import EmployeeProfile
-
 from .utils import validate_password_strength
 import re
 from datetime import datetime, timedelta
@@ -876,7 +875,7 @@ class EmployeeUpdateForm(forms.ModelForm):
             ])
 
         return user
- 
+
 class CustomPasswordChangeForm(PasswordChangeForm):
     old_password = forms.CharField(
         label="Current Password",
@@ -1070,28 +1069,6 @@ class ProfileUpdateForm(forms.ModelForm):
                 raise ValidationError("Enter a valid phone number.")
         return phone
 
-
-class BulkEmployeeUploadForm(forms.Form):
-    file = forms.FileField(
-        label="Upload Employee File",
-        widget=forms.FileInput(
-            attrs={"class": "form-control", "accept": ".xlsx,.xls,.csv"}
-        ),
-        help_text="Upload Excel or CSV file with employee data",
-    )
-
-    def clean_file(self):
-        file = self.cleaned_data.get("file")
-        if file:
-            if not file.name.endswith((".xlsx", ".xls", ".csv")):
-                raise ValidationError(
-                    "Only Excel (.xlsx, .xls) and CSV files are allowed."
-                )
-            if file.size > 5 * 1024 * 1024:  # 5MB limit
-                raise ValidationError("File size cannot exceed 5MB.")
-        return file
-
-
 class UserSearchForm(forms.Form):
     search_query = forms.CharField(
         max_length=100,
@@ -1122,28 +1099,6 @@ class UserSearchForm(forms.Form):
         required=False,
         widget=forms.Select(attrs={"class": "form-select"}),
     )
-
-
-class BulkEmployeeUploadForm(forms.Form):
-    file = forms.FileField(
-        label="Upload Employee File",
-        widget=forms.FileInput(
-            attrs={"class": "form-control", "accept": ".xlsx,.xls,.csv"}
-        ),
-        help_text="Upload Excel or CSV file with employee data",
-    )
-
-    def clean_file(self):
-        file = self.cleaned_data.get("file")
-        if file:
-            if not file.name.endswith((".xlsx", ".xls", ".csv")):
-                raise ValidationError(
-                    "Only Excel (.xlsx, .xls) and CSV files are allowed."
-                )
-            if file.size > 5 * 1024 * 1024:  # 5MB limit
-                raise ValidationError("File size cannot exceed 5MB.")
-        return file
-
 
 class AdvancedUserFilterForm(forms.Form):
     hire_date_from = forms.DateField(
@@ -1186,3 +1141,49 @@ class SystemConfigurationForm(forms.ModelForm):
         if key:
             key = key.upper().replace(" ", "_")
         return key
+
+
+class EmployeeExcelImportForm(forms.Form):
+    excel_file = forms.FileField(
+        label="Excel File",
+        help_text="Upload an Excel file (.xlsx) containing employee data",
+        validators=[FileExtensionValidator(allowed_extensions=["xlsx", "xls"])],
+        widget=forms.FileInput(attrs={"class": "form-control"}),
+    )
+
+    update_existing = forms.BooleanField(
+        required=False,
+        initial=False,
+        label="Update existing employees",
+        help_text="If checked, existing employees will be updated with the imported data",
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+    )
+
+    skip_errors = forms.BooleanField(
+        required=False,
+        initial=False,
+        label="Skip rows with errors",
+        help_text="If checked, rows with errors will be skipped and valid rows will be imported",
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+    )
+
+    def clean_excel_file(self):
+        excel_file = self.cleaned_data.get("excel_file")
+        if excel_file:
+            if excel_file.size > 10 * 1024 * 1024:
+                raise ValidationError("File size must be less than 10MB")
+
+            file_name = excel_file.name
+            if not file_name.endswith((".xlsx", ".xls")):
+                raise ValidationError("Only Excel files (.xlsx, .xls) are allowed")
+
+            file_type = excel_file.content_type
+            if file_type not in [
+                "application/vnd.ms-excel",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ]:
+                raise ValidationError(
+                    "Invalid file type. Please upload a valid Excel file."
+                )
+
+        return excel_file

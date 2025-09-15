@@ -1,3 +1,4 @@
+import os
 from django import forms
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
@@ -320,6 +321,39 @@ class BulkAttendanceForm(forms.Form):
 
         return cleaned_data
 
+class AttendanceImportForm(forms.Form):
+    excel_file = forms.FileField(
+        widget=forms.FileInput(
+            attrs={
+                'class': 'form-control',
+                'accept': '.xlsx, .xls',
+            }
+        )
+    )
+    update_existing = forms.BooleanField(
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+    
+    def clean_excel_file(self):
+        excel_file = self.cleaned_data.get('excel_file')
+        if not excel_file:
+            raise ValidationError('Excel file is required')
+            
+        ext = os.path.splitext(excel_file.name)[1]
+        valid_extensions = ['.xlsx', '.xls']
+        if ext.lower() not in valid_extensions:
+            raise ValidationError('Unsupported file format. Please upload an Excel file (.xlsx, .xls)')
+        
+        if excel_file.size > 10 * 1024 * 1024:  # 10MB limit
+            raise ValidationError('File size exceeds 10MB limit')
+                
+        return excel_file
 
 class AttendanceDeviceForm(forms.ModelForm):
     test_connection = forms.BooleanField(
@@ -721,7 +755,6 @@ class ShiftForm(forms.ModelForm):
                 raise ValidationError("You don't have permission to manage shifts")
 
         return cleaned_data
-
 
 class EmployeeShiftAssignmentForm(forms.ModelForm):
     class Meta:

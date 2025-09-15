@@ -24,7 +24,8 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
 from django.utils.module_loading import import_string
-        
+from django.views.generic import TemplateView
+
 import json
 import csv
 import datetime
@@ -62,6 +63,10 @@ from .utils import (
     get_current_datetime,
 )
 
+from .forms import AttendanceImportForm
+from .excel.utils import ExcelAttendanceImporter
+from .models import ImportJob
+from .excel.utils import generate_attendance_import_template
 User = get_user_model()
 
 class AttendanceView(LoginRequiredMixin, View):
@@ -2052,6 +2057,186 @@ class Corrections(LoginRequiredMixin, View):
         
         return redirect('attendance:correction_list')
 
+class AttendanceImportView(LoginRequiredMixin, TemplateView):
+    template_name = "attendance/import.html"
+    form_class = AttendanceImportForm
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "Import Attendance Data"
+        context["form"] = self.form_class(user=self.request.user)
+        context["upload_template_url"] = reverse("attendance:template_download")
+        return context
+
+    def post(self, request, *args, **kwargs):
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            form = self.form_class(request.POST, request.FILES, user=request.user)
+            if form.is_valid():
+                excel_file = form.cleaned_data["excel_file"]
+                update_existing = form.cleaned_data["update_existing"]
+                try:
+                    import_job = ImportJob.objects.create(
+                        file_name=excel_file.name, created_by=request.user, status="PENDING",
+                        import_type="ATTENDANCE"
+                    )
+                    
+                    import threading
+                    
+                    def process_import():
+                        try:
+                            results = ExcelAttendanceImporter.import_attendance_from_excel(
+                                excel_file,
+                                update_existing=update_existing,
+                                user=request.user,
+                                import_job=import_job,
+                            )
+                            
+                            request.session["import_results"] = results
+                            
+                            log_user_activity(
+                                user=request.user,
+                                action="ATTENDANCE_IMPORT",
+                                description=f"Imported attendance data: {results['success_count']} created, {results['updated_count']} updated, {results['error_count']} errors",
+                                request=request,
+                                additional_data={
+                                    "success_count": results["success_count"],
+                                    "updated_count": results["updated_count"],
+                                    "error_count": results["error_count"],
+                                    "filename": excel_file.name,
+                                },
+                            )
+                        except Exception as e:
+                            import_job.status = "FAILED"
+                            import_job.completed_at = timezone.now()
+                            import_job.save()
+                    
+                    thread = threading.Thread(target=process_import)
+                    thread.daemon = True
+                    thread.start()
+                    
+                    return JsonResponse({
+                        'success': True,
+                        'job_id': str(import_job.id)
+                    })
+                    
+                except Exception as e:
+                    return JsonResponse({
+                        'success': False,
+                        'error': str(e)
+                    })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Invalid form data'
+                })
+        else:
+            form = self.form_class(request.POST, request.FILES, user=request.user)
+
+            if form.is_valid():
+                excel_file = form.cleaned_data["excel_file"]
+                update_existing = form.cleaned_data["update_existing"]
+
+                try:
+                    import_job = ImportJob.objects.create(
+                        file_name=excel_file.name, created_by=request.user, status="PENDING",
+                        import_type="ATTENDANCE"
+                    )
+
+                    results = ExcelAttendanceImporter.import_attendance_from_excel(
+                        excel_file,
+                        update_existing=update_existing,
+                        user=request.user,
+                        import_job=import_job,
+                    )
+
+                    request.session["import_results"] = results
+                    request.session["import_job_id"] = str(import_job.id)
+
+                    log_user_activity(
+                        user=request.user,
+                        action="ATTENDANCE_IMPORT",
+                        description=f"Imported attendance data: {results['success_count']} created, {results['updated_count']} updated, {results['error_count']} errors",
+                        request=request,
+                        additional_data={
+                            "success_count": results["success_count"],
+                            "updated_count": results["updated_count"],
+                            "error_count": results["error_count"],
+                            "filename": excel_file.name,
+                        },
+                    )
+
+                    return redirect("attendance:import_results", job_id=import_job.id)
+
+                except Exception as e:
+                    messages.error(request, f"File processing error: {str(e)}")
+
+            context = self.get_context_data()
+            context["form"] = form
+            return render(request, self.template_name, context)
+
+
+class CheckImportProgressView(LoginRequiredMixin, View):
+    def get(self, request, job_id):
+        import_job = get_object_or_404(ImportJob, id=job_id)
+
+        data = {
+            "status": import_job.status,
+            "total_rows": import_job.total_rows,
+            "processed_rows": import_job.processed_rows,
+            "percentage": import_job.get_progress_percentage(),
+            "success_count": import_job.success_count,
+            "error_count": import_job.error_count,
+            "created_count": import_job.created_count,
+            "updated_count": import_job.updated_count,
+            "is_complete": import_job.status in ["COMPLETED", "FAILED", "CANCELLED"],
+        }
+
+        return JsonResponse(data)
+
+
+class CancelImportView(LoginRequiredMixin, View):
+    def post(self, request, job_id):
+        import_job = get_object_or_404(ImportJob, id=job_id)
+
+        if import_job.status in ["PENDING", "PROCESSING"]:
+            import_job.status = "CANCELLED"
+            import_job.completed_at = timezone.now()
+            import_job.save()
+
+            return JsonResponse({"success": True})
+
+        return JsonResponse(
+            {"success": False, "message": "Cannot cancel a completed import"}
+        )
+
+class AttendanceImportResultsView(LoginRequiredMixin, TemplateView):
+    template_name = "attendance/import_results.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "Import Results"
+        
+        job_id = self.kwargs.get('job_id') or self.request.GET.get('job_id')
+        
+        if job_id:
+            try:
+                import_job = ImportJob.objects.get(id=job_id)
+                context["results"] = {
+                    'success_count': import_job.success_count,
+                    'error_count': import_job.error_count,
+                    'update_count': import_job.updated_count,
+                    'created_count': import_job.created_count
+                }
+            except ImportJob.DoesNotExist:
+                messages.error(self.request, "Import job not found.")
+        else:
+            messages.warning(
+                self.request, "No import results found. Please perform an import first."
+            )
+            
+        return context
+
+
 class Holidays(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         if 'id' in kwargs:
@@ -3343,3 +3528,13 @@ class Leave(LoginRequiredMixin, View):
             messages.error(request, f'Error updating leave balance: {str(e)}')
         
         return redirect('attendance:leave_balance_list')
+
+def download_template(request):
+    
+    output = generate_attendance_import_template()
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename=attendance_import_template.xlsx'
+    return response

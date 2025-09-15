@@ -29,8 +29,16 @@ from datetime import timedelta
 from decimal import Decimal
 
 
+from threading import local
+
+_thread_locals = local()
+
+
 @receiver(post_save, sender=CustomUser)
 def handle_employee_creation(sender, instance, created, **kwargs):
+    if hasattr(_thread_locals, "is_bulk_import") and _thread_locals.is_bulk_import:
+        return
+
     if created and instance.is_active and instance.status == "ACTIVE":
         try:
             profile = EmployeeDataManager.get_employee_profile(instance)
@@ -43,6 +51,9 @@ def handle_employee_creation(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=EmployeeProfile)
 def handle_employee_profile_update(sender, instance, created, **kwargs):
+    if hasattr(_thread_locals, "is_bulk_import") and _thread_locals.is_bulk_import:
+        return
+
     if created:
         create_initial_attendance_records(instance.user)
         create_initial_leave_balances(instance.user)

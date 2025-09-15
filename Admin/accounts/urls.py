@@ -38,7 +38,10 @@ urlpatterns = [
     # Bulk Operations URLs
     path('employees/bulk-upload/', views.BulkEmployeeUploadView.as_view(), name='bulk_employee_upload'),
     path('employees/template-download/', views.employee_template_download, name='employee_template_download'),
+    path('employees/import-results/', views.EmployeeImportResultsView.as_view(), name='employee_import_results'),
     path('employees/bulk-action/', views.bulk_employee_action, name='bulk_employee_action'),
+    path('import-progress/<uuid:job_id>/check/', views.CheckImportProgressView.as_view(), name='check_import_progress'),
+    path('import-progress/<uuid:job_id>/cancel/', views.CancelImportView.as_view(), name='cancel_import'),
     path('employees/import-status/<str:task_id>/', views.employee_import_status, name='employee_import_status'),
     path('bulk-notification/', views.bulk_notification_view, name='bulk_notification'),
         

@@ -1,0 +1,393 @@
+{% extends "partials/layouts/main.html" %}
+{% load static %}
+
+{% include "partials/main.html" %}
+{% block meta %}
+{% with title="Bulk Employee Upload" %}
+{% include "partials/title-meta.html" %}
+{% endwith %}
+{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="/static/assets/libs/dropzone/min/dropzone.min.css">
+<link rel="stylesheet" href="/static/assets/libs/choices.js/public/assets/styles/choices.min.css">
+{% endblock %}
+
+{% block content %}
+{% with title_sub="Employee Management" title="Bulk Employee Upload" %}
+{% include "partials/pagetitle.html" %}
+{% endwith %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header border-bottom">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h4 class="card-title mb-0">Import Employees</h4>
+                        <p class="text-muted mb-0">Upload Excel file to import multiple employees at once</p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <a href="{{ upload_template_url }}" class="btn btn-outline-primary">
+                            <i class="ri-download-line me-1"></i>Download Template
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="alert alert-info" role="alert">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <i class="ri-information-line fs-18 align-middle me-2"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="alert-heading">Import Instructions</h5>
+                                    <p class="mb-2">You can import employees in two ways:</p>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6 class="mb-2">Using Our Template:</h6>
+                                            <ol class="mb-3">
+                                                <li>Download the template Excel file using the button above</li>
+                                                <li>Fill in employee details according to the instructions</li>
+                                                <li>Upload the completed file using the form below</li>
+                                            </ol>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6 class="mb-2">Using Your Existing Excel File:</h6>
+                                            <ol class="mb-0">
+                                                <li>Ensure your file has at least first name, last name, and email columns</li>
+                                                <li>Upload your file directly using the form below</li>
+                                                <li>Our system will automatically map common column names</li>
+                                            </ol>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="card border shadow-none">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">Upload Excel File</h5>
+                            </div>
+                            <div class="card-body">
+                                <form method="post" enctype="multipart/form-data" id="uploadForm">
+                                    {% csrf_token %}
+                                    
+                                    {% if form.non_field_errors %}
+                                    <div class="alert alert-danger">
+                                        {% for error in form.non_field_errors %}
+                                        {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="mb-3">
+                                        <label for="{{ form.excel_file.id_for_label }}" class="form-label">Excel File <span class="text-danger">*</span></label>
+                                        <input type="file" class="form-control {% if form.excel_file.errors %}is-invalid{% endif %}" 
+                                               id="{{ form.excel_file.id_for_label }}" name="{{ form.excel_file.html_name }}"
+                                               accept=".xlsx, .xls">
+                                        {% if form.excel_file.errors %}
+                                        <div class="invalid-feedback">
+                                            {% for error in form.excel_file.errors %}
+                                            {{ error }}
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                        <div class="form-text">Upload any Excel file (.xlsx, .xls) with employee data</div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   id="{{ form.update_existing.id_for_label }}" 
+                                                   name="{{ form.update_existing.html_name }}"
+                                                   {% if form.update_existing.value %}checked{% endif %}>
+                                            <label class="form-check-label" for="{{ form.update_existing.id_for_label }}">
+                                                Update existing employees if found (by email)
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   id="{{ form.skip_errors.id_for_label }}" 
+                                                   name="{{ form.skip_errors.html_name }}"
+                                                   {% if form.skip_errors.value %}checked{% endif %}>
+                                            <label class="form-check-label" for="{{ form.skip_errors.id_for_label }}">
+                                                Skip rows with errors and continue import
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-4">
+                                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                                            <i class="ri-upload-cloud-line me-1"></i>Process
+                                        </button>
+                                        <a href="{% url 'accounts:employee_list' %}" class="btn btn-light ms-2">
+                                            <i class="ri-arrow-left-line me-1"></i>Back to Employees
+                                        </a>
+                                    </div>
+                                </form>
+                                
+                                <div class="mt-4 d-none" id="progressContainer">
+                                    <h6 class="mb-2">Processing Import...</h6>
+                                    <div class="progress" style="height: 15px;">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                             role="progressbar" style="width: 0%;" 
+                                             id="importProgress" aria-valuenow="0" 
+                                             aria-valuemin="0" aria-valuemax="100">0%</div>
+                                    </div>
+                                    <p class="text-muted mt-2 mb-0 small" id="progressMessage">
+                                        Uploading file...
+                                    </p>
+                                    <div class="row mt-3">
+                                        <div class="col-md-3 text-center">
+                                            <div class="badge bg-primary rounded-pill mb-1" id="totalRows">0</div>
+                                            <p class="text-muted mb-0 small">Total Rows</p>
+                                        </div>
+                                        <div class="col-md-3 text-center">
+                                            <div class="badge bg-success rounded-pill mb-1" id="processedRows">0</div>
+                                            <p class="text-muted mb-0 small">Processed</p>
+                                        </div>
+                                        <div class="col-md-3 text-center">
+                                            <div class="badge bg-info rounded-pill mb-1" id="successCount">0</div>
+                                            <p class="text-muted mb-0 small">Success</p>
+                                        </div>
+                                        <div class="col-md-3 text-center">
+                                            <div class="badge bg-danger rounded-pill mb-1" id="errorCount">0</div>
+                                            <p class="text-muted mb-0 small">Errors</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-center mt-3">
+                                        <button type="button" class="btn btn-sm btn-danger" id="cancelBtn">
+                                            <i class="ri-close-line me-1"></i>Cancel Import
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card border shadow-none">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">Import Guidelines</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex mb-3">
+                                    <div class="flex-shrink-0">
+                                        <div class="avatar-sm">
+                                            <div class="avatar-title rounded-circle bg-primary">
+                                                <i class="ri-file-excel-line"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-1">Required Fields</h6>
+                                        <p class="text-muted mb-0">First name, Last name, Email</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex mb-3">
+                                    <div class="flex-shrink-0">
+                                        <div class="avatar-sm">
+                                            <div class="avatar-title rounded-circle bg-success">
+                                                <i class="ri-check-line"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-1">Smart Column Mapping</h6>
+                                        <p class="text-muted mb-0">System automatically maps common column names</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex mb-3">
+                                    <div class="flex-shrink-0">
+                                        <div class="avatar-sm">
+                                            <div class="avatar-title rounded-circle bg-warning">
+                                                <i class="ri-error-warning-line"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-1">Error Handling</h6>
+                                        <p class="text-muted mb-0">Detailed error messages will be provided</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex">
+                                    <div class="flex-shrink-0">
+                                        <div class="avatar-sm">
+                                            <div class="avatar-title rounded-circle bg-info">
+                                                <i class="ri-lock-password-line"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-1">Temporary Passwords</h6>
+                                        <p class="text-muted mb-0">New users will receive temporary passwords</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script src="/static/assets/libs/dropzone/min/dropzone.min.js"></script>
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded');
+        
+        const uploadForm = document.getElementById('uploadForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const importProgress = document.getElementById('importProgress');
+        const progressMessage = document.getElementById('progressMessage');
+        const totalRows = document.getElementById('totalRows');
+        const processedRows = document.getElementById('processedRows');
+        const successCount = document.getElementById('successCount');
+        const errorCount = document.getElementById('errorCount');
+        const cancelBtn = document.getElementById('cancelBtn');
+        
+        let jobId = null;
+        let checkInterval = null;
+        
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        function checkProgress() {
+            if (!jobId) return;
+            
+            fetch(`/accounts/import-progress/${jobId}/check/`)
+                .then(response => response.json())
+                .then(data => {
+                    totalRows.textContent = data.total_rows;
+                    processedRows.textContent = data.processed_rows;
+                    successCount.textContent = data.success_count;
+                    errorCount.textContent = data.error_count;
+                    
+                    const percentage = data.percentage;
+                    importProgress.style.width = `${percentage}%`;
+                    importProgress.setAttribute('aria-valuenow', percentage);
+                    importProgress.textContent = `${percentage}%`;
+                    
+                    if (data.processed_rows > 0) {
+                        progressMessage.textContent = `Processing row ${data.processed_rows} of ${data.total_rows}`;
+                    }
+                    
+                    if (data.is_complete) {
+                        clearInterval(checkInterval);
+                        progressMessage.textContent = 'Import completed! Redirecting to results...';
+                        setTimeout(() => {
+                            window.location.href = '/accounts/employees/import-results/';
+                        }, 1500);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking progress:', error);
+                });
+        }
+        
+        // Use onsubmit directly on the form element for better compatibility
+        if (uploadForm) {
+            uploadForm.onsubmit = function(e) {
+                console.log('Form submission intercepted');
+                e.preventDefault();
+                
+                const fileInput = document.getElementById('{{ form.excel_file.id_for_label }}');
+                if (fileInput.files.length === 0) {
+                    alert('Please select an Excel file to upload.');
+                    return false;
+                }
+                
+                progressContainer.classList.remove('d-none');
+                submitBtn.disabled = true;
+                
+                const formData = new FormData(uploadForm);
+                
+                fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        jobId = data.job_id;
+                        checkInterval = setInterval(checkProgress, 2000);
+                        checkProgress();
+                    } else {
+                        progressContainer.classList.add('d-none');
+                        submitBtn.disabled = false;
+                        alert(data.error || 'An error occurred during file upload.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    progressContainer.classList.add('d-none');
+                    submitBtn.disabled = false;
+                    alert('An error occurred during file upload.');
+                });
+                
+                return false;  // Extra insurance against form submission
+            };
+        }
+        
+        cancelBtn.addEventListener('click', function() {
+            if (!jobId) return;
+            
+            if (confirm('Are you sure you want to cancel this import?')) {
+                fetch(`/accounts/import-progress/${jobId}/cancel/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        clearInterval(checkInterval);
+                        progressContainer.classList.add('d-none');
+                        submitBtn.disabled = false;
+                        alert('Import cancelled successfully.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error cancelling import:', error);
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

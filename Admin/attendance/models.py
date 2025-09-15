@@ -6,7 +6,7 @@ from accounts.models import CustomUser, Department, ActiveManager, SystemConfigu
 from employees.models import EmployeeProfile, Contract
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime, date, time, timedelta
-from django.utils import timezone
+from django.conf import settings
 import uuid
 from .utils import (
     TimeCalculator,
@@ -25,6 +25,8 @@ from .utils import (
 )
 
 get_current_datetime = timezone.now
+
+
 
 class AttendanceDevice(models.Model):
     DEVICE_TYPES = [
@@ -1337,6 +1339,47 @@ class Attendance(models.Model):
     @property
     def formatted_break_time(self):
         return TimeCalculator.format_duration_to_excel_time(self.break_time)
+
+
+class ImportJob(models.Model):
+    STATUS_CHOICES = (
+        ("PENDING", "Pending"),
+        ("PROCESSING", "Processing"),
+        ("COMPLETED", "Completed"),
+        ("FAILED", "Failed"),
+        ("CANCELLED", "Cancelled"),
+    )
+
+    IMPORT_TYPE_CHOICES = (("ATTENDANCE", "Attendance"),)
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    file_name = models.CharField(max_length=255)
+    import_type = models.CharField(max_length=20, choices=IMPORT_TYPE_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_imports",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    total_rows = models.IntegerField(default=0)
+    processed_rows = models.IntegerField(default=0)
+    success_count = models.IntegerField(default=0)
+    error_count = models.IntegerField(default=0)
+    created_count = models.IntegerField(default=0)
+    updated_count = models.IntegerField(default=0)
+    error_details = models.JSONField(null=True, blank=True)
+
+    def get_progress_percentage(self):
+        if self.total_rows == 0:
+            return 0
+        return int((self.processed_rows / self.total_rows) * 100)
+
+    class Meta:
+        ordering = ["-created_at"]
 
 
 class MonthlyAttendanceSummary(models.Model):

@@ -20,7 +20,6 @@ class ActiveUserManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset().filter(is_active=True, status="ACTIVE")
 
-
 class CustomUserManager(BaseUserManager):
     def create_user(self, employee_code, email, password=None, **extra_fields):
         if not employee_code:
@@ -43,12 +42,16 @@ class CustomUserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, employee_code, email, password=None, **extra_fields):
+    def create_superuser(self, email, password=None, employee_code=None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_active", True)
         extra_fields.setdefault("is_verified", True)
         extra_fields.setdefault("status", "ACTIVE")
+        
+        if not employee_code:
+            username = extra_fields.get("username", "admin")
+            employee_code = f"ADMIN-{username.upper()}"
 
         return self.create_user(employee_code, email, password, **extra_fields)
 
@@ -1039,6 +1042,37 @@ class APIKey(models.Model):
 
     def has_permission(self, permission):
         return permission in self.permissions or "all" in self.permissions
+
+
+class ImportJob(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    file_name = models.CharField(max_length=255)
+    total_rows = models.IntegerField(default=0)
+    processed_rows = models.IntegerField(default=0)
+    success_count = models.IntegerField(default=0)
+    error_count = models.IntegerField(default=0)
+    created_count = models.IntegerField(default=0)
+    updated_count = models.IntegerField(default=0)
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ("PENDING", "Pending"),
+            ("PROCESSING", "Processing"),
+            ("COMPLETED", "Completed"),
+            ("FAILED", "Failed"),
+            ("CANCELLED", "Cancelled"),
+        ],
+        default="PENDING",
+    )
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True)
+    results = models.JSONField(default=dict)
+
+    def get_progress_percentage(self):
+        if self.total_rows == 0:
+            return 0
+        return int((self.processed_rows / self.total_rows) * 100)
 
 
 def initialize_default_roles():

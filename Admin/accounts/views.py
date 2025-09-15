@@ -1,9 +1,10 @@
+import openpyxl
 import pandas as pd
 import io
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate, get_user_model
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse, Http404
 from django.views.generic import (
@@ -36,6 +37,8 @@ import json
 from datetime import datetime, timedelta
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
+from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.utils import get_column_letter
 
 from .models import (
     CustomUser,
@@ -46,6 +49,7 @@ from .models import (
     UserSession,
     PasswordResetToken,
     APIKey,
+    ImportJob,
 )
 from employees.models import EmployeeProfile
 
@@ -58,12 +62,13 @@ from .forms import (
     CustomPasswordResetForm,
     CustomSetPasswordForm,
     RoleForm,
+    EmployeeExcelImportForm,
     ProfileUpdateForm,
-    BulkEmployeeUploadForm,
     UserSearchForm,
     AdvancedUserFilterForm,
     SystemConfigurationForm,
 )
+from accounts.excel.utils import import_employees_from_excel
 from .utils import (
     generate_employee_code,
     generate_secure_password,
@@ -186,7 +191,7 @@ def dashboard_view(request):
         context["system_stats"] = SystemUtilities.get_system_statistics()
         template_name = "employee/employees-analytics.html"
     else:
-        template_name = "index.html"
+        template_name = "employee/employees-analytics.html"
 
     return render(request, template_name, context)
 
@@ -562,37 +567,37 @@ class EmployeeUpdateView(LoginRequiredMixin, UpdateView):
             employee = form.save(commit=False)
             employee.updated_by = self.request.user
             employee.save()
-            
+
             employee_profile_id = self.kwargs.get("employee_id")
             profile = EmployeeProfile.objects.get(id=employee_profile_id)
-            
+
             profile.basic_salary = form.cleaned_data.get("basic_salary")
             profile.employment_status = form.cleaned_data.get("employment_status")
             profile.grade_level = form.cleaned_data.get("grade_level")
             profile.probation_end_date = form.cleaned_data.get("probation_end_date")
             profile.confirmation_date = form.cleaned_data.get("confirmation_date")
             profile.bank_name = form.cleaned_data.get("bank_name")
-            
+
             bank_account = form.cleaned_data.get("bank_account_number")
             if bank_account:
                 bank_account = ''.join(filter(str.isdigit, bank_account))
                 if len(bank_account) >= 8 and len(bank_account) <= 20:
                     profile.bank_account_number = bank_account
-            
+
             profile.bank_branch = form.cleaned_data.get("bank_branch")
-            
+
             tax_id = form.cleaned_data.get("tax_identification_number")
             if tax_id:
                 existing = EmployeeProfile.objects.filter(tax_identification_number=tax_id).exclude(id=profile.id)
                 if not existing.exists():
                     profile.tax_identification_number = tax_id
-            
+
             profile.marital_status = form.cleaned_data.get("marital_status")
             profile.spouse_name = form.cleaned_data.get("spouse_name")
             profile.number_of_children = form.cleaned_data.get("number_of_children") or 0
             profile.work_location = form.cleaned_data.get("work_location")
             profile.is_active = employee.status == "ACTIVE"
-            
+
             try:
                 profile.save(update_fields=[
                     'basic_salary', 'employment_status', 'grade_level', 
@@ -606,7 +611,7 @@ class EmployeeUpdateView(LoginRequiredMixin, UpdateView):
                     'basic_salary', 'employment_status', 'grade_level', 
                     'updated_at'
                 ])
-            
+
             log_user_activity(
                 user=self.request.user,
                 action="UPDATE",
@@ -626,6 +631,189 @@ class EmployeeUpdateView(LoginRequiredMixin, UpdateView):
             return redirect(
                 "accounts:employee_detail", employee_id=profile.id
             )
+
+class BulkEmployeeUploadView(LoginRequiredMixin, TemplateView):
+    template_name = "employee/upload.html"
+    form_class = EmployeeExcelImportForm
+
+    def dispatch(self, request, *args, **kwargs):
+        if not UserUtilities.check_user_permission(request.user, "manage_employees"):
+            raise PermissionDenied
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "Bulk Employee Upload"
+        context["form"] = self.form_class()
+        context["upload_template_url"] = reverse("accounts:employee_template_download")
+        return context
+
+    def post(self, request, *args, **kwargs):
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            form = self.form_class(request.POST, request.FILES)
+            if form.is_valid():
+                excel_file = form.cleaned_data["excel_file"]
+                update_existing = form.cleaned_data["update_existing"]
+                skip_errors = form.cleaned_data.get("skip_errors", False)
+
+                try:
+                    import_job = ImportJob.objects.create(
+                        file_name=excel_file.name, created_by=request.user, status="PENDING"
+                    )
+                    
+                    import threading
+                    
+                    def process_import():
+                        try:
+                            results = import_employees_from_excel(
+                                excel_file,
+                                update_existing=update_existing,
+                                skip_errors=skip_errors,
+                                created_by=request.user,
+                                import_job=import_job,
+                            )
+                            
+                            request.session["import_results"] = results
+                            
+                            log_user_activity(
+                                user=request.user,
+                                action="BULK_IMPORT",
+                                description=f"Bulk imported employees: {results['created_count']} created, {results['updated_count']} updated, {results['error_count']} errors",
+                                request=request,
+                                additional_data={
+                                    "created_count": results["created_count"],
+                                    "updated_count": results["updated_count"],
+                                    "error_count": results["error_count"],
+                                    "skipped_count": results["skipped_count"],
+                                    "filename": excel_file.name,
+                                },
+                            )
+                        except Exception as e:
+                            import_job.status = "FAILED"
+                            import_job.completed_at = timezone.now()
+                            import_job.save()
+                            logger.error(f"Error in import thread: {str(e)}")
+                    
+                    thread = threading.Thread(target=process_import)
+                    thread.daemon = True
+                    thread.start()
+                    
+                    return JsonResponse({
+                        'success': True,
+                        'job_id': str(import_job.id)
+                    })
+                    
+                except Exception as e:
+                    return JsonResponse({
+                        'success': False,
+                        'error': str(e)
+                    })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Invalid form data'
+                })
+        else:
+            form = self.form_class(request.POST, request.FILES)
+
+            if form.is_valid():
+                excel_file = form.cleaned_data["excel_file"]
+                update_existing = form.cleaned_data["update_existing"]
+                skip_errors = form.cleaned_data.get("skip_errors", False)
+
+                try:
+                    import_job = ImportJob.objects.create(
+                        file_name=excel_file.name, created_by=request.user, status="PENDING"
+                    )
+
+                    results = import_employees_from_excel(
+                        excel_file,
+                        update_existing=update_existing,
+                        skip_errors=skip_errors,
+                        created_by=request.user,
+                        import_job=import_job,
+                    )
+
+                    request.session["import_results"] = results
+                    request.session["import_job_id"] = str(import_job.id)
+
+                    log_user_activity(
+                        user=request.user,
+                        action="BULK_IMPORT",
+                        description=f"Bulk imported employees: {results['created_count']} created, {results['updated_count']} updated, {results['error_count']} errors",
+                        request=request,
+                        additional_data={
+                            "created_count": results["created_count"],
+                            "updated_count": results["updated_count"],
+                            "error_count": results["error_count"],
+                            "skipped_count": results["skipped_count"],
+                            "filename": excel_file.name,
+                        },
+                    )
+
+                    return redirect("accounts:employee_import_results")
+
+                except Exception as e:
+                    messages.error(request, f"File processing error: {str(e)}")
+
+            context = self.get_context_data()
+            context["form"] = form
+            return render(request, self.template_name, context)
+
+
+class CheckImportProgressView(LoginRequiredMixin, View):
+    def get(self, request, job_id):
+        import_job = get_object_or_404(ImportJob, id=job_id)
+
+        data = {
+            "status": import_job.status,
+            "total_rows": import_job.total_rows,
+            "processed_rows": import_job.processed_rows,
+            "percentage": import_job.get_progress_percentage(),
+            "success_count": import_job.success_count,
+            "error_count": import_job.error_count,
+            "created_count": import_job.created_count,
+            "updated_count": import_job.updated_count,
+            "is_complete": import_job.status in ["COMPLETED", "FAILED", "CANCELLED"],
+        }
+
+        return JsonResponse(data)
+
+
+class CancelImportView(LoginRequiredMixin, View):
+    def post(self, request, job_id):
+        import_job = get_object_or_404(ImportJob, id=job_id)
+
+        if import_job.status in ["PENDING", "PROCESSING"]:
+            import_job.status = "CANCELLED"
+            import_job.completed_at = timezone.now()
+            import_job.save()
+
+            return JsonResponse({"success": True})
+
+        return JsonResponse(
+            {"success": False, "message": "Cannot cancel a completed import"}
+        )
+
+class EmployeeImportResultsView(LoginRequiredMixin, TemplateView):
+    template_name = "employee/import_results.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not UserUtilities.check_user_permission(request.user, "manage_employees"):
+            raise PermissionDenied
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["page_title"] = "Import Results"
+        context["results"] = self.request.session.get("import_results", {})
+
+        if not context["results"]:
+            messages.warning(
+                self.request, "No import results found. Please perform an import first."
+            )
+
+        return context
 
 
 @login_required
@@ -742,110 +930,124 @@ def employee_export_view(request):
     
     return response
 
-class BulkEmployeeUploadView(LoginRequiredMixin, TemplateView):
-    template_name = 'ui-form-file-uploads.html'
-    form_class = BulkEmployeeUploadForm
-
-    def dispatch(self, request, *args, **kwargs):
-        if not UserUtilities.check_user_permission(request.user, 'manage_employees'):
-            raise PermissionDenied
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['page_title'] = 'Bulk Employee Upload'
-        context['form'] = self.form_class()
-        context['upload_template_url'] = reverse('accounts:employee_template_download')
-        return context
-
-    def post(self, request, *args, **kwargs):
-        form = self.form_class(request.POST, request.FILES)
-        
-        if form.is_valid():
-            file = form.cleaned_data['file']
-            
-            try:
-                file_content = file.read()
-                created_count, error_count, errors = ExcelUtilities.import_users_from_excel(
-                    file_content, request.user
-                )
-                
-                if created_count > 0:
-                    messages.success(
-                        request, 
-                        f'Successfully created {created_count} employees.'
-                    )
-                
-                if error_count > 0:
-                    error_message = f'{error_count} errors occurred during import:'
-                    for error in errors[:10]:
-                        error_message += f'\n• {error}'
-                    if len(errors) > 10:
-                        error_message += f'\n... and {len(errors) - 10} more errors'
-                    messages.error(request, error_message)
-                
-                log_user_activity(
-                    user=request.user,
-                    action='BULK_IMPORT',
-                    description=f'Bulk imported employees: {created_count} created, {error_count} errors',
-                    request=request,
-                    additional_data={
-                        'created_count': created_count,
-                        'error_count': error_count,
-                        'filename': file.name
-                    }
-                )
-                
-                if created_count > 0:
-                    return redirect('accounts:employee_list')
-                
-            except Exception as e:
-                messages.error(request, f'File processing error: {str(e)}')
-        
-        context = self.get_context_data()
-        context['form'] = form
-        return render(request, self.template_name, context)
-
 @login_required
 def employee_template_download(request):
     if not UserUtilities.check_user_permission(request.user, 'manage_employees'):
         raise PermissionDenied
     
-    template_data = [{
-        'employee_code': 'EMP001',
-        'first_name': 'John',
-        'last_name': 'Doe',
-        'middle_name': 'Smith',
-        'email': 'john.doe@company.com',
-        'phone_number': '+1234567890',
-        'date_of_birth': '1990-01-15',
-        'gender': 'M',
-        'job_title': 'Software Developer',
-        'hire_date': '2024-01-01',
-        'department_code': 'IT',
-        'role_name': 'OTHER_STAFF',
-        'manager_employee_code': 'MGR001'
-    }]
+    department_codes = list(Department.active.values_list('code', flat=True))
+    role_names = list(Role.active.values_list('name', flat=True))
     
-    df = pd.DataFrame(template_data)
-    output = io.BytesIO()
+    wb = openpyxl.Workbook()
+    template_sheet = wb.active
+    template_sheet.title = "Employee Template"
+    instructions_sheet = wb.create_sheet("Instructions")
     
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name='Employee Template', index=False)
+    columns = [
+        {'name': 'first_name', 'required': True, 'description': 'Employee first name (required)'},
+        {'name': 'last_name', 'required': True, 'description': 'Employee last name (required)'},
+        {'name': 'middle_name', 'required': False, 'description': 'Employee middle name (optional)'},
+        {'name': 'email', 'required': True, 'description': 'Employee email address (required, must be unique)'},
+        {'name': 'phone_number', 'required': False, 'description': 'Phone number with country code (e.g., +94771234567)'},
+        {'name': 'date_of_birth', 'required': False, 'description': 'Date of birth (YYYY-MM-DD format)'},
+        {'name': 'gender', 'required': False, 'description': 'Gender (M, F, or O)'},
+        {'name': 'address_line1', 'required': False, 'description': 'Primary address line'},
+        {'name': 'address_line2', 'required': False, 'description': 'Secondary address line'},
+        {'name': 'city', 'required': False, 'description': 'City'},
+        {'name': 'state', 'required': False, 'description': 'State/Province'},
+        {'name': 'postal_code', 'required': False, 'description': 'Postal/ZIP code'},
+        {'name': 'country', 'required': False, 'description': 'Country (defaults to Sri Lanka if empty)'},
+        {'name': 'emergency_contact_name', 'required': False, 'description': 'Emergency contact name'},
+        {'name': 'emergency_contact_phone', 'required': False, 'description': 'Emergency contact phone number'},
+        {'name': 'emergency_contact_relationship', 'required': False, 'description': 'Relationship to emergency contact'},
+        {'name': 'department_code', 'required': False, 'description': 'Department code (must exist in system)'},
+        {'name': 'role_name', 'required': False, 'description': 'Role name (must exist in system)'},
+        {'name': 'job_title', 'required': False, 'description': 'Job title'},
+        {'name': 'hire_date', 'required': False, 'description': 'Hire date (YYYY-MM-DD format)'},
+        {'name': 'manager_code', 'required': False, 'description': 'Manager employee code'},
+        {'name': 'status', 'required': False, 'description': 'Status (ACTIVE, INACTIVE, SUSPENDED, TERMINATED)'},
+        {'name': 'employment_status', 'required': False, 'description': 'Employment status (PROBATION, CONFIRMED, CONTRACT, INTERN, CONSULTANT)'},
+        {'name': 'grade_level', 'required': False, 'description': 'Grade level (ENTRY, JUNIOR, SENIOR, LEAD, MANAGER, DIRECTOR, EXECUTIVE)'},
+        {'name': 'basic_salary', 'required': False, 'description': 'Basic monthly salary in LKR'},
+        {'name': 'probation_end_date', 'required': False, 'description': 'Probation end date (required if employment_status is PROBATION)'},
+        {'name': 'confirmation_date', 'required': False, 'description': 'Date when employee was confirmed'},
+        {'name': 'bank_name', 'required': False, 'description': 'Bank name for salary payments'},
+        {'name': 'bank_account_number', 'required': False, 'description': 'Bank account number (8-20 digits)'},
+        {'name': 'bank_branch', 'required': False, 'description': 'Bank branch name'},
+        {'name': 'tax_identification_number', 'required': False, 'description': 'Unique tax identification number'},
+        {'name': 'marital_status', 'required': False, 'description': 'Marital status (SINGLE, MARRIED, DIVORCED, WIDOWED)'},
+        {'name': 'spouse_name', 'required': False, 'description': 'Spouse name (required if marital_status is MARRIED)'},
+        {'name': 'number_of_children', 'required': False, 'description': 'Number of children (default 0)'},
+        {'name': 'work_location', 'required': False, 'description': 'Primary work location/office'}
+    ]
+    
+    for col_idx, column in enumerate(columns, start=1):
+        cell = template_sheet.cell(row=1, column=col_idx)
+        cell.value = column['name']
+        cell.font = openpyxl.styles.Font(bold=True)
         
-        worksheet = writer.sheets['Employee Template']
-        for column in worksheet.columns:
-            max_length = 0
-            column_letter = column[0].column_letter
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except:
-                    pass
-            adjusted_width = min(max_length + 2, 50)
-            worksheet.column_dimensions[column_letter].width = adjusted_width
+        if column['required']:
+            cell.fill = openpyxl.styles.PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
     
+    gender_col = next(idx for idx, col in enumerate(columns, start=1) if col['name'] == 'gender')
+    dv = DataValidation(type="list", formula1='"M,F,O"', allow_blank=True)
+    template_sheet.add_data_validation(dv)
+    dv.add(f"{get_column_letter(gender_col)}2:{get_column_letter(gender_col)}1000")
+    
+    status_col = next(idx for idx, col in enumerate(columns, start=1) if col['name'] == 'status')
+    dv = DataValidation(type="list", formula1='"ACTIVE,INACTIVE,SUSPENDED,TERMINATED"', allow_blank=True)
+    template_sheet.add_data_validation(dv)
+    dv.add(f"{get_column_letter(status_col)}2:{get_column_letter(status_col)}1000")
+    
+    emp_status_col = next(idx for idx, col in enumerate(columns, start=1) if col['name'] == 'employment_status')
+    dv = DataValidation(type="list", formula1='"PROBATION,CONFIRMED,CONTRACT,INTERN,CONSULTANT"', allow_blank=True)
+    template_sheet.add_data_validation(dv)
+    dv.add(f"{get_column_letter(emp_status_col)}2:{get_column_letter(emp_status_col)}1000")
+    
+    grade_col = next(idx for idx, col in enumerate(columns, start=1) if col['name'] == 'grade_level')
+    dv = DataValidation(type="list", formula1='"ENTRY,JUNIOR,SENIOR,LEAD,MANAGER,DIRECTOR,EXECUTIVE"', allow_blank=True)
+    template_sheet.add_data_validation(dv)
+    dv.add(f"{get_column_letter(grade_col)}2:{get_column_letter(grade_col)}1000")
+    
+    marital_col = next(idx for idx, col in enumerate(columns, start=1) if col['name'] == 'marital_status')
+    dv = DataValidation(type="list", formula1='"SINGLE,MARRIED,DIVORCED,WIDOWED"', allow_blank=True)
+    template_sheet.add_data_validation(dv)
+    dv.add(f"{get_column_letter(marital_col)}2:{get_column_letter(marital_col)}1000")
+    
+    if department_codes:
+        dept_col = next(idx for idx, col in enumerate(columns, start=1) if col['name'] == 'department_code')
+        dv = DataValidation(type="list", formula1=f'"{",".join(department_codes)}"', allow_blank=True)
+        template_sheet.add_data_validation(dv)
+        dv.add(f"{get_column_letter(dept_col)}2:{get_column_letter(dept_col)}1000")
+    
+    if role_names:
+        role_col = next(idx for idx, col in enumerate(columns, start=1) if col['name'] == 'role_name')
+        dv = DataValidation(type="list", formula1=f'"{",".join(role_names)}"', allow_blank=True)
+        template_sheet.add_data_validation(dv)
+        dv.add(f"{get_column_letter(role_col)}2:{get_column_letter(role_col)}1000")
+    
+    for col_idx, column in enumerate(columns, start=1):
+        template_sheet.column_dimensions[get_column_letter(col_idx)].width = max(len(column['name']) + 2, 15)
+    
+    instructions_sheet['A1'] = "Employee Import Instructions"
+    instructions_sheet['A1'].font = openpyxl.styles.Font(bold=True, size=14)
+    instructions_sheet['A3'] = "Field Descriptions:"
+    instructions_sheet['A3'].font = openpyxl.styles.Font(bold=True)
+    
+    for row_idx, column in enumerate(columns, start=5):
+        instructions_sheet[f'A{row_idx}'] = column['name']
+        instructions_sheet[f'A{row_idx}'].font = openpyxl.styles.Font(bold=True)
+        instructions_sheet[f'B{row_idx}'] = column['description']
+        if column['required']:
+            instructions_sheet[f'C{row_idx}'] = "Required"
+            instructions_sheet[f'C{row_idx}'].font = openpyxl.styles.Font(color="FF0000")
+    
+    instructions_sheet.column_dimensions['A'].width = 25
+    instructions_sheet.column_dimensions['B'].width = 60
+    instructions_sheet.column_dimensions['C'].width = 15
+    
+    output = io.BytesIO()
+    wb.save(output)
     output.seek(0)
     
     response = HttpResponse(
