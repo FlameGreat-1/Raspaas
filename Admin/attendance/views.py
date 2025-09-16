@@ -25,7 +25,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
 from django.utils.module_loading import import_string
 from django.views.generic import TemplateView
-
+import threading
+from django.contrib.sessions.backends.db import SessionStore             
 import json
 import csv
 import datetime
@@ -34,7 +35,7 @@ from decimal import Decimal, InvalidOperation
 import uuid
 import io
 import xlsxwriter
-
+import calendar
 from accounts.models import CustomUser, Department, SystemConfiguration
 from employees.models import EmployeeProfile, Contract
 from .models import (
@@ -80,17 +81,42 @@ class AttendanceView(LoginRequiredMixin, View):
 
     def attendance_list(self, request):
         today = get_current_date()
-        date_filter = request.GET.get("date", today.strftime("%Y-%m-%d"))
+        date_filter = request.GET.get("date", "")
+        month = request.GET.get("month", "")
+        year = request.GET.get("year", "")
         department_filter = request.GET.get("department", "")
         status_filter = request.GET.get("status", "")
         search_query = request.GET.get("search", "")
 
         try:
-            filter_date = datetime.strptime(date_filter, "%Y-%m-%d").date()
+            month = int(month) if month else today.month
+            year = int(year) if year else today.year
+            
+            if date_filter:
+                filter_date = datetime.strptime(date_filter, "%Y-%m-%d").date()
+                month = filter_date.month
+                year = filter_date.year
+                attendance_records = Attendance.objects.filter(date=filter_date)
+            else:
+                filter_date = today
+                first_day = date(year, month, 1)
+                if month == 12:
+                    last_day = date(year + 1, 1, 1) - timedelta(days=1)
+                else:
+                    last_day = date(year, month + 1, 1) - timedelta(days=1)
+                
+                attendance_records = Attendance.objects.filter(date__range=[first_day, last_day])
         except ValueError:
             filter_date = today
-
-        attendance_records = Attendance.objects.filter(date=filter_date)
+            month = today.month
+            year = today.year
+            first_day = date(year, month, 1)
+            if month == 12:
+                last_day = date(year + 1, 1, 1) - timedelta(days=1)
+            else:
+                last_day = date(year, month + 1, 1) - timedelta(days=1)
+            
+            attendance_records = Attendance.objects.filter(date__range=[first_day, last_day])
 
         if department_filter:
             attendance_records = attendance_records.filter(
@@ -108,7 +134,7 @@ class AttendanceView(LoginRequiredMixin, View):
             )
 
         paginator = Paginator(
-            attendance_records.order_by("employee__employee_code"), 25
+            attendance_records.order_by("-date", "employee__employee_code"), 25
         )
         page_number = request.GET.get("page", 1)
         page_obj = paginator.get_page(page_number)
@@ -116,6 +142,22 @@ class AttendanceView(LoginRequiredMixin, View):
         departments = Department.objects.filter(is_active=True).order_by("name")
         status_choices = Attendance._meta.get_field("status").choices
         employees = User.objects.filter(is_active=True).order_by('first_name')
+        
+        month_name = calendar.month_name[month]
+        
+        prev_month = month - 1
+        prev_year = year
+        if prev_month == 0:
+            prev_month = 12
+            prev_year -= 1
+            
+        next_month = month + 1
+        next_year = year
+        if next_month == 13:
+            next_month = 1
+            next_year += 1
+            
+        next_month_is_future = (year > today.year) or (year == today.year and month >= today.month)
 
         context = {
             "page_obj": page_obj,
@@ -127,6 +169,14 @@ class AttendanceView(LoginRequiredMixin, View):
             "status_filter": status_filter,
             "search_query": search_query,
             "today": today,
+            "month": month,
+            "year": year,
+            "month_name": month_name,
+            "prev_month": prev_month,
+            "prev_year": prev_year,
+            "next_month": next_month,
+            "next_year": next_year,
+            "next_month_is_future": next_month_is_future,
         }
 
         return render(request, "attendance/attendance_list.html", context)
@@ -303,48 +353,65 @@ class AttendanceView(LoginRequiredMixin, View):
         return redirect('attendance:attendance_list')
 
     def bulk_update_attendance(self, request):
+        date_str = request.POST.get('date')
+        status = request.POST.get('status')
+        employees = request.POST.getlist('employees')
+        notes = request.POST.get('notes', '')
+        
+        if not date_str or not status or not employees:
+            messages.error(request, 'Missing required fields')
+            return redirect('attendance:attendance_list')
+            
         try:
-            data = json.loads(request.POST.get('attendance_data', '[]'))
+            attendance_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            
+            if attendance_date > get_current_date():
+                messages.error(request, 'Cannot update attendance for future dates')
+                return redirect('attendance:attendance_list')
+                
+            created_count = 0
             updated_count = 0
-
-            for record in data:
-                attendance_id = record.get('id')
-                if not attendance_id:
-                    continue
-
+            
+            for employee_id in employees:
                 try:
-                    attendance = Attendance.objects.get(id=attendance_id)
-
-                    for i in range(1, 7):
-                        in_key = f'check_in_{i}'
-                        out_key = f'check_out_{i}'
-
-                        if in_key in record:
-                            setattr(attendance, in_key, record[in_key] or None)
-
-                        if out_key in record:
-                            setattr(attendance, out_key, record[out_key] or None)
-
-                    if 'notes' in record:
-                        attendance.notes = record['notes']
-
-                    attendance.is_manual_entry = True
-                    attendance.save()
-                    updated_count += 1
-
-                except Attendance.DoesNotExist:
+                    employee = User.objects.get(id=employee_id)
+                    
+                    attendance, created = Attendance.objects.get_or_create(
+                        employee=employee,
+                        date=attendance_date,
+                        defaults={
+                            'status': status,
+                            'notes': notes,
+                            'is_manual_entry': True,
+                            'created_by': request.user
+                        }
+                    )
+                    
+                    if not created:
+                        attendance.status = status
+                        attendance.notes = notes
+                        attendance.is_manual_entry = True
+                        attendance.save()
+                        updated_count += 1
+                    else:
+                        created_count += 1
+                        
+                except User.DoesNotExist:
                     continue
-                except ValidationError:
-                    continue
-
-            messages.success(request, f'Successfully updated {updated_count} attendance records')
-
-        except json.JSONDecodeError:
-            messages.error(request, 'Invalid data format')
-
+                    
+            if created_count > 0 and updated_count > 0:
+                messages.success(request, f'Bulk update completed: {created_count} records created, {updated_count} records updated')
+            elif created_count > 0:
+                messages.success(request, f'Bulk update completed: {created_count} records created')
+            elif updated_count > 0:
+                messages.success(request, f'Bulk update completed: {updated_count} records updated')
+            else:
+                messages.warning(request, 'No records were updated')
+                
+        except ValueError:
+            messages.error(request, 'Invalid date format')
+            
         return redirect('attendance:attendance_list')
-
-
 class Logs(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         if 'id' in kwargs:
@@ -555,6 +622,7 @@ class Dashboard(LoginRequiredMixin, View):
             'department_stats': department_stats,
             'recent_leaves': recent_leaves,
             'monthly_data': monthly_data,
+            'report_types': AttendanceReport.REPORT_TYPES,
         }
 
         return render(request, 'attendance/dashboard.html', context)
@@ -1065,6 +1133,7 @@ class Dashboard(LoginRequiredMixin, View):
             absent_count = attendance_records.filter(status='ABSENT').count()
             late_count = attendance_records.filter(status='LATE').count()
             leave_count = attendance_records.filter(status='LEAVE').count()
+            full_day_deduction_count = attendance_records.filter(status='FULL_DAY_DEDUCTION').count()
 
             if total_days > 0:
                 attendance_percentage = (present_count / total_days) * 100
@@ -1079,6 +1148,13 @@ class Dashboard(LoginRequiredMixin, View):
                 total=Sum('overtime')
             )['total'] or timedelta(0)
 
+            total_weekend_work = attendance_records.aggregate(
+                total=Sum('weekend_work_time')
+            )['total'] or timedelta(0)
+
+            excessive_lunch_count = attendance_records.filter(is_excessive_lunch_break=True).count()
+            other_staff_special_late_count = attendance_records.filter(is_other_staff_special_late=True).count()
+
             employee_data.append({
                 'employee_id': str(employee.id),
                 'employee_code': employee.employee_code,
@@ -1089,9 +1165,13 @@ class Dashboard(LoginRequiredMixin, View):
                 'absent_count': absent_count,
                 'late_count': late_count,
                 'leave_count': leave_count,
+                'full_day_deduction_count': full_day_deduction_count,
                 'attendance_percentage': round(attendance_percentage, 2),
                 'total_work_hours': round(total_work_time.total_seconds() / 3600, 2),
                 'total_overtime_hours': round(total_overtime.total_seconds() / 3600, 2),
+                'total_weekend_work_hours': round(total_weekend_work.total_seconds() / 3600, 2),
+                'excessive_lunch_count': excessive_lunch_count,
+                'other_staff_special_late_count': other_staff_special_late_count,
             })
 
         report.report_data = {
@@ -1275,161 +1355,249 @@ class Dashboard(LoginRequiredMixin, View):
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output)
 
-        header_format = workbook.add_format({
-            'bold': True,
-            'bg_color': '#F0F0F0',
-            'border': 1
-        })
+        header_format = workbook.add_format(
+            {"bold": True, "bg_color": "#F0F0F0", "border": 1}
+        )
 
-        date_format = workbook.add_format({'num_format': 'yyyy-mm-dd'})
-        time_format = workbook.add_format({'num_format': 'hh:mm:ss'})
-        percent_format = workbook.add_format({'num_format': '0.00%'})
+        date_format = workbook.add_format({"num_format": "yyyy-mm-dd"})
+        time_format = workbook.add_format({"num_format": "hh:mm:ss"})
+        percent_format = workbook.add_format({"num_format": "0.00%"})
 
-        if report.report_type == 'DAILY':
-            worksheet = workbook.add_worksheet('Daily Report')
+        if report.report_type == "DAILY":
+            worksheet = workbook.add_worksheet("Daily Report")
 
             headers = [
-                'Date', 'Weekday', 'Total Employees', 'Present', 'Absent',
-                'Late', 'On Leave', 'Attendance %'
+                "Date",
+                "Weekday",
+                "Total Employees",
+                "Present",
+                "Absent",
+                "Late",
+                "On Leave",
+                "Attendance %",
             ]
 
             for col, header in enumerate(headers):
                 worksheet.write(0, col, header, header_format)
 
-            for row, day_data in enumerate(report.report_data.get('daily_data', []), 1):
-                worksheet.write(row, 0, day_data['date'])
-                worksheet.write(row, 1, day_data['weekday'])
-                worksheet.write(row, 2, day_data['total_employees'])
-                worksheet.write(row, 3, day_data['present_count'])
-                worksheet.write(row, 4, day_data['absent_count'])
-                worksheet.write(row, 5, day_data['late_count'])
-                worksheet.write(row, 6, day_data['leave_count'])
-                worksheet.write(row, 7, day_data['attendance_percentage'] / 100, percent_format)
+            for row, day_data in enumerate(report.report_data.get("daily_data", []), 1):
+                worksheet.write(row, 0, day_data["date"])
+                worksheet.write(row, 1, day_data["weekday"])
+                worksheet.write(row, 2, day_data["total_employees"])
+                worksheet.write(row, 3, day_data["present_count"])
+                worksheet.write(row, 4, day_data["absent_count"])
+                worksheet.write(row, 5, day_data["late_count"])
+                worksheet.write(row, 6, day_data["leave_count"])
+                worksheet.write(
+                    row, 7, day_data["attendance_percentage"] / 100, percent_format
+                )
 
-        elif report.report_type == 'WEEKLY':
-            worksheet = workbook.add_worksheet('Weekly Report')
+        elif report.report_type == "WEEKLY":
+            worksheet = workbook.add_worksheet("Weekly Report")
 
             headers = [
-                'Week Start', 'Week End', 'Working Days', 'Total Employees',
-                'Present', 'Absent', 'Late', 'On Leave', 'Attendance %'
+                "Week Start",
+                "Week End",
+                "Working Days",
+                "Total Employees",
+                "Present",
+                "Absent",
+                "Late",
+                "On Leave",
+                "Attendance %",
             ]
 
             for col, header in enumerate(headers):
                 worksheet.write(0, col, header, header_format)
 
-            for row, week_data in enumerate(report.report_data.get('weekly_data', []), 1):
-                worksheet.write(row, 0, week_data['week_start'])
-                worksheet.write(row, 1, week_data['week_end'])
-                worksheet.write(row, 2, week_data['working_days'])
-                worksheet.write(row, 3, week_data['total_employees'])
-                worksheet.write(row, 4, week_data['present_count'])
-                worksheet.write(row, 5, week_data['absent_count'])
-                worksheet.write(row, 6, week_data['late_count'])
-                worksheet.write(row, 7, week_data['leave_count'])
-                worksheet.write(row, 8, week_data['attendance_percentage'] / 100, percent_format)
+            for row, week_data in enumerate(
+                report.report_data.get("weekly_data", []), 1
+            ):
+                worksheet.write(row, 0, week_data["week_start"])
+                worksheet.write(row, 1, week_data["week_end"])
+                worksheet.write(row, 2, week_data["working_days"])
+                worksheet.write(row, 3, week_data["total_employees"])
+                worksheet.write(row, 4, week_data["present_count"])
+                worksheet.write(row, 5, week_data["absent_count"])
+                worksheet.write(row, 6, week_data["late_count"])
+                worksheet.write(row, 7, week_data["leave_count"])
+                worksheet.write(
+                    row, 8, week_data["attendance_percentage"] / 100, percent_format
+                )
 
-        elif report.report_type == 'MONTHLY':
-            worksheet = workbook.add_worksheet('Monthly Report')
+        elif report.report_type == "MONTHLY":
+            worksheet = workbook.add_worksheet("Monthly Report")
 
             headers = [
-                'Year', 'Month', 'Working Days', 'Total Employees',
-                'Present', 'Absent', 'Late', 'On Leave', 'Attendance %'
+                "Year",
+                "Month",
+                "Working Days",
+                "Total Employees",
+                "Present",
+                "Absent",
+                "Late",
+                "On Leave",
+                "Attendance %",
             ]
 
             for col, header in enumerate(headers):
                 worksheet.write(0, col, header, header_format)
 
-            for row, month_data in enumerate(report.report_data.get('monthly_data', []), 1):
-                worksheet.write(row, 0, month_data['year'])
-                worksheet.write(row, 1, month_data['month_name'])
-                worksheet.write(row, 2, month_data['working_days'])
-                worksheet.write(row, 3, month_data['total_employees'])
-                worksheet.write(row, 4, month_data['present_count'])
-                worksheet.write(row, 5, month_data['absent_count'])
-                worksheet.write(row, 6, month_data['late_count'])
-                worksheet.write(row, 7, month_data['leave_count'])
-                worksheet.write(row, 8, month_data['attendance_percentage'] / 100, percent_format)
+            for row, month_data in enumerate(
+                report.report_data.get("monthly_data", []), 1
+            ):
+                worksheet.write(row, 0, month_data["year"])
+                worksheet.write(row, 1, month_data["month_name"])
+                worksheet.write(row, 2, month_data["working_days"])
+                worksheet.write(row, 3, month_data["total_employees"])
+                worksheet.write(row, 4, month_data["present_count"])
+                worksheet.write(row, 5, month_data["absent_count"])
+                worksheet.write(row, 6, month_data["late_count"])
+                worksheet.write(row, 7, month_data["leave_count"])
+                worksheet.write(
+                    row, 8, month_data["attendance_percentage"] / 100, percent_format
+                )
 
-        elif report.report_type == 'EMPLOYEE':
-            worksheet = workbook.add_worksheet('Employee Report')
+        elif report.report_type == "EMPLOYEE":
+            worksheet = workbook.add_worksheet("Employee Report")
 
             headers = [
-                'Employee Code', 'Employee Name', 'Department', 'Total Days',
-                'Present', 'Absent', 'Late', 'On Leave', 'Attendance %',
-                'Total Work Hours', 'Total Overtime Hours'
+                "Employee Code",
+                "Employee Name",
+                "Department",
+                "Total Days",
+                "Present",
+                "Absent",
+                "Late",
+                "On Leave",
+                "Attendance %",
+                "Total Work Hours",
+                "Total Overtime Hours",
+                "Weekend Work Hours",
+                "Excessive Lunch Breaks",
+                "Special Late Days",
             ]
 
             for col, header in enumerate(headers):
                 worksheet.write(0, col, header, header_format)
 
-            for row, emp_data in enumerate(report.report_data.get('employee_data', []), 1):
-                worksheet.write(row, 0, emp_data['employee_code'])
-                worksheet.write(row, 1, emp_data['employee_name'])
-                worksheet.write(row, 2, emp_data['department'])
-                worksheet.write(row, 3, emp_data['total_days'])
-                worksheet.write(row, 4, emp_data['present_count'])
-                worksheet.write(row, 5, emp_data['absent_count'])
-                worksheet.write(row, 6, emp_data['late_count'])
-                worksheet.write(row, 7, emp_data['leave_count'])
-                worksheet.write(row, 8, emp_data['attendance_percentage'] / 100, percent_format)
-                worksheet.write(row, 9, emp_data['total_work_hours'])
-                worksheet.write(row, 10, emp_data['total_overtime_hours'])
+            for row, emp_data in enumerate(
+                report.report_data.get("employee_data", []), 1
+            ):
+                worksheet.write(row, 0, emp_data["employee_code"])
+                worksheet.write(row, 1, emp_data["employee_name"])
+                worksheet.write(row, 2, emp_data["department"])
+                worksheet.write(row, 3, emp_data["total_days"])
+                worksheet.write(row, 4, emp_data["present_count"])
+                worksheet.write(row, 5, emp_data["absent_count"])
+                worksheet.write(row, 6, emp_data["late_count"])
+                worksheet.write(row, 7, emp_data["leave_count"])
+                worksheet.write(
+                    row, 8, emp_data["attendance_percentage"] / 100, percent_format
+                )
+                worksheet.write(row, 9, emp_data["total_work_hours"])
+                worksheet.write(row, 10, emp_data["total_overtime_hours"])
+                worksheet.write(row, 11, emp_data.get("total_weekend_work_hours", 0))
+                worksheet.write(row, 12, emp_data.get("excessive_lunch_count", 0))
+                worksheet.write(
+                    row, 13, emp_data.get("other_staff_special_late_count", 0)
+                )
 
-        elif report.report_type == 'DEPARTMENT':
-            worksheet = workbook.add_worksheet('Department Report')
+        elif report.report_type == "DEPARTMENT":
+            worksheet = workbook.add_worksheet("Department Report")
 
             headers = [
-                'Department', 'Employee Count', 'Total Days',
-                'Present', 'Absent', 'Late', 'On Leave', 'Attendance %',
-                'Total Work Hours', 'Total Overtime Hours'
+                "Department",
+                "Employee Count",
+                "Total Days",
+                "Present",
+                "Absent",
+                "Late",
+                "On Leave",
+                "Attendance %",
+                "Total Work Hours",
+                "Total Overtime Hours",
             ]
 
             for col, header in enumerate(headers):
                 worksheet.write(0, col, header, header_format)
 
-            for row, dept_data in enumerate(report.report_data.get('department_data', []), 1):
-                worksheet.write(row, 0, dept_data['department_name'])
-                worksheet.write(row, 1, dept_data['employee_count'])
-                worksheet.write(row, 2, dept_data['total_days'])
-                worksheet.write(row, 3, dept_data['present_count'])
-                worksheet.write(row, 4, dept_data['absent_count'])
-                worksheet.write(row, 5, dept_data['late_count'])
-                worksheet.write(row, 6, dept_data['leave_count'])
-                worksheet.write(row, 7, dept_data['attendance_percentage'] / 100, percent_format)
-                worksheet.write(row, 8, dept_data['total_work_hours'])
-                worksheet.write(row, 9, dept_data['total_overtime_hours'])
+            for row, dept_data in enumerate(
+                report.report_data.get("department_data", []), 1
+            ):
+                worksheet.write(row, 0, dept_data["department_name"])
+                worksheet.write(row, 1, dept_data["employee_count"])
+                worksheet.write(row, 2, dept_data["total_days"])
+                worksheet.write(row, 3, dept_data["present_count"])
+                worksheet.write(row, 4, dept_data["absent_count"])
+                worksheet.write(row, 5, dept_data["late_count"])
+                worksheet.write(row, 6, dept_data["leave_count"])
+                worksheet.write(
+                    row, 7, dept_data["attendance_percentage"] / 100, percent_format
+                )
+                worksheet.write(row, 8, dept_data["total_work_hours"])
+                worksheet.write(row, 9, dept_data["total_overtime_hours"])
 
-        elif report.report_type == 'CUSTOM':
-            for employee_data in report.report_data.get('attendance_data', []):
-                worksheet = workbook.add_worksheet(employee_data['employee_name'][:31])
+        elif report.report_type == "CUSTOM":
+            for employee_data in report.report_data.get("attendance_data", []):
+                worksheet = workbook.add_worksheet(employee_data["employee_name"][:31])
 
                 headers = [
-                    'Date', 'Weekday', 'Status', 'First In', 'Last Out',
-                    'Work Hours', 'Overtime Hours', 'Late Minutes', 'Early Departure Minutes'
+                    "Date",
+                    "Weekday",
+                    "Status",
+                    "First In",
+                    "Last Out",
+                    "Work Hours",
+                    "Overtime Hours",
+                    "Late Minutes",
+                    "Early Departure Minutes",
+                    "Weekend Work Hours",
+                    "Excessive Lunch Break",
+                    "Special Late",
                 ]
 
                 for col, header in enumerate(headers):
                     worksheet.write(0, col, header, header_format)
 
-                for row, att_data in enumerate(employee_data['attendance'], 1):
-                    worksheet.write(row, 0, att_data['date'])
-                    worksheet.write(row, 1, att_data['weekday'])
-                    worksheet.write(row, 2, att_data['status'])
-                    worksheet.write(row, 3, att_data['first_in'] or '')
-                    worksheet.write(row, 4, att_data['last_out'] or '')
-                    worksheet.write(row, 5, att_data['work_hours'])
-                    worksheet.write(row, 6, att_data['overtime_hours'])
-                    worksheet.write(row, 7, att_data['late_minutes'])
-                    worksheet.write(row, 8, att_data['early_departure_minutes'])
+                for row, att_data in enumerate(employee_data["attendance"], 1):
+                    worksheet.write(row, 0, att_data["date"])
+                    worksheet.write(row, 1, att_data["weekday"])
+                    worksheet.write(row, 2, att_data["status"])
+                    worksheet.write(row, 3, att_data["first_in"] or "")
+                    worksheet.write(row, 4, att_data["last_out"] or "")
+                    worksheet.write(row, 5, att_data["work_hours"])
+                    worksheet.write(row, 6, att_data["overtime_hours"])
+                    worksheet.write(row, 7, att_data["late_minutes"])
+                    worksheet.write(row, 8, att_data["early_departure_minutes"])
+                    worksheet.write(row, 9, att_data.get("weekend_work_hours", 0))
+                    worksheet.write(
+                        row,
+                        10,
+                        (
+                            "Yes"
+                            if att_data.get("is_excessive_lunch_break", False)
+                            else "No"
+                        ),
+                    )
+                    worksheet.write(
+                        row,
+                        11,
+                        (
+                            "Yes"
+                            if att_data.get("is_other_staff_special_late", False)
+                            else "No"
+                        ),
+                    )
 
         workbook.close()
         output.seek(0)
 
         response = HttpResponse(
             output.read(),
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-        response['Content-Disposition'] = f'attachment; filename="{report.name}.xlsx"'
+        response["Content-Disposition"] = f'attachment; filename="{report.name}.xlsx"'
 
         return response
 
@@ -2080,7 +2248,7 @@ class AttendanceImportView(LoginRequiredMixin, TemplateView):
                         import_type="ATTENDANCE"
                     )
                     
-                    import threading
+                    session_key = request.session.session_key
                     
                     def process_import():
                         try:
@@ -2091,7 +2259,10 @@ class AttendanceImportView(LoginRequiredMixin, TemplateView):
                                 import_job=import_job,
                             )
                             
-                            request.session["import_results"] = results
+                            session = SessionStore(session_key)
+                            session["import_results"] = results
+                            session["import_job_id"] = str(import_job.id)
+                            session.save()
                             
                             log_user_activity(
                                 user=request.user,
@@ -2174,7 +2345,6 @@ class AttendanceImportView(LoginRequiredMixin, TemplateView):
             context["form"] = form
             return render(request, self.template_name, context)
 
-
 class CheckImportProgressView(LoginRequiredMixin, View):
     def get(self, request, job_id):
         import_job = get_object_or_404(ImportJob, id=job_id)
@@ -2225,7 +2395,7 @@ class AttendanceImportResultsView(LoginRequiredMixin, TemplateView):
                     'success_count': import_job.success_count,
                     'error_count': import_job.error_count,
                     'update_count': import_job.updated_count,
-                    'created_count': import_job.created_count
+                    'created_count': import_job.created_count or import_job.success_count - import_job.updated_count
                 }
             except ImportJob.DoesNotExist:
                 messages.error(self.request, "Import job not found.")
@@ -2235,8 +2405,6 @@ class AttendanceImportResultsView(LoginRequiredMixin, TemplateView):
             )
             
         return context
-
-
 class Holidays(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         if 'id' in kwargs:
@@ -2410,7 +2578,6 @@ class Holidays(LoginRequiredMixin, View):
             messages.error(request, f'Error deleting holiday: {str(e)}')
         
         return redirect('attendance:holiday_list')
-
 
 class Shifts(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):

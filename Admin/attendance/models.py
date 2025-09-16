@@ -945,6 +945,7 @@ class Attendance(models.Model):
         ("HOLIDAY", "Holiday"),
         ("INCOMPLETE", "Incomplete"),
         ("EARLY_DEPARTURE", "Early Departure"),
+        ("FULL_DAY_DEDUCTION", "Full Day Deduction"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -978,6 +979,7 @@ class Attendance(models.Model):
     work_time = models.DurationField(default=timedelta(0))
     overtime = models.DurationField(default=timedelta(0))
     undertime = models.DurationField(default=timedelta(0))
+    weekend_work_time = models.DurationField(default=timedelta(0))
 
     first_in_time = models.TimeField(null=True, blank=True)
     last_out_time = models.TimeField(null=True, blank=True)
@@ -985,6 +987,8 @@ class Attendance(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="ABSENT")
     late_minutes = models.PositiveIntegerField(default=0)
     early_departure_minutes = models.PositiveIntegerField(default=0)
+    is_excessive_lunch_break = models.BooleanField(default=False)
+    is_other_staff_special_late = models.BooleanField(default=False)
 
     device = models.ForeignKey(
         AttendanceDevice,
@@ -1209,10 +1213,22 @@ class Attendance(models.Model):
         self.undertime = metrics["undertime"]
         self.first_in_time = metrics["first_in_time"]
         self.last_out_time = metrics["last_out_time"]
+        
+        max_lunch_break = timedelta(hours=1, minutes=15)
+        self.is_excessive_lunch_break = self.break_time > max_lunch_break
+        
+        if self.is_weekend:
+            self.weekend_work_time = self.work_time
+            self.overtime = self.work_time
 
     def apply_role_based_status(self):
         if self.is_holiday:
             self.status = "HOLIDAY"
+            self.total_time = timedelta(0)
+            self.break_time = timedelta(0)
+            self.work_time = timedelta(0)
+            self.overtime = timedelta(0)
+            self.undertime = timedelta(0)
             return
 
         if LeaveRequest.objects.filter(
@@ -1222,6 +1238,11 @@ class Attendance(models.Model):
             status="APPROVED",
         ).exists():
             self.status = "LEAVE"
+            self.total_time = timedelta(0)
+            self.break_time = timedelta(0)
+            self.work_time = timedelta(0)
+            self.overtime = timedelta(0)
+            self.undertime = timedelta(0)
             return
 
         if not self.first_in_time:
@@ -1242,6 +1263,7 @@ class Attendance(models.Model):
 
         self.late_minutes = 0
         self.early_departure_minutes = 0
+        self.is_other_staff_special_late = False
 
         if role_name == "OTHER_STAFF":
             grace_period = SystemConfiguration.get_int_setting(
@@ -1251,7 +1273,17 @@ class Attendance(models.Model):
                 datetime.combine(date.today(), expected_time_obj)
                 + timedelta(minutes=grace_period)
             ).time()
-            if self.first_in_time > grace_end:
+            
+            other_staff_cutoff = (
+                datetime.combine(date.today(), expected_time_obj)
+                + timedelta(minutes=30)
+            ).time()
+            
+            if self.first_in_time > grace_end and self.first_in_time <= other_staff_cutoff:
+                self.is_other_staff_special_late = True
+                self.status = "FULL_DAY_DEDUCTION"
+                return
+            elif self.first_in_time > grace_end:
                 self.late_minutes = self.calculate_late_minutes(
                     self.first_in_time, grace_end
                 )
@@ -1276,7 +1308,9 @@ class Attendance(models.Model):
                 self.last_out_time, work_end_time
             )
 
-        if self.work_time < min_work_duration:
+        if self.late_minutes > 0 and self.late_minutes >= 35:
+            self.status = "HALF_DAY"
+        elif self.work_time < min_work_duration:
             if self.work_time >= timedelta(hours=float(min_work_hours) / 2):
                 self.status = "HALF_DAY"
             else:
@@ -1340,6 +1374,13 @@ class Attendance(models.Model):
     def formatted_break_time(self):
         return TimeCalculator.format_duration_to_excel_time(self.break_time)
 
+    @property
+    def formatted_overtime(self):
+        return TimeCalculator.format_duration_to_excel_time(self.overtime)
+        
+    @property
+    def formatted_weekend_work_time(self):
+        return TimeCalculator.format_duration_to_excel_time(self.weekend_work_time)
 
 class ImportJob(models.Model):
     STATUS_CHOICES = (
@@ -1381,7 +1422,6 @@ class ImportJob(models.Model):
     class Meta:
         ordering = ["-created_at"]
 
-
 class MonthlyAttendanceSummary(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     employee = models.ForeignKey(
@@ -1396,6 +1436,7 @@ class MonthlyAttendanceSummary(models.Model):
     total_break_time = models.DurationField(default=timedelta(0))
     total_overtime = models.DurationField(default=timedelta(0))
     total_undertime = models.DurationField(default=timedelta(0))
+    weekend_work_hours = models.DurationField(default=timedelta(0))
 
     working_days = models.PositiveIntegerField(default=0)
     attended_days = models.PositiveIntegerField(default=0)
@@ -1405,6 +1446,8 @@ class MonthlyAttendanceSummary(models.Model):
     absent_days = models.PositiveIntegerField(default=0)
     leave_days = models.PositiveIntegerField(default=0)
     holiday_days = models.PositiveIntegerField(default=0)
+    excessive_lunch_breaks = models.PositiveIntegerField(default=0)
+    other_staff_special_late_days = models.PositiveIntegerField(default=0)
 
     attendance_percentage = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal("0.00")
@@ -1469,6 +1512,7 @@ class MonthlyAttendanceSummary(models.Model):
                 "total_break_time": summary_data["total_break_time"],
                 "total_overtime": summary_data["total_overtime"],
                 "total_undertime": summary_data["total_undertime"],
+                "weekend_work_hours": summary_data.get("weekend_work_hours", timedelta(0)),
                 "working_days": summary_data["working_days"],
                 "attended_days": summary_data["attended_days"],
                 "half_days": summary_data["half_days"],
@@ -1477,6 +1521,8 @@ class MonthlyAttendanceSummary(models.Model):
                 "absent_days": summary_data["absent_days"],
                 "leave_days": summary_data["leave_days"],
                 "holiday_days": summary_data["holiday_days"],
+                "excessive_lunch_breaks": summary_data.get("excessive_lunch_breaks", 0),
+                "other_staff_special_late_days": summary_data.get("other_staff_special_late_days", 0),
                 "attendance_percentage": summary_data["attendance_percentage"],
                 "punctuality_score": summary_data["punctuality_score"],
                 "average_work_hours": summary_data["average_work_hours"],
@@ -1495,6 +1541,10 @@ class MonthlyAttendanceSummary(models.Model):
     @property
     def formatted_total_overtime(self):
         return TimeCalculator.format_duration_to_excel_time(self.total_overtime)
+        
+    @property
+    def formatted_weekend_work_hours(self):
+        return TimeCalculator.format_duration_to_excel_time(self.weekend_work_hours)
 
     @property
     def efficiency_score(self):
@@ -1513,7 +1563,10 @@ class MonthlyAttendanceSummary(models.Model):
             + self.punctuality_score * punctuality_weight
         )
         return score.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
+        
+    @property
+    def lunch_break_penalty_days(self):
+        return self.excessive_lunch_breaks // 3
 
 class AttendanceCorrection(models.Model):
     CORRECTION_TYPES = [

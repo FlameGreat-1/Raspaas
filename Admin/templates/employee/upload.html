@@ -127,7 +127,7 @@
                                     </div>
                                     
                                     <div class="mt-4">
-                                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                                        <button type="button" class="btn btn-primary" id="submitBtn">
                                             <i class="ri-upload-cloud-line me-1"></i>Process
                                         </button>
                                         <a href="{% url 'accounts:employee_list' %}" class="btn btn-light ms-2">
@@ -136,7 +136,7 @@
                                     </div>
                                 </form>
                                 
-                                <div class="mt-4 d-none" id="progressContainer">
+                                <div class="mt-4" id="progressContainer" style="display: none;">
                                     <h6 class="mb-2">Processing Import...</h6>
                                     <div class="progress" style="height: 15px;">
                                         <div class="progress-bar progress-bar-striped progress-bar-animated" 
@@ -208,7 +208,6 @@
                                         <p class="text-muted mb-0">System automatically maps common column names</p>
                                     </div>
                                 </div>
-                                
                                 <div class="d-flex mb-3">
                                     <div class="flex-shrink-0">
                                         <div class="avatar-sm">
@@ -244,150 +243,132 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block javascript %}
-<script src="/static/assets/libs/dropzone/min/dropzone.min.js"></script>
-<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM loaded');
-        
-        const uploadForm = document.getElementById('uploadForm');
-        const submitBtn = document.getElementById('submitBtn');
-        const progressContainer = document.getElementById('progressContainer');
-        const importProgress = document.getElementById('importProgress');
-        const progressMessage = document.getElementById('progressMessage');
-        const totalRows = document.getElementById('totalRows');
-        const processedRows = document.getElementById('processedRows');
-        const successCount = document.getElementById('successCount');
-        const errorCount = document.getElementById('errorCount');
-        const cancelBtn = document.getElementById('cancelBtn');
-        
-        let jobId = null;
-        let checkInterval = null;
-        
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-        
-        function checkProgress() {
-            if (!jobId) return;
-            
-            fetch(`/accounts/import-progress/${jobId}/check/`)
-                .then(response => response.json())
-                .then(data => {
-                    totalRows.textContent = data.total_rows;
-                    processedRows.textContent = data.processed_rows;
-                    successCount.textContent = data.success_count;
-                    errorCount.textContent = data.error_count;
-                    
-                    const percentage = data.percentage;
-                    importProgress.style.width = `${percentage}%`;
-                    importProgress.setAttribute('aria-valuenow', percentage);
-                    importProgress.textContent = `${percentage}%`;
-                    
-                    if (data.processed_rows > 0) {
-                        progressMessage.textContent = `Processing row ${data.processed_rows} of ${data.total_rows}`;
-                    }
-                    
-                    if (data.is_complete) {
-                        clearInterval(checkInterval);
-                        progressMessage.textContent = 'Import completed! Redirecting to results...';
-                        setTimeout(() => {
-                            window.location.href = '/accounts/employees/import-results/';
-                        }, 1500);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error checking progress:', error);
-                });
-        }
-        
-        // Use onsubmit directly on the form element for better compatibility
-        if (uploadForm) {
-            uploadForm.onsubmit = function(e) {
-                console.log('Form submission intercepted');
-                e.preventDefault();
-                
-                const fileInput = document.getElementById('{{ form.excel_file.id_for_label }}');
-                if (fileInput.files.length === 0) {
-                    alert('Please select an Excel file to upload.');
-                    return false;
-                }
-                
-                progressContainer.classList.remove('d-none');
-                submitBtn.disabled = true;
-                
-                const formData = new FormData(uploadForm);
-                
-                fetch(window.location.href, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
+console.log("Script loaded");
+
+var jobId = null;
+var checkInterval = null;
+
+document.getElementById('submitBtn').onclick = function() {
+    console.log("Button clicked");
+    
+    document.getElementById('progressContainer').style.display = 'block';
+    document.getElementById('submitBtn').disabled = true;
+    
+    var formData = new FormData(document.getElementById('uploadForm'));
+    
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', window.location.href, true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            console.log("Response received:", xhr.responseText);
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    console.log("Parsed data:", data);
                     if (data.success) {
                         jobId = data.job_id;
                         checkInterval = setInterval(checkProgress, 2000);
                         checkProgress();
                     } else {
-                        progressContainer.classList.add('d-none');
-                        submitBtn.disabled = false;
-                        alert(data.error || 'An error occurred during file upload.');
+                        document.getElementById('progressContainer').style.display = 'none';
+                        document.getElementById('submitBtn').disabled = false;
+                        alert(data.error || 'An error occurred');
                     }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    progressContainer.classList.add('d-none');
-                    submitBtn.disabled = false;
-                    alert('An error occurred during file upload.');
-                });
-                
-                return false;  // Extra insurance against form submission
-            };
-        }
-        
-        cancelBtn.addEventListener('click', function() {
-            if (!jobId) return;
-            
-            if (confirm('Are you sure you want to cancel this import?')) {
-                fetch(`/accounts/import-progress/${jobId}/cancel/`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken'),
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        clearInterval(checkInterval);
-                        progressContainer.classList.add('d-none');
-                        submitBtn.disabled = false;
-                        alert('Import cancelled successfully.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error cancelling import:', error);
-                });
+                } catch (e) {
+                    console.error("JSON parse error:", e);
+                    document.getElementById('progressContainer').style.display = 'none';
+                    document.getElementById('submitBtn').disabled = false;
+                    alert('Invalid response from server');
+                }
+            } else {
+                console.error("HTTP error:", xhr.status);
+                document.getElementById('progressContainer').style.display = 'none';
+                document.getElementById('submitBtn').disabled = false;
+                alert('Server error: ' + xhr.status);
             }
-        });
-    });
+        }
+    };
+    
+    xhr.send(formData);
+};
+
+document.getElementById('cancelBtn').onclick = function() {
+    console.log("Cancel clicked");
+    if (!jobId) return;
+    
+    if (confirm('Are you sure you want to cancel this import?')) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/accounts/import-progress/' + jobId + '/cancel/', true);
+        xhr.setRequestHeader('X-CSRFToken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                var data = JSON.parse(xhr.responseText);
+                if (data.success) {
+                    clearInterval(checkInterval);
+                    document.getElementById('progressContainer').style.display = 'none';
+                    document.getElementById('submitBtn').disabled = false;
+                    alert('Import cancelled successfully');
+                }
+            }
+        };
+        
+        xhr.send();
+    }
+};
+
+function checkProgress() {
+    console.log("Checking progress for jobId:", jobId);
+    if (!jobId) return;
+    
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/accounts/import-progress/' + jobId + '/check/', true);
+    
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            try {
+                var data = JSON.parse(xhr.responseText);
+                console.log("Progress data:", data);
+                
+                document.getElementById('totalRows').textContent = data.total_rows || 0;
+                document.getElementById('processedRows').textContent = data.processed_rows || 0;
+                document.getElementById('successCount').textContent = data.success_count || 0;
+                document.getElementById('errorCount').textContent = data.error_count || 0;
+                
+                var percentage = data.percentage || 0;
+                var progressBar = document.getElementById('importProgress');
+                progressBar.style.width = percentage + '%';
+                progressBar.setAttribute('aria-valuenow', percentage);
+                progressBar.textContent = percentage + '%';
+                
+                if (data.processed_rows > 0) {
+                    document.getElementById('progressMessage').textContent = 'Processing row ' + data.processed_rows + ' of ' + data.total_rows;
+                }
+
+                if (data.is_complete) {
+                    clearInterval(checkInterval);
+                    progressMessage.textContent = 'Import completed! Redirecting to results...';
+                    setTimeout(() => {
+                        window.location.href = '/accounts/employees/import-results/';
+                    }, 1500);
+                }
+            } catch (e) {
+                console.error("Progress parse error:", e);
+            }
+        }
+    };
+    
+    xhr.send();
+}
 </script>
+{% endblock %}
+
+{% block javascript %}
+<script src="/static/assets/libs/dropzone/min/dropzone.min.js"></script>
+<script src="/static/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
 {% endblock %}

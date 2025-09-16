@@ -27,6 +27,8 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
+import threading
+from django.contrib.sessions.backends.db import SessionStore
 import hashlib
 from django.contrib.auth.views import (
     PasswordChangeView,
@@ -661,7 +663,7 @@ class BulkEmployeeUploadView(LoginRequiredMixin, TemplateView):
                         file_name=excel_file.name, created_by=request.user, status="PENDING"
                     )
                     
-                    import threading
+                    session_key = request.session.session_key
                     
                     def process_import():
                         try:
@@ -673,7 +675,10 @@ class BulkEmployeeUploadView(LoginRequiredMixin, TemplateView):
                                 import_job=import_job,
                             )
                             
-                            request.session["import_results"] = results
+                            session = SessionStore(session_key)
+                            session["import_results"] = results
+                            session["import_job_id"] = str(import_job.id)
+                            session.save()
                             
                             log_user_activity(
                                 user=request.user,
@@ -759,7 +764,6 @@ class BulkEmployeeUploadView(LoginRequiredMixin, TemplateView):
             context = self.get_context_data()
             context["form"] = form
             return render(request, self.template_name, context)
-
 
 class CheckImportProgressView(LoginRequiredMixin, View):
     def get(self, request, job_id):
@@ -895,6 +899,7 @@ def employee_search_ajax(request):
 
     return JsonResponse({"results": results})
 
+
 @login_required
 def employee_export_view(request):
     if not UserUtilities.check_user_permission(request.user, "manage_employees"):
@@ -927,8 +932,9 @@ def employee_export_view(request):
         description=f"Exported {queryset.count()} employees to Excel",
         request=request,
     )
-    
+
     return response
+
 
 @login_required
 def employee_template_download(request):

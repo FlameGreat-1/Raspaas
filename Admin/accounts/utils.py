@@ -19,7 +19,10 @@ import logging
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.templatetags.static import static
-
+import pandas as pd
+import io
+from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+from openpyxl.utils import get_column_letter
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
@@ -564,36 +567,54 @@ class UserUtilities:
 
         return menu_items
 
-
 class ExcelUtilities:
     @staticmethod
     def export_users_to_excel(users_queryset, filename: str = None) -> bytes:
-        import pandas as pd
-        import io
 
         if not filename:
             filename = f"employees_export_{timezone.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 
         data = []
-        for user in users_queryset.select_related('department', 'role', 'manager'):
+        for user in users_queryset.select_related('department', 'role', 'manager', 'employee_profile'):
+            profile = getattr(user, 'employee_profile', None)
+            
             data.append({
                 "Employee Code": user.employee_code,
-                "Full Name": user.get_full_name(),
+                "First Name": user.first_name,
+                "Last Name": user.last_name,
+                "Middle Name": user.middle_name or "",
                 "Email": user.email,
-                "Phone": user.phone_number,
-                "Department": user.department.name if user.department else "",
-                "Role": user.role.display_name if user.role else "",
-                "Job Title": user.job_title or "",
-                "Hire Date": user.hire_date.strftime("%Y-%m-%d") if user.hire_date else "",
-                "Status": user.get_status_display(),
-                "Manager": user.manager.get_full_name() if user.manager else "",
-                "Address": f"{user.address_line1 or ''} {user.address_line2 or ''}".strip(),
+                "Phone Number": user.phone_number or "",
+                "Date of Birth": user.date_of_birth.strftime("%Y-%m-%d") if user.date_of_birth else "",
+                "Gender": user.get_gender_display() if hasattr(user, 'get_gender_display') else "",
+                "Address Line 1": user.address_line1 or "",
+                "Address Line 2": user.address_line2 or "",
                 "City": user.city or "",
                 "State": user.state or "",
+                "Postal Code": user.postal_code or "",
                 "Country": user.country or "",
-                "Emergency Contact": user.emergency_contact_name or "",
-                "Emergency Phone": user.emergency_contact_phone or "",
-                "Created Date": user.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "Emergency Contact Name": user.emergency_contact_name or "",
+                "Emergency Contact Phone": user.emergency_contact_phone or "",
+                "Emergency Contact Relationship": user.emergency_contact_relationship or "",
+                "Department Code": user.department.code if user.department else "",
+                "Role Name": user.role.name if user.role else "",
+                "Job Title": user.job_title or "",
+                "Hire Date": user.hire_date.strftime("%Y-%m-%d") if user.hire_date else "",
+                "Manager Code": user.manager.employee_code if user.manager else "",
+                "Status": user.get_status_display() if hasattr(user, 'get_status_display') else "",
+                "Employment Status": profile.get_employment_status_display() if profile else "",
+                "Grade Level": profile.get_grade_level_display() if profile else "",
+                "Basic Salary": profile.basic_salary if profile else "",
+                "Probation End Date": profile.probation_end_date.strftime("%Y-%m-%d") if profile and profile.probation_end_date else "",
+                "Confirmation Date": profile.confirmation_date.strftime("%Y-%m-%d") if profile and profile.confirmation_date else "",
+                "Bank Name": profile.bank_name if profile else "",
+                "Bank Account Number": profile.bank_account_number if profile else "",
+                "Bank Branch": profile.bank_branch if profile else "",
+                "Tax Identification Number": profile.tax_identification_number if profile else "",
+                "Marital Status": profile.get_marital_status_display() if profile else "",
+                "Spouse Name": profile.spouse_name if profile else "",
+                "Number of Children": profile.number_of_children if profile else "",
+                "Work Location": profile.work_location if profile else ""
             })
 
         df = pd.DataFrame(data)
@@ -602,87 +623,55 @@ class ExcelUtilities:
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             df.to_excel(writer, sheet_name="Employees", index=False)
 
+            worksheet = writer.sheets["Employees"]
+            
+            header_font = Font(name='Arial', size=11, bold=True, color='FFFFFF')
+            header_fill = PatternFill(start_color='366092', end_color='366092', fill_type='solid')
+            thin_border = Border(
+                left=Side(style='thin'), 
+                right=Side(style='thin'), 
+                top=Side(style='thin'), 
+                bottom=Side(style='thin')
+            )
+            centered_alignment = Alignment(horizontal='center', vertical='center')
+            left_alignment = Alignment(horizontal='left', vertical='center')
+
+            for col_num, column_title in enumerate(df.columns, 1):
+                cell = worksheet.cell(row=1, column=col_num)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.border = thin_border
+                cell.alignment = centered_alignment
+                
+                column_letter = get_column_letter(col_num)
+                max_length = max(
+                    df[column_title].astype(str).map(len).max(),
+                    len(column_title)
+                ) + 3 
+                
+                adjusted_width = min(max_length, 40)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+
+            for row_idx, row in enumerate(worksheet.iter_rows(min_row=2, max_row=len(df)+1), 2):
+                for col_idx, cell in enumerate(row, 1):
+                    cell.border = thin_border
+                    cell.alignment = left_alignment
+ 
+                    date_columns = ["Date of Birth", "Hire Date", "Probation End Date", "Confirmation Date"]
+                    if df.columns[col_idx-1] in date_columns and cell.value:
+                        cell.number_format = 'yyyy-mm-dd'
+
+                    if df.columns[col_idx-1] == "Basic Salary" and cell.value:
+                        cell.number_format = '#,##0.00'
+            worksheet.freeze_panes = 'A2'
+            worksheet.auto_filter.ref = f"A1:{get_column_letter(len(df.columns))}{len(df)+1}"
+
         output.seek(0)
         return output.getvalue()
 
-    @staticmethod
-    def import_users_from_excel(file_content, created_by_user) -> Tuple[int, int, List[str]]:
-        import pandas as pd
-        import io
-
-        try:
-            df = pd.read_excel(io.BytesIO(file_content))
-
-            required_columns = ["employee_code", "first_name", "last_name", "email"]
-            missing_columns = [col for col in required_columns if col not in df.columns]
-
-            if missing_columns:
-                return 0, 0, [f"Missing required columns: {', '.join(missing_columns)}"]
-
-            created_count = 0
-            error_count = 0
-            errors = []
-
-            for index, row in df.iterrows():
-                try:
-                    row_data = row.to_dict()
-
-                    is_valid, validation_errors = validate_employee_data(row_data)
-                    if not is_valid:
-                        error_count += 1
-                        error_messages = []
-                        for field, field_errors in validation_errors.items():
-                            error_messages.extend(field_errors)
-                        errors.append(f"Row {index + 2}: {'; '.join(error_messages)}")
-                        continue
-
-                    user_data = {
-                        "employee_code": str(row_data["employee_code"]).upper(),
-                        "first_name": str(row_data["first_name"]),
-                        "last_name": str(row_data["last_name"]),
-                        "email": str(row_data["email"]),
-                        "phone_number": str(row_data.get("phone_number", "")),
-                        "job_title": str(row_data.get("job_title", "")),
-                        "created_by": created_by_user,
-                    }
-
-                    if pd.notna(row_data.get("middle_name")):
-                        user_data["middle_name"] = str(row_data["middle_name"])
-
-                    if pd.notna(row_data.get("date_of_birth")):
-                        user_data["date_of_birth"] = pd.to_datetime(row_data["date_of_birth"]).date()
-
-                    if pd.notna(row_data.get("hire_date")):
-                        user_data["hire_date"] = pd.to_datetime(row_data["hire_date"]).date()
-
-                    if pd.notna(row_data.get("gender")):
-                        gender = str(row_data["gender"]).upper()
-                        if gender in ["M", "F", "O"]:
-                            user_data["gender"] = gender
-
-                    temp_password = generate_secure_password()
-
-                    user = User.objects.create_user(
-                        username=user_data["employee_code"],
-                        password=temp_password,
-                        **user_data,
-                    )
-
-                    created_count += 1
-
-                except Exception as e:
-                    error_count += 1
-                    errors.append(f"Row {index + 2}: {str(e)}")
-
-            return created_count, error_count, errors
-
-        except Exception as e:
-            return 0, 0, [f"File processing error: {str(e)}"]
 
     @staticmethod
     def export_departments_to_excel(departments_queryset) -> bytes:
-        import pandas as pd
-        import io
 
         data = []
         for dept in departments_queryset.select_related("manager", "parent_department"):

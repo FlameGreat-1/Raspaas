@@ -36,7 +36,12 @@
                                 <label for="month" class="form-label">Month</label>
                                 <select class="form-select" id="month" name="month">
                                     {% for m in months %}
-                                    <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m|date:"F" }}</option>
+                                    <option value="{{ m }}" {% if m == month %}selected{% endif %}>
+                                        {% if m == 1 %}January{% elif m == 2 %}February{% elif m == 3 %}March
+                                        {% elif m == 4 %}April{% elif m == 5 %}May{% elif m == 6 %}June
+                                        {% elif m == 7 %}July{% elif m == 8 %}August{% elif m == 9 %}September
+                                        {% elif m == 10 %}October{% elif m == 11 %}November{% elif m == 12 %}December{% endif %}
+                                    </option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -44,7 +49,7 @@
                                 <label for="year" class="form-label">Year</label>
                                 <select class="form-select" id="year" name="year">
                                     {% for y in years %}
-                                    <option value="{{ y|stringformat:'d' }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                                    <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y|stringformat:'d' }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -105,7 +110,7 @@
                                     </td>
                                     <td>{{ summary.employee.department.name }}</td>
                                     <td>{{ summary.working_days }}</td>
-                                    <td>{{ summary.present_days }}</td>
+                                    <td>{{ summary.attended_days }}</td>
                                     <td>{{ summary.absent_days }}</td>
                                     <td>{{ summary.late_days }}</td>
                                     <td>{{ summary.leave_days }}</td>
@@ -119,7 +124,7 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td>{{ summary.total_work_hours }} hrs</td>
+                                    <td>{{ summary.average_work_hours }} hrs</td>
                                     <td>
                                         <div class="action-buttons">
                                             <a href="{% url 'attendance:summary_detail' summary_id=summary.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
@@ -155,7 +160,7 @@
                         </tbody>
                     </table>
                 </div>
-                
+
                 {% if page_obj.has_other_pages %}
                 <div class="d-flex justify-content-end mt-3">
                     <nav aria-label="Page navigation">
@@ -221,7 +226,12 @@
                             <label for="summary_month" class="form-label">Month</label>
                             <select class="form-select" id="summary_month" name="month" required>
                                 {% for m in months %}
-                                <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m|date:"F" }}</option>
+                                <option value="{{ m }}" {% if m == month %}selected{% endif %}>
+                                    {% if m == 1 %}January{% elif m == 2 %}February{% elif m == 3 %}March
+                                    {% elif m == 4 %}April{% elif m == 5 %}May{% elif m == 6 %}June
+                                    {% elif m == 7 %}July{% elif m == 8 %}August{% elif m == 9 %}September
+                                    {% elif m == 10 %}October{% elif m == 11 %}November{% elif m == 12 %}December{% endif %}
+                                </option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -229,10 +239,11 @@
                             <label for="summary_year" class="form-label">Year</label>
                             <select class="form-select" id="summary_year" name="year" required>
                                 {% for y in years %}
-                                <option value="{{ y|stringformat:'d' }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                                <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y|stringformat:'d' }}</option>
                                 {% endfor %}
                             </select>
                         </div>
+                    </div>
                     <div class="mb-3">
                         <label for="summary_department" class="form-label">Department (Optional)</label>
                         <select class="form-select" id="summary_department" name="department">

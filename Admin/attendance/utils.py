@@ -368,10 +368,6 @@ class AttendanceCalculator:
             if out_time:
                 last_out = out_time
         
-        status = AttendanceCalculator.determine_attendance_status(
-            time_pairs, first_in, last_out, schedule, attendance_date
-        )
-        
         late_minutes = AttendanceCalculator.calculate_late_minutes(
             first_in, schedule['reporting_time']
         )
@@ -379,6 +375,12 @@ class AttendanceCalculator:
         early_departure_minutes = AttendanceCalculator.calculate_early_departure_minutes(
             last_out, schedule, work_time
         )
+        
+        is_weekend = attendance_date.weekday() >= 5
+        weekend_work_time = work_time if is_weekend else timedelta(0)
+        
+        max_lunch_break = timedelta(hours=1, minutes=15)
+        is_excessive_lunch_break = break_time > max_lunch_break
         
         return {
             'total_time': total_time,
@@ -388,11 +390,12 @@ class AttendanceCalculator:
             'undertime': undertime,
             'first_in_time': first_in,
             'last_out_time': last_out,
-            'status': status,
             'late_minutes': late_minutes,
             'early_departure_minutes': early_departure_minutes,
             'is_complete_day': AttendanceCalculator.is_complete_working_day(work_time, standard_work_time),
-            'attendance_percentage': AttendanceCalculator.calculate_attendance_percentage(work_time, standard_work_time)
+            'attendance_percentage': AttendanceCalculator.calculate_attendance_percentage(work_time, standard_work_time),
+            'weekend_work_time': weekend_work_time,
+            'is_excessive_lunch_break': is_excessive_lunch_break
         }
     
     @staticmethod
@@ -494,6 +497,7 @@ class MonthlyCalculator:
         total_break_time = timedelta(0)
         total_overtime = timedelta(0)
         total_undertime = timedelta(0)
+        weekend_work_hours = timedelta(0)
         
         working_days = 0
         attended_days = 0
@@ -501,6 +505,10 @@ class MonthlyCalculator:
         late_days = 0
         early_days = 0
         absent_days = 0
+        leave_days = 0
+        holiday_days = 0
+        excessive_lunch_breaks = 0
+        other_staff_special_late_days = 0
         
         earliest_in_time = None
         latest_out_time = None
@@ -508,12 +516,18 @@ class MonthlyCalculator:
         for record in monthly_records:
             working_days += 1
             
-            if record.status != 'ABSENT':
+            if record.status not in ['ABSENT', 'LEAVE', 'ON_LEAVE']:
                 attended_days += 1
                 total_work_time += record.work_time
                 total_break_time += record.break_time
                 total_overtime += record.overtime
                 total_undertime += record.undertime
+                
+                if hasattr(record, 'weekend_work_time'):
+                    weekend_work_hours += record.weekend_work_time
+                
+                if hasattr(record, 'is_excessive_lunch_break') and record.is_excessive_lunch_break:
+                    excessive_lunch_breaks += 1
                 
                 if record.first_in_time:
                     if earliest_in_time is None or record.first_in_time < earliest_in_time:
@@ -529,6 +543,12 @@ class MonthlyCalculator:
                 late_days += 1
             elif record.status == 'ABSENT':
                 absent_days += 1
+            elif record.status in ['LEAVE', 'ON_LEAVE']:
+                leave_days += 1
+            elif record.status == 'HOLIDAY':
+                holiday_days += 1
+            elif record.status == 'FULL_DAY_DEDUCTION':
+                other_staff_special_late_days += 1
             
             if record.early_departure_minutes > 0:
                 early_days += 1
@@ -547,14 +567,17 @@ class MonthlyCalculator:
             'total_break_time': total_break_time,
             'total_overtime': total_overtime,
             'total_undertime': total_undertime,
+            'weekend_work_hours': weekend_work_hours,
             'working_days': working_days,
             'attended_days': attended_days,
             'half_days': half_days,
             'late_days': late_days,
             'early_days': early_days,
             'absent_days': absent_days,
-            'leave_days': 0,
-            'holiday_days': 0,
+            'leave_days': leave_days,
+            'holiday_days': holiday_days,
+            'excessive_lunch_breaks': excessive_lunch_breaks,
+            'other_staff_special_late_days': other_staff_special_late_days,
             'attendance_percentage': attendance_percentage,
             'earliest_in_time': earliest_in_time,
             'latest_out_time': latest_out_time,

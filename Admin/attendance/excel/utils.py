@@ -10,9 +10,9 @@ from django.core.exceptions import ValidationError
 from ..models import Attendance
 from ..utils import get_current_date
 from io import BytesIO
+import time as time_module
 
 User = get_user_model()
-
 
 class ExcelAttendanceImporter:
     def __init__(
@@ -22,18 +22,22 @@ class ExcelAttendanceImporter:
         sheet_name=None,
         update_existing=True,
         user=None,
+        import_job=None,
     ):
         self.file_path = file_path
         self.date_format = date_format
         self.sheet_name = sheet_name
         self.update_existing = update_existing
         self.user = user
+        self.import_job = import_job
         self.errors = []
         self.warnings = []
         self.success_count = 0
         self.update_count = 0
         self.error_count = 0
         self.processed_data = []
+        self.total_rows = 0
+        self.processed_rows = 0
 
     def read_excel(self):
         try:
@@ -47,9 +51,20 @@ class ExcelAttendanceImporter:
                 return False
 
             self.df = self.df.replace({np.nan: None})
+
+            self.total_rows = len(self.df)
+            if self.import_job:
+                self.import_job.total_rows = self.total_rows
+                self.import_job.status = "PROCESSING"
+                self.import_job.save()
+
             return True
         except Exception as e:
             self.errors.append(f"Error reading Excel file: {str(e)}")
+            if self.import_job:
+                self.import_job.status = "FAILED"
+                self.import_job.completed_at = timezone.now()
+                self.import_job.save()
             return False
 
     def validate_excel_structure(self):
@@ -64,6 +79,10 @@ class ExcelAttendanceImporter:
             self.errors.append(
                 f"Missing required columns: {', '.join(missing_columns)}"
             )
+            if self.import_job:
+                self.import_job.status = "FAILED"
+                self.import_job.completed_at = timezone.now()
+                self.import_job.save()
             return False
 
         time_columns_found = False
@@ -81,6 +100,10 @@ class ExcelAttendanceImporter:
 
         if not time_columns_found:
             self.errors.append("No valid time column pairs found (In/Out)")
+            if self.import_job:
+                self.import_job.status = "FAILED"
+                self.import_job.completed_at = timezone.now()
+                self.import_job.save()
             return False
 
         return True
@@ -173,166 +196,238 @@ class ExcelAttendanceImporter:
                 pass
 
         return None
-    
+
     def process_data(self):
         if not self.read_excel() or not self.validate_excel_structure():
             return False
-            
+
+        self.processed_rows = 0
         for _, row in self.df.iterrows():
             try:
-                employee_id = row.get('ID')
+                self.processed_rows += 1
+                if self.import_job and self.processed_rows % 5 == 0:
+                    self.import_job.processed_rows = self.processed_rows
+                    self.import_job.save()
+
+                employee_id = row.get("ID")
                 if not employee_id:
                     continue
-                    
+
                 employee_id = str(employee_id).strip()
-                date_value = self.parse_date(row.get('Date'))
-                
+                date_value = self.parse_date(row.get("Date"))
+
                 if not date_value:
-                    self.warnings.append(f"Invalid date format for employee ID {employee_id}")
+                    self.warnings.append(
+                        f"Invalid date format for employee ID {employee_id}"
+                    )
                     continue
-                    
+
                 if date_value > get_current_date():
-                    self.warnings.append(f"Future date {date_value} for employee ID {employee_id} will be skipped")
+                    self.warnings.append(
+                        f"Future date {date_value} for employee ID {employee_id} will be skipped"
+                    )
                     continue
-                
+
                 attendance_data = {
-                    'employee_id': employee_id,
-                    'date': date_value,
-                    'division': row.get('Division'),
-                    'notes': row.get('Notes', '')
+                    "employee_id": employee_id,
+                    "date": date_value,
+                    "division": row.get("Division"),
+                    "notes": row.get("Notes", ""),
                 }
-                
-                # Process time pairs
+
                 for i in range(1, 7):
                     in_col = f"In"
                     out_col = f"Out"
-                    
+
                     if i > 1:
                         in_col = f"{i}/{in_col}"
                         out_col = f"{i}/{out_col}"
-                    
+
                     if in_col in self.df.columns:
                         check_in = self.parse_time(row.get(in_col))
                         if check_in:
-                            attendance_data[f'check_in_{i}'] = check_in
-                    
+                            attendance_data[f"check_in_{i}"] = check_in
+
                     if out_col in self.df.columns:
                         check_out = self.parse_time(row.get(out_col))
                         if check_out:
-                            attendance_data[f'check_out_{i}'] = check_out
-                
-                # Add additional data if available
-                if 'Total Time' in self.df.columns:
-                    total_time_str = row.get('Total Time')
+                            attendance_data[f"check_out_{i}"] = check_out
+
+                if "Total Time" in self.df.columns:
+                    total_time_str = row.get("Total Time")
                     if total_time_str:
                         try:
-                            hours, minutes, seconds = map(int, str(total_time_str).split(':'))
-                            attendance_data['total_time'] = timedelta(hours=hours, minutes=minutes, seconds=seconds)
+                            hours, minutes, seconds = map(
+                                int, str(total_time_str).split(":")
+                            )
+                            attendance_data["total_time"] = timedelta(
+                                hours=hours, minutes=minutes, seconds=seconds
+                            )
                         except (ValueError, AttributeError):
                             pass
-                
-                if 'Out Time' in self.df.columns:
-                    break_time_str = row.get('Out Time')
+
+                if "Out Time" in self.df.columns:
+                    break_time_str = row.get("Out Time")
                     if break_time_str:
                         try:
-                            hours, minutes, seconds = map(int, str(break_time_str).split(':'))
-                            attendance_data['break_time'] = timedelta(hours=hours, minutes=minutes, seconds=seconds)
+                            hours, minutes, seconds = map(
+                                int, str(break_time_str).split(":")
+                            )
+                            attendance_data["break_time"] = timedelta(
+                                hours=hours, minutes=minutes, seconds=seconds
+                            )
                         except (ValueError, AttributeError):
                             pass
-                
-                if 'Work Time' in self.df.columns:
-                    work_time_str = row.get('Work Time')
+
+                if "Work Time" in self.df.columns:
+                    work_time_str = row.get("Work Time")
                     if work_time_str:
                         try:
-                            hours, minutes, seconds = map(int, str(work_time_str).split(':'))
-                            attendance_data['work_time'] = timedelta(hours=hours, minutes=minutes, seconds=seconds)
+                            hours, minutes, seconds = map(
+                                int, str(work_time_str).split(":")
+                            )
+                            attendance_data["work_time"] = timedelta(
+                                hours=hours, minutes=minutes, seconds=seconds
+                            )
                         except (ValueError, AttributeError):
                             pass
-                
-                if 'Over Time' in self.df.columns:
-                    overtime_str = row.get('Over Time')
+
+                if "Over Time" in self.df.columns:
+                    overtime_str = row.get("Over Time")
                     if overtime_str:
                         try:
-                            hours, minutes, seconds = map(int, str(overtime_str).split(':'))
-                            attendance_data['overtime'] = timedelta(hours=hours, minutes=minutes, seconds=seconds)
+                            hours, minutes, seconds = map(
+                                int, str(overtime_str).split(":")
+                            )
+                            attendance_data["overtime"] = timedelta(
+                                hours=hours, minutes=minutes, seconds=seconds
+                            )
                         except (ValueError, AttributeError):
                             pass
-                
+
                 self.processed_data.append(attendance_data)
-                
+
             except Exception as e:
                 self.error_count += 1
                 self.errors.append(f"Error processing row: {str(e)}")
-        
+
+        if self.import_job:
+            self.import_job.processed_rows = self.processed_rows
+            self.import_job.save()
+
         return len(self.processed_data) > 0
-    
-    @transaction.atomic
+
     def import_data(self):
         if not self.processed_data and not self.process_data():
             return False
-        
-        for data in self.processed_data:
-            try:
-                employee_id = data.pop('employee_id')
-                date_value = data.pop('date')
-                division = data.pop('division', None)
-                
-                # Find employee by ID
-                employee = User.objects.filter(employee_code=employee_id).first()
-                if not employee:
-                    self.warnings.append(f"Employee with ID {employee_id} not found")
-                    continue
-                
-                # Check if attendance record exists
-                attendance, created = Attendance.objects.get_or_create(
-                    employee=employee,
-                    date=date_value,
-                    defaults={
-                        'is_manual_entry': True,
-                        'created_by': self.user
-                    }
-                )
-                
-                if not created and not self.update_existing:
-                    self.warnings.append(f"Skipping existing record for {employee.get_full_name()} on {date_value}")
-                    continue
-                
-                # Update attendance record with imported data
-                for field, value in data.items():
-                    if value is not None:
-                        setattr(attendance, field, value)
-                
-                attendance.is_manual_entry = True
-                if self.user:
-                    attendance._attendance_changed_by = self.user
-                    if created:
-                        attendance.created_by = self.user
-                
-                attendance.save()
-                
-                if created:
-                    self.success_count += 1
-                else:
-                    self.update_count += 1
-                    
-            except ValidationError as e:
-                self.error_count += 1
-                self.errors.append(f"Validation error for {employee_id} on {date_value}: {str(e)}")
-            except Exception as e:
-                self.error_count += 1
-                self.errors.append(f"Error importing data: {str(e)}")
-        
+
+        batch_size = 50
+        total_batches = (len(self.processed_data) + batch_size - 1) // batch_size
+
+        for batch_num in range(total_batches):
+            start_idx = batch_num * batch_size
+            end_idx = min((batch_num + 1) * batch_size, len(self.processed_data))
+            batch = self.processed_data[start_idx:end_idx]
+
+            with transaction.atomic():
+                for data in batch:
+                    try:
+                        employee_id = data.pop("employee_id")
+                        date_value = data.pop("date")
+                        division = data.pop("division", None)
+
+                        employee = User.objects.filter(
+                            employee_code=employee_id
+                        ).first()
+                        if not employee:
+                            self.warnings.append(
+                                f"Employee with ID {employee_id} not found"
+                            )
+                            continue
+
+                        attendance, created = Attendance.objects.get_or_create(
+                            employee=employee,
+                            date=date_value,
+                            defaults={"is_manual_entry": True, "created_by": self.user},
+                        )
+
+                        if not created and not self.update_existing:
+                            self.warnings.append(
+                                f"Skipping existing record for {employee.get_full_name()} on {date_value}"
+                            )
+                            continue
+
+                        for field, value in data.items():
+                            if value is not None:
+                                setattr(attendance, field, value)
+
+                        attendance.is_manual_entry = True
+                        if self.user:
+                            attendance._attendance_changed_by = self.user
+                            if created:
+                                attendance.created_by = self.user
+
+                        attendance.save()
+
+                        if created:
+                            self.success_count += 1
+                        else:
+                            self.update_count += 1
+
+                    except ValidationError as e:
+                        self.error_count += 1
+                        self.errors.append(
+                            f"Validation error for {employee_id} on {date_value}: {str(e)}"
+                        )
+                    except Exception as e:
+                        self.error_count += 1
+                        self.errors.append(f"Error importing data: {str(e)}")
+
+            if self.import_job:
+                self.import_job.success_count = self.success_count
+                self.import_job.error_count = self.error_count
+                self.import_job.processed_rows = end_idx
+                self.import_job.created_count = self.success_count
+                self.import_job.save()
+
+            time_module.sleep(
+                0.1
+            )  
+
+        if self.import_job:
+            self.import_job.status = "COMPLETED"
+            self.import_job.completed_at = timezone.now()
+            self.import_job.created_count = self.success_count
+            self.import_job.save()
+
         return True
-    
+
     def get_results(self):
         return {
-            'success_count': self.success_count,
-            'update_count': self.update_count,
-            'error_count': self.error_count,
-            'errors': self.errors,
-            'warnings': self.warnings
+            "success_count": self.success_count,
+            "updated_count": self.update_count,
+            "error_count": self.error_count,
+            "errors": self.errors,
+            "warnings": self.warnings,
         }
 
+    @staticmethod
+    def import_attendance_from_excel(
+        file_path,
+        date_format="DMY_TEXT",
+        sheet_name=None,
+        update_existing=True,
+        user=None,
+        import_job=None,
+    ):
+        importer = ExcelAttendanceImporter(
+            file_path, date_format, sheet_name, update_existing, user, import_job
+        )
+
+        importer.process_data()
+        importer.import_data()
+
+        return importer.get_results()
 
 class ExcelAttendanceValidator:
     @staticmethod
