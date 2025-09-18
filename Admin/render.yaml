@@ -12,12 +12,12 @@ services:
     region: oregon
     plan: starter
     buildCommand: "./build.sh"
-    startCommand: "gunicorn hr_payroll.wsgi:application --bind 0.0.0.0:$PORT --workers 4 --timeout 120"
-    healthCheckPath: /admin/login/
+    startCommand: "gunicorn urbix.wsgi:application --bind 0.0.0.0:$PORT --workers 4 --timeout 120"
+    healthCheckPath: /accounts/login/
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: hr-payroll-db
+          name: Razpaas-db
           property: connectionString
       - key: SECRET_KEY
         generateValue: true
@@ -28,7 +28,7 @@ services:
       - key: WEB_CONCURRENCY
         value: "4"
       - key: DJANGO_SETTINGS_MODULE
-        value: "hr_payroll.settings"
+        value: "urbix.settings"
       - key: PYTHONPATH
         value: "."
       - key: ADMIN_EMAIL
@@ -51,55 +51,31 @@ services:
         value: "https://Razpaas.onrender.com"
       - key: DJANGO_LOG_LEVEL
         value: "INFO"
+      - key: LICENSE_SERVER_URL
+        value: "https://Razpaas.onrender.com/license/api/verify/"
 
   - type: redis
-    name: hr-payroll-redis
+    name: Razpaas-redis
     region: oregon
     plan: starter
     maxmemoryPolicy: allkeys-lru
 
   - type: worker
-    name: hr-payroll-celery-worker
+    name: Razpaas-celery-worker
     env: python
     region: oregon
     plan: starter
     buildCommand: "./build.sh"
-    startCommand: "celery -A hr_payroll worker --loglevel=info --concurrency=2"
+    startCommand: "celery -A urbix worker --loglevel=info --concurrency=2"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: hr-payroll-db
+          name: Razpaas-db
           property: connectionString
       - key: REDIS_URL
         fromService:
           type: redis
-          name: hr-payroll-redis
-          property: connectionString
-      - key: SECRET_KEY
-        sync: false
-      - key: DEBUG
-        value: "false"
-      - key: RENDER
-        value: "true"
-      - key: DJANGO_SETTINGS_MODULE
-        value: "hr_payroll.settings"
-
-  - type: worker
-    name: hr-payroll-celery-beat
-    env: python
-    region: oregon
-    plan: starter
-    buildCommand: "./build.sh"
-    startCommand: "celery -A hr_payroll beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: hr-payroll-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: hr-payroll-redis
+          name: Razpaas-redis
           property: connectionString
       - key: SECRET_KEY
         sync: false
@@ -109,18 +85,25 @@ services:
         value: "true"
       - key: DJANGO_SETTINGS_MODULE
         value: "urbix.settings"
+      - key: LICENSE_SERVER_URL
+        value: "https://Razpaas.onrender.com/license/api/verify/"
 
-  - type: cron
-    name: hr-payroll-cleanup
+  - type: worker
+    name: Razpaas-celery-beat
     env: python
     region: oregon
+    plan: starter
     buildCommand: "./build.sh"
-    schedule: "0 2 * * *"
-    startCommand: "python manage.py shell -c 'from accounts.models import UserSession; UserSession.cleanup_expired_sessions()'"
+    startCommand: "celery -A urbix beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: Razpaas
+          name: Razpaas-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: Razpaas-redis
           property: connectionString
       - key: SECRET_KEY
         sync: false
@@ -129,4 +112,29 @@ services:
       - key: RENDER
         value: "true"
       - key: DJANGO_SETTINGS_MODULE
-        value: "hr_payroll.settings"
+        value: "urbix.settings"
+      - key: LICENSE_SERVER_URL
+        value: "https://Razpaas.onrender.com/license/api/verify/"
+
+  - type: cron
+    name: Razpaas-cleanup
+    env: python
+    region: oregon
+    buildCommand: "./build.sh"
+    schedule: "0 2 * * *"
+    startCommand: "python manage.py shell -c 'from accounts.models import UserSession; UserSession.cleanup_expired_sessions()'"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: Razpaas-db
+          property: connectionString
+      - key: SECRET_KEY
+        sync: false
+      - key: DEBUG
+        value: "false"
+      - key: RENDER
+        value: "true"
+      - key: DJANGO_SETTINGS_MODULE
+        value: "urbix.settings"
+      - key: LICENSE_SERVER_URL
+        value: "https://Razpaas.onrender.com/license/api/verify/"

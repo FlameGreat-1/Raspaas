@@ -1,34 +1,19 @@
-"""
-Django settings for urbix project.
-
-Integrated with HR Payroll system configurations.
-Production-ready with comprehensive security and deployment settings.
-"""
-
 import os
 import dj_database_url
 from decouple import config
 from pathlib import Path
 from datetime import timedelta
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-change-this-in-production")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config("DEBUG", default=True, cast=bool)
-DEBUG = True
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+DEBUG = config("DEBUG", default=False, cast=bool)
 
-# Custom User Model (from Razpaas)
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "*.onrender.com", "Razpaas.onrender.com"]
+
 AUTH_USER_MODEL = "accounts.CustomUser"
 
-# Application definition
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -37,11 +22,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
-    # Third party apps
     "webpack_loader",
     "django_extensions",
     "django_celery_beat",
-    # Local apps
     "accounts",
     "core",
     "employees",
@@ -85,12 +68,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "urbix.wsgi.application"
 
-# Database Configuration (Razpaas enhanced)
 if config("DATABASE_URL", default=None):
-    # Production Database (PostgreSQL from Render)
     DATABASES = {"default": dj_database_url.parse(config("DATABASE_URL"))}
 else:
-    # Development Database (SQLite)
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -98,7 +78,6 @@ else:
         }
     }
 
-# Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
@@ -114,31 +93,23 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Internationalization (Razpaas enhanced)
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = config("TIME_ZONE", default="Asia/Colombo")  # Razpaas default, configurable
+TIME_ZONE = config("TIME_ZONE", default="UTC")
 USE_I18N = True
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images) - Combined URBIX + Razpaas
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# Combined static files directories
 STATICFILES_DIRS = []
 if (BASE_DIR / "static").exists():
     STATICFILES_DIRS.append(BASE_DIR / "static")
 
-STATICFILES_DIRS.append(BASE_DIR / "Django_v1.0.0" / "Admin" / "static")
-
-# WhiteNoise configuration for static files (Razpaas)
 STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
-# Media files (User uploads) - Razpaas
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# Webpack loader config (URBIX preserved)
 WEBPACK_LOADER = {
     "DEFAULT": {
         "CACHE": not DEBUG,
@@ -146,21 +117,20 @@ WEBPACK_LOADER = {
     }
 }
 
-# Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-LICENSE_VERIFICATION_URL = "http://127.0.0.1:8000/license/api/verify/"
-LICENSE_ACTIVATION_URL = "http://127.0.0.1:8000/license/api/activate/"
+LICENSE_VERIFICATION_URL = config(
+    "LICENSE_SERVER_URL", default="https://Razpaas.onrender.com/license/api/verify/"
+)
+LICENSE_ACTIVATION_URL = config(
+    "LICENSE_ACTIVATION_URL",
+    default="https://Razpaas.onrender.com/license/api/activate/",
+)
 
-## LICENSE_VERIFICATION_URL = "https://license.raspaas.com/api/verify/"
-## LICENSE_ACTIVATION_URL = "https://license.raspaas.com/api/activate/"
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/dashboard/"
+LOGOUT_REDIRECT_URL = "/accounts/login/"
 
-# Authentication URLs (Razpaas)
-LOGIN_URL = "/accounts/login/"  # Updated to use accounts login
-LOGIN_REDIRECT_URL = "/dashboard/"  # Redirect to dashboard after login
-LOGOUT_REDIRECT_URL = "/accounts/login/"  # Redirect to login after logout
-
-# License exempt URLs - paths that should be accessible without a license
 LICENSE_EXEMPT_URLS = [
     "/admin/",
     "/static/",
@@ -169,11 +139,10 @@ LICENSE_EXEMPT_URLS = [
     "/license/required/",
     "/license/expired/",
     "/license/status/",
-    "/license/api/verify/",  
-    "/license/api/activate/", 
+    "/license/api/verify/",
+    "/license/api/activate/",
 ]
 
-# Celery Configuration (Background Tasks) - Razpaas
 CELERY_BROKER_URL = config("REDIS_URL", default="redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = config("REDIS_URL", default="redis://localhost:6379/0")
 CELERY_ACCEPT_CONTENT = ["json"]
@@ -182,27 +151,23 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
-# Email Configuration (Razpaas)
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com")
 EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
-DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@urbix.com")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@raspaas.com")
 
-# File Upload Settings (Razpaas)
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 FILE_UPLOAD_PERMISSIONS = 0o644
 
-# Production Security Settings (Razpaas)
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 
-# SSL/HTTPS Settings (Production) - Razpaas
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -211,58 +176,44 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-else:
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
 
-# Guardian (Object-level permissions) - Razpaas
 AUTHENTICATION_BACKENDS = [
     "accounts.manager.MultiFieldAuthBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
 
-# Session Configuration (Razpaas)
-SESSION_COOKIE_AGE = 3600  # 1 hour
+SESSION_COOKIE_AGE = 3600
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 
-# CSRF Configuration (Razpaas)
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_TRUSTED_ORIGINS = [
     "https://*.onrender.com",
+    "https://Razpaas.onrender.com",
     config("CSRF_TRUSTED_ORIGIN", default="http://localhost:8000"),
 ]
 
-# Cache Configuration (Razpaas) - COMMENTED OUT FOR TESTING
-# if config("REDIS_URL", default=None):
-#     CACHES = {
-#         "default": {
-#             "BACKEND": "django_redis.cache.RedisCache",
-#             "LOCATION": config("REDIS_URL"),
-#             "OPTIONS": {
-#                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
-#             },
-#         }
-#     }
-# else:
-#     CACHES = {
-#         "default": {
-#             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-#             "LOCATION": "unique-snowflake",
-#         }
-#     }
-
-# Temporary dummy cache to avoid Redis connection issues
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+if config("REDIS_URL", default=None):
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": config("REDIS_URL"),
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
+        }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "unique-snowflake",
+        }
+    }
 
-# Logging Configuration (Razpaas)
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -298,7 +249,7 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
-        "urbix": {  # Updated for URBIX project
+        "urbix": {
             "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
@@ -306,63 +257,45 @@ LOGGING = {
     },
 }
 
-# Payroll Specific Settings (Razpaas)
 PAYROLL_SETTINGS = {
-    "DEFAULT_CURRENCY": "LKR",  # Sri Lankan Rupees
-    "TAX_RATE": 0.15,  # 15% default tax rate
+    "DEFAULT_CURRENCY": "LKR",
+    "TAX_RATE": 0.15,
     "OVERTIME_MULTIPLIER": 1.5,
     "WORKING_HOURS_PER_DAY": 8,
     "WORKING_DAYS_PER_WEEK": 5,
-    "MINIMUM_WAGE": 15000,  # LKR per month
+    "MINIMUM_WAGE": 15000,
 }
 
-# Razpaas Settings (Razpaas)
 HR_SETTINGS = {
     "EMPLOYEE_CODE_PREFIX": "EMP",
     "EMPLOYEE_CODE_LENGTH": 6,
-    "PASSWORD_RESET_TIMEOUT": 3600,  # 1 hour
+    "PASSWORD_RESET_TIMEOUT": 3600,
     "MAX_LOGIN_ATTEMPTS": 5,
-    "ACCOUNT_LOCKOUT_DURATION": 1800,  # 30 minutes
-    "SESSION_TIMEOUT": 3600,  # 1 hour
+    "ACCOUNT_LOCKOUT_DURATION": 1800,
+    "SESSION_TIMEOUT": 3600,
 }
 
-# License System Settings (Razpaas)
 LICENSE_SETTINGS = {
     "OFFLINE_VALIDATION_DAYS": 30,
-    "LICENSE_CHECK_INTERVAL": 24,  # hours
+    "LICENSE_CHECK_INTERVAL": 24,
     "TRIAL_PERIOD_DAYS": 14,
     "MAX_EMPLOYEES": 1000,
 }
 
-# Internationalization Settings (Razpaas)
 LOCALE_PATHS = [
     BASE_DIR / "locale",
 ]
 
 ANONYMOUS_USER_NAME = None
 
-# Date and Time Formats (Razpaas)
 DATE_FORMAT = "Y-m-d"
 TIME_FORMAT = "H:i:s"
 DATETIME_FORMAT = "Y-m-d H:i:s"
 SHORT_DATE_FORMAT = "m/d/Y"
 SHORT_DATETIME_FORMAT = "m/d/Y P"
 
-# Number Formatting (Razpaas)
 USE_THOUSAND_SEPARATOR = True
 THOUSAND_SEPARATOR = ","
 DECIMAL_SEPARATOR = "."
 
-# Development Settings (Razpaas enhanced)
-if DEBUG:
-    try:
-        import debug_toolbar
-
-        INSTALLED_APPS.append("debug_toolbar")
-        MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
-        INTERNAL_IPS = ["127.0.0.1", "localhost"]
-    except ImportError:
-        pass
-
-# Environment indicator (Razpaas)
 RENDER = config("RENDER", default=False, cast=bool)
