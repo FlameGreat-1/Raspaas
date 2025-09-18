@@ -24,6 +24,10 @@
 .config-card.attendance { border-left-color: #00b894; }
 .config-card.payroll { border-left-color: #fdcb6e; }
 .config-card.leave { border-left-color: #e17055; }
+.config-card.tax { border-left-color: #2ecc71; }
+.config-card.allowance { border-left-color: #3498db; }
+.config-card.bonus { border-left-color: #9b59b6; }
+.config-card.penalty { border-left-color: #e74c3c; }
 .config-card.device { border-left-color: #74b9ff; }
 .config-card.notification { border-left-color: #a29bfe; }
 .config-card.calculation { border-left-color: #fd79a8; }
@@ -121,11 +125,13 @@
                                     <i class="ri-upload-line me-2"></i>Import
                                 </a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item text-danger" href="#" onclick="resetToDefaults()">
-                                    <i class="ri-refresh-line me-2"></i>Reset to Defaults
-                                </a></li>
+                                <li>
+                                    <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="event.stopPropagation(); new bootstrap.Modal(document.getElementById('resetDefaultsModal')).show(); return false;">
+                                        <i class="ri-refresh-line me-2"></i>Reset to Defaults
+                                    </a>
+                                </li>
                             </ul>
-                        </div>
+                        </div>                                  
                     </div>
                 </div>
             </div>
@@ -139,122 +145,11 @@
                             Showing {{ configurations|length }} of {{ total_configs }} configurations
                         </p>
                     </div>
-                    <div class="col-md-6 text-end">
-                        <div class="btn-group btn-group-sm" role="group">
-                            <input type="radio" class="btn-check" name="view-mode" id="card-view" checked>
-                            <label class="btn btn-outline-secondary" for="card-view">
-                                <i class="ri-layout-grid-line"></i>
-                            </label>
-                            <input type="radio" class="btn-check" name="view-mode" id="list-view">
-                            <label class="btn btn-outline-secondary" for="list-view">
-                                <i class="ri-list-check"></i>
-                            </label>
-                        </div>
-                    </div>
                 </div>
-            
-                <script>
-                document.getElementById('card-view').addEventListener('change', function() {
-                    if (this.checked) {
-                        document.getElementById('card-view-content').style.display = 'block';
-                        document.getElementById('list-view-content').style.display = 'none';
-                    }
-                });
-            
-                document.getElementById('list-view').addEventListener('change', function() {
-                    if (this.checked) {
-                        document.getElementById('card-view-content').style.display = 'none';
-                        document.getElementById('list-view-content').style.display = 'block';
-                    }
-                });
-            
-                document.addEventListener('DOMContentLoaded', function() {
-                    var dropdownElementList = [].slice.call(document.querySelectorAll('[data-bs-toggle="dropdown"]'));
-                    var dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
-                        return new bootstrap.Dropdown(dropdownToggleEl);
-                    });
-                });
-                </script>
-            
-                <div id="card-view-content">
-                    {% for setting_type, configs in grouped_configs.items %}
-                    <div class="mb-4">
-                        <div class="d-flex align-items-center mb-3">
-                            <h5 class="mb-0 me-2">
-                                {% for type_code, type_name in setting_types %}
-                                    {% if type_code == setting_type %}{{ type_name }}{% endif %}
-                                {% endfor %}
-                            </h5>
-                            <span class="badge bg-primary-subtle text-primary">{{ configs|length }}</span>
-                        </div>
-                        
-                        <div class="row">
-                            {% for config in configs %}
-                            <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
-                                <div class="card config-card {{ config.setting_type|lower }} h-100">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <span class="badge setting-type-badge bg-{{ config.setting_type|lower }}-subtle text-{{ config.setting_type|lower }}">
-                                                {{ config.get_setting_type_display }}
-                                            </span>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-secondary border-0" type="button" data-bs-toggle="dropdown">
-                                                    <i class="ri-more-line"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end">
-                                                    <li><a class="dropdown-item" href="{% url 'accounts:system_config' action='detail' config_id=config.id %}">
-                                                        <i class="ri-eye-line me-2"></i>View Details
-                                                    </a></li>
-                                                    <li><a class="dropdown-item" href="{% url 'accounts:system_config' action='edit' config_id=config.id %}">
-                                                        <i class="ri-edit-line me-2"></i>Edit
-                                                    </a></li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li><a class="dropdown-item text-danger" href="#" onclick="deleteConfig({{ config.id }}, '{{ config.key }}')">
-                                                        <i class="ri-delete-bin-line me-2"></i>Delete
-                                                    </a></li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                        
-                                        <h6 class="card-title mb-2">{{ config.get_display_name }}</h6>
-                                        
-                                        <div class="config-value mb-2">
-                                            {% if config.value|length > 50 %}
-                                                {{ config.value|truncatechars:50 }}
-                                            {% else %}
-                                                {{ config.value }}
-                                            {% endif %}
-                                        </div>
-                                        
-                                        {% if config.description %}
-                                        <p class="text-muted small mb-2">{{ config.description|truncatechars:80 }}</p>
-                                        {% endif %}
-                                        
-                                        <div class="d-flex justify-content-between align-items-center text-muted small">
-                                            <span>
-                                                <i class="ri-time-line me-1"></i>
-                                                {{ config.updated_at|date:"M d, Y" }}
-                                            </span>
-                                            {% if config.updated_by %}
-                                            <span>
-                                                <i class="ri-user-line me-1"></i>
-                                                {{ config.updated_by.get_full_name|default:config.updated_by.username }}
-                                            </span>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-
-                <div id="list-view-content" style="display: none;">
-                    <div class="table-responsive">
+                <div id="list-view-content">
+                    <div class="table-responsive" style="max-height: 1080px; overflow-y: auto;">
                         <table class="table table-hover">
-                            <thead class="table-light">
+                            <thead class="table-light" style="position: sticky; top: 0; z-index: 1; background-color: #f8f9fa;">
                                 <tr>
                                     <th>Key</th>
                                     <th>Value</th>
@@ -382,7 +277,7 @@
                                     </div>
                                     <div class="col-12 mb-3">
                                         <label class="form-label text-muted small">Current Value</label>
-                                        <div class="config-value">{{ configuration.value }}</div>
+                                        <div class="config-value" style="background-color: #f0f0f0; color: #333; border: 1px solid #ddd;">{{ configuration.value }}</div>
                                     </div>
                                     {% if configuration.description %}
                                     <div class="col-12 mb-3">
@@ -665,7 +560,7 @@
                                             <li>Text: Any string value</li>
                                         </ul>
                                     </div>
-                                    
+
                                     <div class="mb-3">
                                         <h6 class="small text-primary">Setting Types:</h6>
                                         <ul class="small text-muted mb-0">
@@ -674,6 +569,15 @@
                                             <li><strong>ATTENDANCE:</strong> Time tracking rules</li>
                                             <li><strong>PAYROLL:</strong> Salary calculations</li>
                                             <li><strong>LEAVE:</strong> Leave management</li>
+                                            <li><strong>TAX:</strong> Tax calculation settings</li>
+                                            <li><strong>ALLOWANCE:</strong> Employee allowance settings</li>
+                                            <li><strong>BONUS:</strong> Performance bonus settings</li>
+                                            <li><strong>PENALTY:</strong> Late/absence penalty settings</li>
+                                            <li><strong>DEVICE:</strong> Device configuration settings</li>
+                                            <li><strong>NOTIFICATION:</strong> Alert and notification settings</li>
+                                            <li><strong>CALCULATION:</strong> Formula and calculation settings</li>
+                                            <li><strong>VALIDATION:</strong> Data validation rules</li>
+                                            <li><strong>INTEGRATION:</strong> External system integration settings</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -1432,35 +1336,36 @@
 
 <div class="modal fade" id="resetDefaultsModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title text-danger">Reset to Defaults</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-danger">
-                    <i class="ri-alert-line me-2"></i>
-                    <strong>Warning!</strong> This will reset ALL configurations to their default values.
+        <form method="post" action="{% url 'accounts:system_config' %}" id="reset-defaults-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="reset_defaults">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">Reset to Defaults</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <p>This action will:</p>
-                <ul>
-                    <li>Reset all configuration values to system defaults</li>
-                    <li>Remove any custom configurations</li>
-                    <li>Cannot be undone</li>
-                </ul>
-                <p>Type <strong>RESET</strong> to confirm:</p>
-                <input type="text" class="form-control" id="reset-confirmation" placeholder="Type RESET to confirm">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form method="post" id="reset-form" class="d-inline">
-                    {% csrf_token %}
-                    <button type="submit" name="action" value="reset_defaults" class="btn btn-danger" id="reset-submit-btn" disabled>
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <i class="ri-alert-line me-2"></i>
+                        <strong>Warning!</strong> This will reset ALL configurations to their default values.
+                    </div>
+                    <p>This action will:</p>
+                    <ul>
+                        <li>Reset all configuration values to system defaults</li>
+                        <li>Remove any custom configurations</li>
+                        <li>Cannot be undone</li>
+                    </ul>
+                    <p>Type <strong>RESET</strong> to confirm:</p>
+                    <input type="text" class="form-control" id="reset-confirmation" placeholder="Type RESET to confirm">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger" id="reset-submit-btn" disabled>
                         Reset to Defaults
                     </button>
-                </form>
+                </div>
             </div>
-        </div>
+        </form>
     </div>
 </div>
 
@@ -1473,6 +1378,11 @@
 <script src="{% static 'assets/js/app.js' %}"></script>
 
 <script>
+function showResetModal() {
+    const resetModal = new bootstrap.Modal(document.getElementById('resetDefaultsModal'));
+    resetModal.show();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const selects = document.querySelectorAll('.form-select:not([multiple])');
     selects.forEach(select => {
@@ -1485,6 +1395,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    var dropdownElementList = [].slice.call(document.querySelectorAll('[data-bs-toggle="dropdown"]'));
+    var dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
+        return new bootstrap.Dropdown(dropdownToggleEl);
+    });
+    
     const cardViewBtn = document.getElementById('card-view');
     const listViewBtn = document.getElementById('list-view');
     const cardViewContent = document.getElementById('card-view-content');
@@ -1558,10 +1473,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const resetConfirmation = document.getElementById('reset-confirmation');
     const resetSubmitBtn = document.getElementById('reset-submit-btn');
+    const resetForm = document.getElementById('reset-defaults-form');
 
-    if (resetConfirmation && resetSubmitBtn) {
+    if (resetConfirmation && resetSubmitBtn && resetForm) {
         resetConfirmation.addEventListener('input', function() {
             resetSubmitBtn.disabled = this.value !== 'RESET';
+        });
+        
+        resetForm.addEventListener('submit', function(event) {
+            if (resetConfirmation.value !== 'RESET') {
+                event.preventDefault();
+                return false;
+            }
+            return true;
         });
     }
 
@@ -1598,7 +1522,11 @@ function deleteConfig(configId, configName) {
 }
 
 function confirmResetDefaults() {
-    new bootstrap.Modal(document.getElementById('resetDefaultsModal')).show();
+    showResetModal();
+}
+
+function resetToDefaults() {
+    showResetModal();
 }
 
 function selectAll() {

@@ -200,6 +200,7 @@ class AttendanceView(LoginRequiredMixin, View):
 
         return render(request, "attendance/attendance_detail.html", context)
 
+
     def employee_attendance(self, request, employee_id):
         employee = get_object_or_404(User, id=employee_id)
 
@@ -220,10 +221,22 @@ class AttendanceView(LoginRequiredMixin, View):
             start_date_obj = today - timedelta(days=30)
             end_date_obj = today
 
-        attendance_records = Attendance.objects.filter(
+        all_attendance_records = Attendance.objects.filter(
             employee=employee, date__range=[start_date_obj, end_date_obj]
         )
+        
+        present_count = all_attendance_records.filter(status='PRESENT').count()
+        absent_count = all_attendance_records.filter(status='ABSENT').count()
+        late_count = all_attendance_records.filter(status='LATE').count()
+        leave_count = all_attendance_records.filter(status='LEAVE').count()
+        total_count = all_attendance_records.count()
+        
+        if total_count > 0:
+            performance_percentage = (present_count / total_count) * 100
+        else:
+            performance_percentage = 0
 
+        attendance_records = all_attendance_records
         if status_filter:
             attendance_records = attendance_records.filter(status=status_filter)
 
@@ -238,6 +251,13 @@ class AttendanceView(LoginRequiredMixin, View):
             "end_date": end_date,
             "status_filter": status_filter,
             "status_choices": status_choices,
+            "today": today,
+            "present_count": present_count,
+            "absent_count": absent_count,
+            "late_count": late_count,
+            "leave_count": leave_count,
+            "total_count": total_count,
+            "performance_percentage": round(performance_percentage, 2)
         }
 
         return render(request, "attendance/employee_attendance.html", context)

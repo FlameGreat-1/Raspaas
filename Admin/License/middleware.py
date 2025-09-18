@@ -69,7 +69,9 @@ class LicenseMiddleware:
                             f"Your license will expire in {days_left} days. Please renew your subscription.",
                         )
 
-                    self._update_online_check(license_obj, request)
+                    redirect_response = self._update_online_check(license_obj, request)
+                    if redirect_response:
+                        return redirect_response
 
         except Exception as e:
             if settings.DEBUG and request.user.is_authenticated:
@@ -112,6 +114,11 @@ class LicenseMiddleware:
             if not online_valid:
                 if "offline grace period" not in message:
                     messages.warning(request, f"License verification: {message}")
-                    if "revoked" in message.lower():
+                    if (
+                        "revoked" in message.lower()
+                        or "expired" in message.lower()
+                        or "verification error" in message.lower()
+                    ):
                         logout(request)
                         return redirect(reverse("license:license_required"))
+        return None

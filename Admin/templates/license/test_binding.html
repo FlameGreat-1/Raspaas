@@ -12,6 +12,15 @@
             </div>
             
             <div class="card-body">
+                <!-- Online Verification Status -->
+                <div class="alert alert-{% if online_verification_success %}success{% else %}danger{% endif %} mb-3">
+                    <h5>Online Verification: {% if online_verification_success %}SUCCESS{% else %}FAILED{% endif %}</h5>
+                    {% if online_verification_message %}
+                    <p>{{ online_verification_message }}</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Hardware Fingerprint Match -->
                 <div class="alert alert-{% if match %}success{% else %}danger{% endif %}">
                     <h5>Hardware Fingerprint Match: {% if match %}YES{% else %}NO{% endif %}</h5>
                 </div>
@@ -32,10 +41,46 @@
                     </div>
                 </div>
                 
+                <!-- System Hardware Information -->
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h6 class="fw-semibold mb-2">System Hardware Information:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th>CPU</th>
+                                    <td>{{ cpu_info }}</td>
+                                </tr>
+                                <tr>
+                                    <th>RAM</th>
+                                    <td>{{ ram_info }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Disk</th>
+                                    <td>{{ disk_info }}</td>
+                                </tr>
+                                <tr>
+                                    <th>MAC Address</th>
+                                    <td>{{ mac_address }}</td>
+                                </tr>
+                                <tr>
+                                    <th>OS</th>
+                                    <td>{{ os_info }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="row mt-4">
                     <div class="col-md-6">
                         <h6 class="fw-semibold mb-2">Activation Count:</h6>
                         <p>{{ activation_count }} of {{ max_activations }}</p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6 class="fw-semibold mb-2">Last Online Check:</h6>
+                        <p>{{ last_online_check }}</p>
                     </div>
                 </div>
                 

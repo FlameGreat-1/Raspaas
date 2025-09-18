@@ -549,9 +549,12 @@
                         </a>
                         {% endif %}
                         {% if can_process_payroll %}
-                        <a href="{% url 'payroll:period_process' current_period.id %}" class="btn btn-info">
-                            <i class="ri-settings-line me-1"></i> Process Current Period
-                        </a>
+                        <form action="{% url 'payroll:period_process' pk=current_period.id %}" method="post" class="d-grid">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-info">
+                                <i class="ri-settings-line me-1"></i> Process Current Period
+                            </button>
+                        </form>
                         {% endif %}
                         {% if can_view_reports %}
                         <div class="btn-group w-100">
@@ -576,7 +579,7 @@
     </div>
 </div>
 {% endblock %}
-{% block javascript %}
+{% block js %}
 <script src="/static/assets/libs/apexcharts/apexcharts.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {

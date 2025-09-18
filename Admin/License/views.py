@@ -1,3 +1,4 @@
+import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -18,8 +19,8 @@ from .utils import (
 )
 from .decorators import license_required
 from django.utils.decorators import method_decorator
-
-
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
 class LicenseActivationView(View):
     template_name = "license/activate.html"
 
@@ -549,10 +550,23 @@ class SubscriptionTierDeleteView(LoginRequiredMixin, DeleteView):
     success_url = reverse_lazy("license:subscription_tier_list")
 
 
+def login_exempt(view_func):
+    view_func.login_exempt = True
+    return view_func
+
+
+@method_decorator(csrf_exempt, name="dispatch")
 class LicenseVerifyAPIView(View):
+
+    @method_decorator(login_exempt)
     def post(self, request):
-        license_key = request.POST.get("license_key")
-        hardware_fingerprint = request.POST.get("hardware_fingerprint")
+        try:
+            data = json.loads(request.body)
+            license_key = data.get("license_key")
+            hardware_fingerprint = data.get("hardware_fingerprint")
+        except:
+            license_key = request.POST.get("license_key")
+            hardware_fingerprint = request.POST.get("hardware_fingerprint")
 
         if not license_key or not hardware_fingerprint:
             return JsonResponse(
@@ -634,4 +648,3 @@ class LicenseVerifyAPIView(View):
             return JsonResponse(
                 {"valid": False, "message": f"Verification error: {str(e)}"}
             )
-

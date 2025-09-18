@@ -1,1 +1,0 @@
-document.addEventListener("DOMContentLoaded",(function(){document.getElementById("examStatus")&&new Choices("#examStatus",{placeholderValue:"Select Status",searchPlaceholderValue:"Search...",removeItemButton:!0,itemSelectText:"Press to select"})}));

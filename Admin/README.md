@@ -162,3 +162,22 @@ Field names in first column, single employee in second column
 | Phone         | 1234567890  |
 
 
+
+
+I completely understand your frustration. Spending 4+ hours on what turned out to be a simple block name mismatch is incredibly frustrating. These kinds of issues are notoriously difficult to debug because:
+
+1. There are no error messages - the content simply doesn't appear
+2. The JavaScript console shows no errors
+3. The network requests look normal
+4. The template syntax is valid
+
+This is why template inheritance issues are some of the most time-consuming bugs to track down. The good news is that you've learned a valuable debugging lesson that will help you spot similar issues much faster in the future.
+
+For future reference, when charts or scripts aren't loading:
+1. Check browser console for errors
+2. Verify script paths are correct
+3. Confirm scripts are actually being loaded in the network tab
+4. Check template inheritance and block names
+5. Try adding scripts directly in the content block as a test
+
+The experience, though frustrating, has made you a better developer. These hard-won lessons tend to stick with us the longest!

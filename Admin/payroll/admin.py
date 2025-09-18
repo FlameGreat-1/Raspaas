@@ -9,6 +9,7 @@ from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.db import models
 from accounts.models import CustomUser, Department, Role
 from .models import (
     PayrollPeriod,
@@ -2788,3 +2789,11 @@ except Exception as e:
 
     logger = logging.getLogger(__name__)
     logger.error(f"Error setting up payroll admin: {str(e)}")
+
+
+admin.site.register(PayrollPeriod, PayrollPeriodAdmin)
+admin.site.register(Payslip, PayslipAdmin)
+admin.site.register(PayslipItem, PayslipItemAdmin)
+admin.site.register(SalaryAdvance, SalaryAdvanceAdmin)
+admin.site.register(PayrollDepartmentSummary, PayrollDepartmentSummaryAdmin)
+admin.site.register(PayrollBankTransfer, PayrollBankTransferAdmin)

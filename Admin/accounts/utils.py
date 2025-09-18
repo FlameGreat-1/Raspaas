@@ -434,6 +434,9 @@ def get_user_dashboard_data(user) -> Dict:
 class UserUtilities:
     @staticmethod
     def get_user_permissions_list(user) -> List[str]:
+        if not hasattr(user, 'is_authenticated') or not user.is_authenticated:
+            return []
+
         if user.is_superuser:
             return ["all_permissions"]
 
@@ -474,6 +477,9 @@ class UserUtilities:
 
     @staticmethod
     def check_user_permission(user, permission: str) -> bool:
+        if not hasattr(user, 'is_authenticated') or not user.is_authenticated:
+            return False
+
         user_permissions = UserUtilities.get_user_permissions_list(user)
         return "all_permissions" in user_permissions or permission in user_permissions
 
@@ -566,6 +572,187 @@ class UserUtilities:
             })
 
         return menu_items
+
+
+class UserUtilities:
+    @staticmethod
+    def get_user_permissions_list(user) -> List[str]:
+        if not hasattr(user, "is_authenticated") or not user.is_authenticated:
+            return []
+
+        if user.is_superuser:
+            return ["all_permissions"]
+
+        if not user.role:
+            return ["view_own_profile", "edit_own_profile"]
+
+        role_permissions = {
+            "SUPER_ADMIN": ["all_permissions"],
+            "HR_ADMIN": [
+                "manage_employees",
+                "manage_departments",
+                "manage_roles",
+                "view_all_attendance",
+                "manage_payroll",
+                "view_all_reports",
+                "manage_system_settings",
+                "view_audit_logs",
+            ],
+            "HR_MANAGER": [
+                "manage_employees",
+                "view_departments",
+                "view_all_attendance",
+                "view_payroll_reports",
+                "view_hr_reports",
+                "approve_leave_requests",
+            ],
+            "DEPARTMENT_MANAGER": [
+                "view_department_employees",
+                "view_department_attendance",
+                "approve_department_leave",
+                "view_department_reports",
+            ],
+            "PAYROLL_MANAGER": [
+                "manage_payroll",
+                "view_all_employees",
+                "generate_payslips",
+                "view_payroll_reports",
+                "manage_salary_components",
+            ],
+            "ACCOUNTANT": [
+                "view_payroll",
+                "manage_expenses",
+                "view_financial_reports",
+                "export_financial_data",
+            ],
+            "AUDITOR": [
+                "view_all_data",
+                "view_audit_logs",
+                "generate_audit_reports",
+                "export_audit_data",
+            ],
+            "EMPLOYEE": ["view_own_profile", "edit_own_profile", "view_own_payslip"],
+        }
+
+        return role_permissions.get(
+            user.role.name, ["view_own_profile", "edit_own_profile"]
+        )
+
+    @staticmethod
+    def check_user_permission(user, permission: str) -> bool:
+        if not hasattr(user, "is_authenticated") or not user.is_authenticated:
+            return False
+
+        user_permissions = UserUtilities.get_user_permissions_list(user)
+        return "all_permissions" in user_permissions or permission in user_permissions
+
+    @staticmethod
+    def get_navigation_menu(user) -> List[Dict]:
+        menu_items = []
+
+        if UserUtilities.check_user_permission(user, "view_own_profile"):
+            menu_items.append(
+                {
+                    "name": "Dashboard",
+                    "url": "accounts:dashboard",
+                    "icon": "fas fa-tachometer-alt",
+                    "active": True,
+                }
+            )
+
+        if UserUtilities.check_user_permission(
+            user, "manage_employees"
+        ) or UserUtilities.check_user_permission(user, "view_department_employees"):
+            menu_items.append(
+                {
+                    "name": "Employees",
+                    "url": "employees:list",
+                    "icon": "fas fa-users",
+                    "submenu": [
+                        {"name": "All Employees", "url": "employees:list"},
+                        {"name": "Add Employee", "url": "employees:create"},
+                        {"name": "Departments", "url": "employees:departments"},
+                    ],
+                }
+            )
+
+        if UserUtilities.check_user_permission(
+            user, "view_all_attendance"
+        ) or UserUtilities.check_user_permission(user, "view_department_attendance"):
+            menu_items.append(
+                {
+                    "name": "Attendance",
+                    "url": "attendance:list",
+                    "icon": "fas fa-clock",
+                    "submenu": [
+                        {"name": "View Attendance", "url": "attendance:list"},
+                        {"name": "Import Attendance", "url": "attendance:import"},
+                        {"name": "Reports", "url": "attendance:reports"},
+                    ],
+                }
+            )
+
+        if UserUtilities.check_user_permission(
+            user, "manage_payroll"
+        ) or UserUtilities.check_user_permission(user, "view_payroll_reports"):
+            menu_items.append(
+                {
+                    "name": "Payroll",
+                    "url": "payroll:list",
+                    "icon": "fas fa-money-bill-wave",
+                    "submenu": [
+                        {"name": "Generate Payroll", "url": "payroll:generate"},
+                        {"name": "Payslips", "url": "payroll:payslips"},
+                        {"name": "Salary Components", "url": "payroll:components"},
+                    ],
+                }
+            )
+
+        if UserUtilities.check_user_permission(user, "manage_expenses"):
+            menu_items.append(
+                {
+                    "name": "Expenses",
+                    "url": "expenses:list",
+                    "icon": "fas fa-receipt",
+                    "submenu": [
+                        {"name": "All Expenses", "url": "expenses:list"},
+                        {"name": "Submit Expense", "url": "expenses:create"},
+                        {"name": "Approvals", "url": "expenses:approvals"},
+                    ],
+                }
+            )
+
+        if UserUtilities.check_user_permission(user, "view_all_reports"):
+            menu_items.append(
+                {
+                    "name": "Reports",
+                    "url": "reports:dashboard",
+                    "icon": "fas fa-chart-bar",
+                    "submenu": [
+                        {"name": "Employee Reports", "url": "reports:employees"},
+                        {"name": "Attendance Reports", "url": "reports:attendance"},
+                        {"name": "Payroll Reports", "url": "reports:payroll"},
+                        {"name": "Financial Reports", "url": "reports:financial"},
+                    ],
+                }
+            )
+
+        if UserUtilities.check_user_permission(user, "manage_system_settings"):
+            menu_items.append(
+                {
+                    "name": "Settings",
+                    "url": "accounts:settings",
+                    "icon": "fas fa-cog",
+                    "submenu": [
+                        {"name": "System Settings", "url": "accounts:system_settings"},
+                        {"name": "User Roles", "url": "accounts:roles"},
+                        {"name": "Audit Logs", "url": "accounts:audit_logs"},
+                    ],
+                }
+            )
+
+        return menu_items
+
 
 class ExcelUtilities:
     @staticmethod
@@ -986,9 +1173,18 @@ class SystemUtilities:
     @staticmethod
     def get_password_expiry_users(days_before_expiry: int = None) -> List[User]:
         if days_before_expiry is None:
-            days_before_expiry = int(SystemConfiguration.get_setting('PASSWORD_EXPIRY_WARNING_DAYS', '7'))
+            try:
+                days_before_expiry = int(
+                    SystemConfiguration.get_setting("PASSWORD_EXPIRY_WARNING_DAYS")
+                )
+            except (ValueError, TypeError):
+                days_before_expiry = 7
 
-        expiry_days = int(SystemConfiguration.get_setting("PASSWORD_EXPIRY_DAYS", "90"))
+        try:
+            expiry_days = int(SystemConfiguration.get_setting("PASSWORD_EXPIRY_DAYS"))
+        except (ValueError, TypeError):
+            expiry_days = 90
+
         cutoff_date = timezone.now() - timedelta(days=expiry_days - days_before_expiry)
 
         return User.objects.filter(

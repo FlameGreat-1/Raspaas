@@ -59,6 +59,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "accounts.middleware.SessionExpiryMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "License.middleware.LicenseMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -128,8 +129,10 @@ STATICFILES_DIRS = []
 if (BASE_DIR / "static").exists():
     STATICFILES_DIRS.append(BASE_DIR / "static")
 
+STATICFILES_DIRS.append(BASE_DIR / "Django_v1.0.0" / "Admin" / "static")
+
 # WhiteNoise configuration for static files (Razpaas)
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
 # Media files (User uploads) - Razpaas
 MEDIA_URL = "/media/"
@@ -146,8 +149,8 @@ WEBPACK_LOADER = {
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-LICENSE_VERIFICATION_URL = "http://127.0.0.1:8000/api/verify/"
-LICENSE_ACTIVATION_URL = "http://127.0.0.1:8000/api/activate/"
+LICENSE_VERIFICATION_URL = "http://127.0.0.1:8000/license/api/verify/"
+LICENSE_ACTIVATION_URL = "http://127.0.0.1:8000/license/api/activate/"
 
 ## LICENSE_VERIFICATION_URL = "https://license.raspaas.com/api/verify/"
 ## LICENSE_ACTIVATION_URL = "https://license.raspaas.com/api/activate/"
@@ -166,8 +169,9 @@ LICENSE_EXEMPT_URLS = [
     "/license/required/",
     "/license/expired/",
     "/license/status/",
+    "/license/api/verify/",  
+    "/license/api/activate/", 
 ]
-
 
 # Celery Configuration (Background Tasks) - Razpaas
 CELERY_BROKER_URL = config("REDIS_URL", default="redis://localhost:6379/0")

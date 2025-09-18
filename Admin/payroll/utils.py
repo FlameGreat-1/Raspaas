@@ -8,6 +8,7 @@ from attendance.models import (
     Attendance,
     LeaveRequest,
     Holiday,
+    calculate_role_based_penalties,
 )
 from attendance.utils import (
     TimeCalculator,
@@ -117,7 +118,7 @@ class PayrollCalculator:
         working_days = monthly_summary.working_days
 
         expected_hours = Decimal(
-            SystemConfiguration.get_setting("NET_WORKING_HOURS", "9.75")
+            SystemConfiguration.get_setting("NET_WORKING_HOURS")
         )
         total_expected_hours = expected_hours * working_days
         actual_hours = TimeCalculator.duration_to_decimal_hours(
@@ -159,10 +160,10 @@ class PayrollCalculator:
         hourly_rate: Decimal,
     ) -> Dict[str, Decimal]:
         overtime_multiplier = Decimal(
-            SystemConfiguration.get_setting("OVERTIME_RATE_MULTIPLIER", "1.5")
+            SystemConfiguration.get_setting("OVERTIME_RATE_MULTIPLIER")
         )
         weekend_multiplier = Decimal(
-            SystemConfiguration.get_setting("WEEKEND_OVERTIME_MULTIPLIER", "2.0")
+            SystemConfiguration.get_setting("WEEKEND_OVERTIME_MULTIPLIER")
         )
 
         regular_overtime_hours = TimeCalculator.duration_to_decimal_hours(
@@ -170,7 +171,7 @@ class PayrollCalculator:
         )
 
         weekend_overtime_hours = Decimal("0.00")
-        if SystemConfiguration.get_bool_setting("ALLOW_WEEKEND_OVERTIME", True):
+        if SystemConfiguration.get_bool_setting("ALLOW_WEEKEND_OVERTIME"):
             weekend_records = Attendance.objects.filter(
                 employee=employee,
                 date__year=monthly_summary.year,
@@ -208,7 +209,7 @@ class PayrollCalculator:
             SystemConfiguration.get_setting(
                 f"{role_name}_TRANSPORT_ALLOWANCE",
                 SystemConfiguration.get_setting(
-                    "DEFAULT_TRANSPORT_ALLOWANCE", "2000.00"
+                    "DEFAULT_TRANSPORT_ALLOWANCE"
                 ),
             )
         )
@@ -216,7 +217,7 @@ class PayrollCalculator:
         meal_allowance = Decimal(
             SystemConfiguration.get_setting(
                 f"{role_name}_MEAL_ALLOWANCE",
-                SystemConfiguration.get_setting("DEFAULT_MEAL_ALLOWANCE", "1500.00"),
+                SystemConfiguration.get_setting("DEFAULT_MEAL_ALLOWANCE"),
             )
         )
 
@@ -224,7 +225,7 @@ class PayrollCalculator:
             SystemConfiguration.get_setting(
                 f"{role_name}_TELEPHONE_ALLOWANCE",
                 SystemConfiguration.get_setting(
-                    "DEFAULT_TELEPHONE_ALLOWANCE", "500.00"
+                    "DEFAULT_TELEPHONE_ALLOWANCE"
                 ),
             )
         )
@@ -232,7 +233,7 @@ class PayrollCalculator:
         fuel_allowance = Decimal(
             SystemConfiguration.get_setting(
                 f"{role_name}_FUEL_ALLOWANCE",
-                SystemConfiguration.get_setting("DEFAULT_FUEL_ALLOWANCE", "0.00"),
+                SystemConfiguration.get_setting("DEFAULT_FUEL_ALLOWANCE"),
             )
         )
 
@@ -263,10 +264,10 @@ class PayrollCalculator:
         employee: CustomUser, monthly_summary: MonthlyAttendanceSummary
     ) -> Decimal:
         bonus_threshold = Decimal(
-            SystemConfiguration.get_setting("ATTENDANCE_BONUS_THRESHOLD", "95.0")
+            SystemConfiguration.get_setting("ATTENDANCE_BONUS_THRESHOLD")
         )
         bonus_amount = Decimal(
-            SystemConfiguration.get_setting("ATTENDANCE_BONUS_AMOUNT", "1000.00")
+            SystemConfiguration.get_setting("ATTENDANCE_BONUS_AMOUNT")
         )
 
         if monthly_summary.attendance_percentage >= bonus_threshold:
@@ -278,10 +279,10 @@ class PayrollCalculator:
         employee: CustomUser, monthly_summary: MonthlyAttendanceSummary
     ) -> Decimal:
         punctuality_threshold = Decimal(
-            SystemConfiguration.get_setting("PUNCTUALITY_BONUS_THRESHOLD", "98.0")
+            SystemConfiguration.get_setting("PUNCTUALITY_BONUS_THRESHOLD")
         )
         bonus_amount = Decimal(
-            SystemConfiguration.get_setting("PUNCTUALITY_BONUS_AMOUNT", "500.00")
+            SystemConfiguration.get_setting("PUNCTUALITY_BONUS_AMOUNT")
         )
 
         if monthly_summary.punctuality_score >= punctuality_threshold:
@@ -387,7 +388,7 @@ class PayrollDeductionCalculator:
 
         half_day_percentage = (
             Decimal(
-                SystemConfiguration.get_setting("HALF_DAY_SALARY_PERCENTAGE", "50.0")
+                SystemConfiguration.get_setting("HALF_DAY_SALARY_PERCENTAGE")
             )
             / 100
         )
@@ -431,7 +432,7 @@ class PayrollDeductionCalculator:
 
             if role_name == "OTHER_STAFF":
                 grace_period = SystemConfiguration.get_int_setting(
-                    "OTHER_STAFF_GRACE_PERIOD_MINUTES", 15
+                    "OTHER_STAFF_GRACE_PERIOD_MINUTES"
                 )
                 half_day_threshold = SystemConfiguration.get_int_setting(
                     "HALF_DAY_THRESHOLD_MINUTES", 35
@@ -451,14 +452,14 @@ class PayrollDeductionCalculator:
                     else:
                         penalty_amount = Decimal(
                             SystemConfiguration.get_setting(
-                                "OTHER_STAFF_LATE_PENALTY_RATE", "50.00"
+                                "OTHER_STAFF_LATE_PENALTY_RATE"
                             )
                         )
                         penalty_type = "late_penalty"
 
             elif role_name == "OFFICE_WORKER":
                 half_day_threshold = SystemConfiguration.get_int_setting(
-                    "HALF_DAY_THRESHOLD_MINUTES", 35
+                    "HALF_DAY_THRESHOLD_MINUTES"
                 )
                 if record.late_minutes >= half_day_threshold:
                     penalty_amount = daily_salary * Decimal("0.5")
@@ -467,13 +468,13 @@ class PayrollDeductionCalculator:
                 else:
                     penalty_amount = Decimal(
                         SystemConfiguration.get_setting(
-                            "OFFICE_WORKER_LATE_PENALTY_RATE", "25.00"
+                            "OFFICE_WORKER_LATE_PENALTY_RATE"
                         )
                     )
                     penalty_type = "late_penalty"
             else:
                 penalty_per_minute = Decimal(
-                    SystemConfiguration.get_setting("LATE_PENALTY_PER_MINUTE", "10.00")
+                    SystemConfiguration.get_setting("LATE_PENALTY_PER_MINUTE")
                 )
                 penalty_amount = (penalty_per_minute * record.late_minutes).quantize(
                     Decimal("0.01"), rounding=ROUND_HALF_UP
@@ -618,13 +619,13 @@ class PayrollDeductionCalculator:
         employee: CustomUser, year: int, month: int, daily_salary: Decimal
     ) -> Dict[str, Decimal]:
         violation_limit = SystemConfiguration.get_int_setting(
-            "LUNCH_VIOLATION_LIMIT_PER_MONTH", 3
+            "LUNCH_VIOLATION_LIMIT_PER_MONTH"
         )
         penalty_days = SystemConfiguration.get_int_setting(
-            "LUNCH_VIOLATION_PENALTY_DAYS", 1
+            "LUNCH_VIOLATION_PENALTY_DAYS"
         )
         max_lunch_minutes = SystemConfiguration.get_int_setting(
-            "MAX_LUNCH_DURATION_MINUTES", 75
+            "MAX_LUNCH_DURATION_MINUTES"
         )
 
         month_start = date(year, month, 1)
@@ -654,10 +655,10 @@ class PayrollTaxCalculator:
         gross_salary: Decimal, epf_salary_base: Decimal
     ) -> Dict[str, Decimal]:
         employee_rate = (
-            Decimal(SystemConfiguration.get_setting("EPF_EMPLOYEE_RATE", "8.0")) / 100
+            Decimal(SystemConfiguration.get_setting("EPF_EMPLOYEE_RATE")) / 100
         )
         employer_rate = (
-            Decimal(SystemConfiguration.get_setting("EPF_EMPLOYER_RATE", "12.0")) / 100
+            Decimal(SystemConfiguration.get_setting("EPF_EMPLOYER_RATE")) / 100
         )
 
         employee_contribution = (epf_salary_base * employee_rate).quantize(
@@ -678,7 +679,7 @@ class PayrollTaxCalculator:
 
     @staticmethod
     def calculate_etf_contribution(gross_salary: Decimal) -> Dict[str, Decimal]:
-        etf_rate = Decimal(SystemConfiguration.get_setting("ETF_RATE", "3.0")) / 100
+        etf_rate = Decimal(SystemConfiguration.get_setting("ETF_RATE")) / 100
         etf_contribution = (gross_salary * etf_rate).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
@@ -690,10 +691,10 @@ class PayrollTaxCalculator:
         annual_income: Decimal, employee: CustomUser
     ) -> Dict[str, Decimal]:
         tax_free_threshold = Decimal(
-            SystemConfiguration.get_setting("TAX_FREE_THRESHOLD", "1200000.00")
+            SystemConfiguration.get_setting("TAX_FREE_THRESHOLD")
         )
         basic_tax_rate = (
-            Decimal(SystemConfiguration.get_setting("BASIC_TAX_RATE", "6.0")) / 100
+            Decimal(SystemConfiguration.get_setting("BASIC_TAX_RATE")) / 100
         )
 
         profile = EmployeeDataManager.get_employee_profile(employee)
@@ -701,15 +702,15 @@ class PayrollTaxCalculator:
         additional_relief = Decimal("0.00")
         if profile and profile.marital_status == "MARRIED":
             additional_relief += Decimal(
-                SystemConfiguration.get_setting("SPOUSE_RELIEF", "100000.00")
+                SystemConfiguration.get_setting("SPOUSE_RELIEF")
             )
 
         if profile and profile.number_of_children > 0:
             child_relief_per_child = Decimal(
-                SystemConfiguration.get_setting("CHILD_RELIEF_PER_CHILD", "75000.00")
+                SystemConfiguration.get_setting("CHILD_RELIEF_PER_CHILD")
             )
             max_children = int(
-                SystemConfiguration.get_setting("MAX_CHILDREN_FOR_RELIEF", "3")
+                SystemConfiguration.get_setting("MAX_CHILDREN_FOR_RELIEF")
             )
             additional_relief += child_relief_per_child * min(
                 profile.number_of_children, max_children
@@ -745,7 +746,7 @@ class PayrollAdvanceCalculator:
 
         max_percentage = (
             Decimal(
-                SystemConfiguration.get_setting("SALARY_ADVANCE_MAX_PERCENTAGE", "50.0")
+                SystemConfiguration.get_setting("SALARY_ADVANCE_MAX_PERCENTAGE")
             )
             / 100
         )
@@ -846,8 +847,8 @@ class PayrollReportDataProcessor:
             "ot_basic": payroll_data.get("basic_salary", Decimal("0.00")),
             "working_days": payroll_data.get("working_days", 0),
             "basic_salary": payroll_data.get("basic_salary", Decimal("0.00")),
-            "bonus_1": Decimal(SystemConfiguration.get_setting("DEFAULT_BONUS_1", "1500.00")),
-            "bonus_2": Decimal(SystemConfiguration.get_setting("DEFAULT_BONUS_2", "1000.00")),
+            "bonus_1": Decimal(SystemConfiguration.get_setting("DEFAULT_BONUS_1")),
+            "bonus_2": Decimal(SystemConfiguration.get_setting("DEFAULT_BONUS_2")),
             "epf_salary": payroll_data.get("epf_salary_base", Decimal("0.00")),
             "transport_allowance": payroll_data.get("transport_allowance", Decimal("0.00")),
             "telephone_allowance": payroll_data.get("telephone_allowance", Decimal("0.00")),
@@ -871,8 +872,8 @@ class PayrollReportDataProcessor:
             "epf_deduction": payroll_data.get("epf_deduction", Decimal("0.00")),
             "total_deductions": payroll_data.get("total_deductions", Decimal("0.00")),
             "net_salary": payroll_data.get("net_salary", Decimal("0.00")),
-            "fuel_per_day": Decimal(SystemConfiguration.get_setting("FUEL_PER_DAY", "50.00")),
-            "meal_per_day": Decimal(SystemConfiguration.get_setting("MEAL_PER_DAY", "350.00")),
+            "fuel_per_day": Decimal(SystemConfiguration.get_setting("FUEL_PER_DAY")),
+            "meal_per_day": Decimal(SystemConfiguration.get_setting("MEAL_PER_DAY")),
         }
 
     @staticmethod
@@ -1463,7 +1464,7 @@ class PayrollUtilityHelper:
     @staticmethod
     def get_payroll_processing_date() -> date:
         processing_day = SystemConfiguration.get_int_setting(
-            "PAYROLL_PROCESSING_DAY", 25
+            "PAYROLL_PROCESSING_DAY"
         )
         today = timezone.now().date()
 
@@ -1491,7 +1492,7 @@ class PayrollUtilityHelper:
     def get_current_payroll_period() -> Tuple[int, int]:
         today = timezone.now().date()
         processing_day = SystemConfiguration.get_int_setting(
-            "PAYROLL_PROCESSING_DAY", 25
+            "PAYROLL_PROCESSING_DAY"
         )
 
         if today.day >= processing_day:
@@ -1506,7 +1507,7 @@ class PayrollUtilityHelper:
     def get_next_payroll_period() -> Tuple[int, int]:
         today = timezone.now().date()
         processing_day = SystemConfiguration.get_int_setting(
-            "PAYROLL_PROCESSING_DAY", 25
+            "PAYROLL_PROCESSING_DAY"
         )
 
         if today.day < processing_day:
@@ -1523,7 +1524,7 @@ class PayrollUtilityHelper:
             return False, f"{field_name} cannot be negative"
 
         max_amount = Decimal(
-            SystemConfiguration.get_setting("MAX_PAYROLL_AMOUNT", "1000000.00")
+            SystemConfiguration.get_setting("MAX_PAYROLL_AMOUNT")
         )
         if amount > max_amount:
             return False, f"{field_name} exceeds maximum allowed amount"
@@ -1533,7 +1534,7 @@ class PayrollUtilityHelper:
     @staticmethod
     def round_payroll_amount(amount: Decimal) -> Decimal:
         rounding_precision = SystemConfiguration.get_int_setting(
-            "PAYROLL_ROUNDING_PRECISION", 2
+            "PAYROLL_ROUNDING_PRECISION"
         )
         return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
@@ -1569,7 +1570,7 @@ class PayrollUtilityHelper:
 
         settings = {}
         for setting in relevant_settings:
-            settings[setting] = SystemConfiguration.get_setting(setting, "")
+            settings[setting] = SystemConfiguration.get_setting(setting)
 
         return settings
 
@@ -1648,7 +1649,7 @@ class PayrollCacheManager:
 
 def get_current_payroll_period() -> Tuple[int, int]:
     today = timezone.now().date()
-    processing_day = SystemConfiguration.get_int_setting("PAYROLL_PROCESSING_DAY", 25)
+    processing_day = SystemConfiguration.get_int_setting("PAYROLL_PROCESSING_DAY")
 
     if today.day >= processing_day:
         return today.year, today.month

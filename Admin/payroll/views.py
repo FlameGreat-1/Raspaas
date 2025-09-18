@@ -244,6 +244,7 @@ class PayrollPeriodViews:
                         'payslips_count': dept_payslips.count(),
                         'calculated_count': dept_payslips.filter(status__in=['CALCULATED', 'APPROVED', 'PAID']).count(),
                         'approved_count': dept_payslips.filter(status__in=['APPROVED', 'PAID']).count(),
+                        'total_gross': dept_payslips.filter(status__in=['CALCULATED', 'APPROVED', 'PAID']).aggregate(Sum('gross_salary'))['gross_salary__sum'] or 0,
                     }
 
             roles = Role.objects.filter(is_active=True)
@@ -331,6 +332,7 @@ class PayrollPeriodViews:
                     active_employees = CustomUser.active.filter(status="ACTIVE")
 
                     calculated_payslips = Payslip.objects.bulk_calculate(period, active_employees)
+                    period.calculate_period_totals()
 
                     messages.success(request, f"Processed {len(calculated_payslips)} payslips successfully.")
 
@@ -699,6 +701,7 @@ class PayslipViews:
 
                 with transaction.atomic():
                     calculated_payslips = Payslip.objects.bulk_calculate(period, employees)
+                    period.calculate_period_totals()
 
                     log_payroll_activity(
                         request.user,
@@ -771,6 +774,7 @@ class PayslipViews:
 
                 with transaction.atomic():
                     approved_count, failed_approvals = Payslip.objects.bulk_approve(period, request.user, employees)
+                    period.calculate_period_totals()
 
                     if failed_approvals:
                         for failure in failed_approvals[:5]:
@@ -1721,6 +1725,10 @@ class DashboardView(LoginRequiredMixin, View):
                 if dept_summary.employee_count > 0:
                     department_summaries[dept.name] = dept_summary
 
+            total_employees = sum(summary.employee_count for summary in department_summaries.values())
+            total_gross_salary = sum(float(summary.total_gross_salary) for summary in department_summaries.values())
+            total_net_salary = sum(float(summary.total_net_salary) for summary in department_summaries.values())
+
             context = {
                 'page_title': f'Department Summary Report: {period.period_name}',
                 'period': period,
@@ -1729,6 +1737,9 @@ class DashboardView(LoginRequiredMixin, View):
                 'report_generated': True,
                 'can_export_pdf': True,
                 'can_export_excel': True,
+                'total_employees': total_employees,
+                'total_gross_salary': total_gross_salary,
+                'total_net_salary': total_net_salary,
             }
 
             return render(request, 'payroll/reports/department_summary.html', context)

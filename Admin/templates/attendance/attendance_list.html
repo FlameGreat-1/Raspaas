@@ -764,7 +764,7 @@
 </div>
 {% endblock %}
 
-{% block javascript %}
+{% block js %}
 <script src="{% static 'assets/libs/jquery/jquery.min.js' %}"></script>
 <script src="{% static 'assets/libs/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
 <script src="{% static 'assets/libs/datatables/datatables.min.js' %}"></script>
@@ -843,7 +843,7 @@
             var attendanceId = $(this).data('id');
             
             $.ajax({
-                url: "{% url 'attendance:attendance_detail' id=0 %}".replace('0', attendanceId),
+                url: "{% url 'attendance:attendance_detail' id='00000000-0000-0000-0000-000000000000' %}".replace('00000000-0000-0000-0000-000000000000', attendanceId),
                 type: 'GET',
                 dataType: 'json',
                 success: function(data) {
@@ -879,7 +879,7 @@
             var attendanceId = $(this).data('id');
             
             $.ajax({
-                url: "{% url 'attendance:attendance_detail' id=0 %}".replace('0', attendanceId),
+                url: "{% url 'attendance:attendance_detail' id='00000000-0000-0000-0000-000000000000' %}".replace('00000000-0000-0000-0000-000000000000', attendanceId),
                 type: 'GET',
                 dataType: 'json',
                 success: function(data) {

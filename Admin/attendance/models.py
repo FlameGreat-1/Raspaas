@@ -197,11 +197,11 @@ class Shift(models.Model):
             self.end_time = time(19, 0)
         if not self.break_duration_minutes:
             self.break_duration_minutes = SystemConfiguration.get_int_setting(
-                "LUNCH_BREAK_DURATION", 75
+                "LUNCH_BREAK_DURATION"
             )
         if not self.working_hours:
             self.working_hours = Decimal(
-                SystemConfiguration.get_setting("NET_WORKING_HOURS", "9.75")
+                SystemConfiguration.get_setting("NET_WORKING_HOURS")
             )
 
         self.full_clean()
@@ -240,12 +240,12 @@ class Shift(models.Model):
 
     @property
     def role_based_start_time(self):
-        work_start = SystemConfiguration.get_setting("WORK_START_TIME", "08:00:00")
+        work_start = SystemConfiguration.get_setting("WORK_START_TIME")
         return safe_time_conversion(work_start)
 
     @property
     def role_based_end_time(self):
-        work_end = SystemConfiguration.get_setting("WORK_END_TIME", "19:00:00")
+        work_end = SystemConfiguration.get_setting("WORK_END_TIME")
         return safe_time_conversion(work_end)
 
 
@@ -421,7 +421,7 @@ class AttendanceLog(models.Model):
             elif role_name == "OFFICE_WORKER":
                 office_cutoff = safe_time_conversion(
                     SystemConfiguration.get_setting(
-                        "OFFICE_WORKER_REPORTING_TIME", "08:30:00"
+                        "OFFICE_WORKER_REPORTING_TIME"
                     )
                 )
                 if actual_time <= office_cutoff:
@@ -442,7 +442,7 @@ class AttendanceLog(models.Model):
 
         elif self.log_type == "CHECK_OUT":
             work_end_time = safe_time_conversion(
-                SystemConfiguration.get_setting("WORK_END_TIME", "19:00:00")
+                SystemConfiguration.get_setting("WORK_END_TIME")
             )
             if actual_time >= work_end_time:
                 self.raw_data["status"] = "ON_TIME"
@@ -815,7 +815,7 @@ class LeaveRequest(models.Model):
             raise ValidationError("Half day period is required for half day leave")
 
         unpaid_threshold = safe_time_conversion(
-            SystemConfiguration.get_setting("UNPAID_LEAVE_THRESHOLD_TIME", "08:30:00")
+            SystemConfiguration.get_setting("UNPAID_LEAVE_THRESHOLD_TIME")
         )
         current_time = get_current_datetime().time()
 
@@ -830,7 +830,7 @@ class LeaveRequest(models.Model):
             and not self.medical_certificate
         ):
             medical_cert_days = SystemConfiguration.get_int_setting(
-                "MEDICAL_CERTIFICATE_REQUIRED_DAYS", 3
+                "MEDICAL_CERTIFICATE_REQUIRED_DAYS"
             )
             if self.total_days >= Decimal(str(medical_cert_days)):
                 raise ValidationError(
@@ -838,7 +838,7 @@ class LeaveRequest(models.Model):
                 )
 
         notice_days = (self.start_date - get_current_date()).days
-        min_notice = SystemConfiguration.get_int_setting("MIN_LEAVE_NOTICE_DAYS", 1)
+        min_notice = SystemConfiguration.get_int_setting("MIN_LEAVE_NOTICE_DAYS")
         if notice_days < min_notice:
             raise ValidationError(f"Minimum {min_notice} days notice required")
 
@@ -1065,7 +1065,7 @@ class Attendance(models.Model):
             return Decimal("0.00")
 
         expected_hours = Decimal(
-            SystemConfiguration.get_setting("NET_WORKING_HOURS", "9.75")
+            SystemConfiguration.get_setting("NET_WORKING_HOURS")
         )
         actual_hours = Decimal(str(self.work_time.total_seconds() / 3600))
 
@@ -1084,7 +1084,7 @@ class Attendance(models.Model):
         if self.late_minutes > 0:
             if self.employee.role and self.employee.role.name == "OTHER_STAFF":
                 grace_period = SystemConfiguration.get_int_setting(
-                    "OTHER_STAFF_GRACE_PERIOD_MINUTES", 15
+                    "OTHER_STAFF_GRACE_PERIOD_MINUTES"
                 )
                 if self.late_minutes <= grace_period:
                     penalty = Decimal("5.00")
@@ -1254,10 +1254,10 @@ class Attendance(models.Model):
         expected_time_obj = safe_time_conversion(expected_time)
 
         work_end_time = safe_time_conversion(
-            SystemConfiguration.get_setting("WORK_END_TIME", "19:00:00")
+            SystemConfiguration.get_setting("WORK_END_TIME")
         )
         min_work_hours = Decimal(
-            SystemConfiguration.get_setting("MINIMUM_WORK_HOURS_FULL_DAY", "9.75")
+            SystemConfiguration.get_setting("MINIMUM_WORK_HOURS_FULL_DAY")
         )
         min_work_duration = timedelta(hours=float(min_work_hours))
 
@@ -1267,7 +1267,7 @@ class Attendance(models.Model):
 
         if role_name == "OTHER_STAFF":
             grace_period = SystemConfiguration.get_int_setting(
-                "OTHER_STAFF_GRACE_PERIOD_MINUTES", 15
+                "OTHER_STAFF_GRACE_PERIOD_MINUTES"
             )
             grace_end = (
                 datetime.combine(date.today(), expected_time_obj)
@@ -1290,7 +1290,7 @@ class Attendance(models.Model):
         elif role_name == "OFFICE_WORKER":
             office_cutoff = safe_time_conversion(
                 SystemConfiguration.get_setting(
-                    "OFFICE_WORKER_REPORTING_TIME", "08:30:00"
+                    "OFFICE_WORKER_REPORTING_TIME"
                 )
             )
             if self.first_in_time > office_cutoff:
@@ -1344,7 +1344,7 @@ class Attendance(models.Model):
     @property
     def is_complete_day(self):
         min_hours = Decimal(
-            SystemConfiguration.get_setting("MINIMUM_WORK_HOURS_FULL_DAY", "9.75")
+            SystemConfiguration.get_setting("MINIMUM_WORK_HOURS_FULL_DAY")
         )
         actual_hours = Decimal(str(self.work_time.total_seconds() / 3600))
         return actual_hours >= min_hours
@@ -1352,7 +1352,7 @@ class Attendance(models.Model):
     @property
     def attendance_percentage(self):
         expected_hours = Decimal(
-            SystemConfiguration.get_setting("NET_WORKING_HOURS", "9.75")
+            SystemConfiguration.get_setting("NET_WORKING_HOURS")
         )
         actual_hours = Decimal(str(self.work_time.total_seconds() / 3600))
         return min(
@@ -1381,6 +1381,10 @@ class Attendance(models.Model):
     @property
     def formatted_weekend_work_time(self):
         return TimeCalculator.format_duration_to_excel_time(self.weekend_work_time)
+
+    @property
+    def work_hours(self):
+        return self.work_time.total_seconds() / 3600
 
 class ImportJob(models.Model):
     STATUS_CHOICES = (
@@ -1552,10 +1556,10 @@ class MonthlyAttendanceSummary(models.Model):
             return Decimal("0.00")
 
         attendance_weight = Decimal(
-            SystemConfiguration.get_setting("ATTENDANCE_WEIGHT", "0.6")
+            SystemConfiguration.get_setting("ATTENDANCE_WEIGHT")
         )
         punctuality_weight = Decimal(
-            SystemConfiguration.get_setting("PUNCTUALITY_WEIGHT", "0.4")
+            SystemConfiguration.get_setting("PUNCTUALITY_WEIGHT")
         )
 
         score = (
@@ -1567,6 +1571,18 @@ class MonthlyAttendanceSummary(models.Model):
     @property
     def lunch_break_penalty_days(self):
         return self.excessive_lunch_breaks // 3
+    
+    @property
+    def total_work_hours(self):
+        return self.total_work_time.total_seconds() / 3600
+
+    @property
+    def total_overtime_hours(self):
+        return self.total_overtime.total_seconds() / 3600
+
+    @property
+    def weekend_work_hours_numeric(self):
+        return self.weekend_work_hours.total_seconds() / 3600
 
 class AttendanceCorrection(models.Model):
     CORRECTION_TYPES = [
@@ -2030,16 +2046,16 @@ def get_employee_work_schedule(employee):
 
     schedule = {
         "reporting_time": SystemConfiguration.get_role_reporting_time(role_name),
-        "work_end_time": SystemConfiguration.get_setting("WORK_END_TIME", "19:00:00"),
+        "work_end_time": SystemConfiguration.get_setting("WORK_END_TIME"),
         "standard_work_hours": Decimal(
-            SystemConfiguration.get_setting("NET_WORKING_HOURS", "9.75")
+            SystemConfiguration.get_setting("NET_WORKING_HOURS")
         ),
         "lunch_duration": SystemConfiguration.get_int_setting(
-            "MAX_LUNCH_DURATION_MINUTES", 75
+            "MAX_LUNCH_DURATION_MINUTES"
         ),
         "grace_period": SystemConfiguration.get_role_grace_period(role_name),
         "overtime_threshold": SystemConfiguration.get_setting(
-            "OVERTIME_THRESHOLD_TIME", "19:00:00"
+            "OVERTIME_THRESHOLD_TIME"
         ),
     }
 

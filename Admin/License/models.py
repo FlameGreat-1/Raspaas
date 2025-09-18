@@ -5,7 +5,7 @@ import uuid
 import hashlib
 from datetime import datetime, timedelta
 import requests
-
+from django.conf import settings
 
 class Company(models.Model):
     name = models.CharField(max_length=255)
@@ -119,10 +119,16 @@ class License(models.Model):
             models.Index(fields=["expiration_date"]),
         ]
 
+
     def save(self, *args, **kwargs):
         if not self.license_key:
             base = f"{self.company.uuid}-{self.subscription_tier.name}-{self.expiration_date}-{uuid.uuid4()}"
             self.license_key = hashlib.sha256(base.encode()).hexdigest()
+
+        if not self.license_server_url:
+
+            self.license_server_url = settings.LICENSE_VERIFICATION_URL
+
         super().save(*args, **kwargs)
 
     def is_expired(self):
@@ -152,6 +158,10 @@ class License(models.Model):
     def verify_online(self):
         if not self.online_check_required:
             return True, "Online verification not required"
+
+        if not self.license_server_url:
+            self.license_server_url = settings.LICENSE_VERIFICATION_URL
+            self.save(update_fields=["license_server_url"])
 
         try:
             response = requests.post(
@@ -194,7 +204,9 @@ class License(models.Model):
             if self.last_online_check:
                 days_since_check = (timezone.now() - self.last_online_check).days
                 if days_since_check < self.max_offline_days:
-                    return True, "Using offline grace period"
+                    return True, f"Using offline grace period ({days_since_check}/{self.max_offline_days} days)"
+                else:
+                    return False, f"Offline grace period expired ({days_since_check} days, max {self.max_offline_days})"
             return False, f"Online verification error: {str(e)}"
 
     def validate(self, hardware_fingerprint=None):

@@ -3,7 +3,7 @@ from django.db.models import Q, Sum, Count
 from django.core.exceptions import ValidationError
 from accounts.models import CustomUser, SystemConfiguration
 from employees.models import EmployeeProfile, Contract
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from datetime import datetime, date, time, timedelta
 import socket
 import struct
@@ -759,7 +759,6 @@ class DeviceManager:
         finally:
             sock.close()
 
-
 class ValidationHelper:
     @staticmethod
     def validate_time_format(time_str: str) -> Tuple[bool, str]:
@@ -881,23 +880,23 @@ class AuditHelper:
     def log_attendance_change(user: CustomUser, action: str, employee: CustomUser, 
                             attendance_date: date, changes: Dict[str, Any], request=None):
         from accounts.models import AuditLog
-        
+
         ip_address = '127.0.0.1'
         user_agent = 'System'
-        
+
         if request:
             ip_address = request.META.get('REMOTE_ADDR', '127.0.0.1')
             user_agent = request.META.get('HTTP_USER_AGENT', 'Unknown')
-        
+
         description = f"Attendance {action} for {employee.get_full_name()} on {attendance_date}"
-        
+
         additional_data = {
             'employee_code': employee.employee_code,
             'attendance_date': attendance_date.isoformat(),
             'changes': changes,
             'module': 'attendance'
         }
-        
+
         AuditLog.log_action(
             user=user,
             action=f'ATTENDANCE_{action.upper()}',
@@ -910,22 +909,22 @@ class AuditHelper:
     @staticmethod
     def log_device_sync(user: CustomUser, device_id: str, sync_result: Dict[str, Any], request=None):
         from accounts.models import AuditLog
-        
+
         ip_address = '127.0.0.1'
         user_agent = 'System'
-        
+
         if request:
             ip_address = request.META.get('REMOTE_ADDR', '127.0.0.1')
             user_agent = request.META.get('HTTP_USER_AGENT', 'Unknown')
-        
+
         description = f"Device sync completed for {device_id}"
-        
+
         additional_data = {
             'device_id': device_id,
             'sync_result': sync_result,
             'module': 'attendance'
         }
-        
+
         AuditLog.log_action(
             user=user,
             action='DEVICE_SYNC',
@@ -935,92 +934,113 @@ class AuditHelper:
             additional_data=additional_data
         )
 
+
 class ReportGenerator:
     @staticmethod
-    def generate_attendance_report_data(employees: List[CustomUser], start_date: date, 
-                                      end_date: date) -> List[Dict[str, Any]]:
+    def generate_attendance_report_data(
+        employees: List[CustomUser], start_date: date, end_date: date
+    ) -> List[Dict[str, Any]]:
         from .models import Attendance
-        
+
         report_data = []
-        
+
         for employee in employees:
             attendance_records = Attendance.objects.filter(
-                employee=employee,
-                date__range=[start_date, end_date]
-            ).order_by('date')
-            
+                employee=employee, date__range=[start_date, end_date]
+            ).order_by("date")
+
             total_days = (end_date - start_date).days + 1
-            present_days = attendance_records.filter(status__in=['PRESENT', 'LATE']).count()
-            absent_days = attendance_records.filter(status='ABSENT').count()
-            half_days = attendance_records.filter(status='HALF_DAY').count()
-            late_days = attendance_records.filter(status='LATE').count()
-            
+            present_days = attendance_records.filter(
+                status__in=["PRESENT", "LATE"]
+            ).count()
+            absent_days = attendance_records.filter(status="ABSENT").count()
+            half_days = attendance_records.filter(status="HALF_DAY").count()
+            late_days = attendance_records.filter(status="LATE").count()
+
             total_work_time = sum(
-                (record.work_time for record in attendance_records),
-                timedelta(0)
+                (record.work_time for record in attendance_records), timedelta(0)
             )
-            
+
             total_overtime = sum(
-                (record.overtime for record in attendance_records),
-                timedelta(0)
+                (record.overtime for record in attendance_records), timedelta(0)
             )
-            
-            attendance_percentage = (present_days / total_days * 100) if total_days > 0 else 0
-            
-            report_data.append({
-                'employee': employee,
-                'employee_code': employee.employee_code,
-                'employee_name': employee.get_full_name(),
-                'department': employee.department.name if employee.department else 'N/A',
-                'total_days': total_days,
-                'present_days': present_days,
-                'absent_days': absent_days,
-                'half_days': half_days,
-                'late_days': late_days,
-                'total_work_time': total_work_time,
-                'total_overtime': total_overtime,
-                'attendance_percentage': round(attendance_percentage, 2),
-                'average_daily_hours': TimeCalculator.duration_to_decimal_hours(total_work_time) / max(present_days, 1)
-            })
-        
+
+            attendance_percentage = (
+                (present_days / total_days * 100) if total_days > 0 else 0
+            )
+
+            total_work_hours = total_work_time.total_seconds() / 3600
+            total_overtime_hours = total_overtime.total_seconds() / 3600
+
+            report_data.append(
+                {
+                    "employee": employee,
+                    "employee_code": employee.employee_code,
+                    "employee_name": employee.get_full_name(),
+                    "department": (
+                        employee.department.name if employee.department else "N/A"
+                    ),
+                    "total_days": total_days,
+                    "present_days": present_days,
+                    "absent_days": absent_days,
+                    "half_days": half_days,
+                    "late_days": late_days,
+                    "total_work_time": total_work_time,
+                    "total_work_hours": total_work_hours,
+                    "total_overtime": total_overtime,
+                    "total_overtime_hours": total_overtime_hours,
+                    "attendance_percentage": round(attendance_percentage, 2),
+                    "average_daily_hours": TimeCalculator.duration_to_decimal_hours(
+                        total_work_time
+                    )
+                    / max(present_days, 1),
+                }
+            )
+
         return report_data
 
     @staticmethod
     def format_duration_for_display(duration: timedelta) -> str:
         if not duration:
             return "00:00:00"
-        
+
         total_seconds = int(abs(duration.total_seconds()))
         hours = total_seconds // 3600
         minutes = (total_seconds % 3600) // 60
         seconds = total_seconds % 60
-        
+
         sign = "-" if duration.total_seconds() < 0 else ""
         return f"{sign}{hours:02d}:{minutes:02d}:{seconds:02d}"
+
 
 def get_system_timezone():
     return timezone.get_current_timezone()
 
+
 def get_current_date():
     return timezone.now().date()
+
 
 def get_current_datetime():
     return timezone.now()
 
+
 def generate_unique_id():
     return str(uuid.uuid4())
 
-def safe_decimal_conversion(value: Any, default: Decimal = Decimal('0.00')) -> Decimal:
+
+def safe_decimal_conversion(value: Any, default: Decimal = Decimal("0.00")) -> Decimal:
     try:
         if isinstance(value, Decimal):
             return value
         if isinstance(value, (int, float)):
-            return Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         if isinstance(value, str) and value.strip():
-            return Decimal(value).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            return Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         return default
     except (ValueError, TypeError, InvalidOperation):
         return default
+
 
 def safe_time_conversion(value: Any) -> Optional[time]:
     if isinstance(value, time):
@@ -1029,6 +1049,7 @@ def safe_time_conversion(value: Any) -> Optional[time]:
         return TimeCalculator.parse_time_string(value)
     return None
 
+
 def safe_date_conversion(value: Any) -> Optional[date]:
     if isinstance(value, date):
         return value
@@ -1036,10 +1057,10 @@ def safe_date_conversion(value: Any) -> Optional[date]:
         return value.date()
     if isinstance(value, str):
         try:
-            return datetime.strptime(value, '%Y-%m-%d').date()
+            return datetime.strptime(value, "%Y-%m-%d").date()
         except ValueError:
             try:
-                return datetime.strptime(value, '%d/%m/%Y').date()
+                return datetime.strptime(value, "%d/%m/%Y").date()
             except ValueError:
                 return None
     return None

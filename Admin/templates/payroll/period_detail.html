@@ -250,7 +250,7 @@
                                                 <td>{{ dept_data.payslips_count }}</td>
                                                 <td>{{ dept_data.calculated_count }}</td>
                                                 <td>{{ dept_data.approved_count }}</td>
-                                                <td>{{ dept_data.summary.total_gross|floatformat:2 }}</td>
+                                                <td>{{ dept_data.total_gross|floatformat:2 }}</td>
                                             </tr>
                                             {% empty %}
                                             <tr>
@@ -394,7 +394,7 @@
 </div>
 
 {% endblock %}
-{% block javascript %}
+{% block js %}
 <script src="/static/assets/libs/gridjs/gridjs.umd.js"></script>
 {% endblock %}
 

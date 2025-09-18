@@ -1,8 +1,0 @@
-.logistics-service{
-	@include border-radius($border-radius-sm);
-	@include transition();
-	cursor: pointer;
-	&:hover{
-		background-color: var(--#{$prefix}light-bg-subtle);
-	}
-}

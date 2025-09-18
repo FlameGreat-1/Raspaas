@@ -77,9 +77,9 @@
                             </p>
                         </div>
                         <div class="col-md-6 text-md-end">
-                            <p class="mb-1">Total Employees: <strong>{{ period.total_employees }}</strong></p>
-                            <p class="mb-1">Total Gross Salary: <strong>${{ period.total_gross_salary|floatformat:2 }}</strong></p>
-                            <p class="mb-1">Total Net Salary: <strong>${{ period.total_net_salary|floatformat:2 }}</strong></p>
+                            <p class="mb-1">Total Employees: <strong>{{ total_employees }}</strong></p>
+                            <p class="mb-1">Total Gross Salary: <strong>${{ total_gross_salary|floatformat:2 }}</strong></p>
+                            <p class="mb-1">Total Net Salary: <strong>${{ total_net_salary|floatformat:2 }}</strong></p>
                         </div>
                     </div>
                 </div>
@@ -285,7 +285,7 @@
 </div>
 {% endblock %}
 
-{% block javascript %}
+{% block js %}
 <script src="/static/assets/libs/apexcharts/apexcharts.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {

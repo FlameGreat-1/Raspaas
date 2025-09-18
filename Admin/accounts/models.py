@@ -625,6 +625,7 @@ class UserSession(models.Model):
 
         return count
 
+
 class SystemConfiguration(models.Model):
     SETTING_TYPES = [
         ("SYSTEM", "System Setting"),
@@ -637,12 +638,18 @@ class SystemConfiguration(models.Model):
         ("CALCULATION", "Calculation Setting"),
         ("VALIDATION", "Validation Setting"),
         ("INTEGRATION", "Integration Setting"),
+        ("TAX", "Tax Setting"),
+        ("ALLOWANCE", "Allowance Setting"),
+        ("BONUS", "Bonus Setting"),
+        ("PENALTY", "Penalty Setting"),
     ]
 
     id = models.AutoField(primary_key=True)
     key = models.CharField(max_length=100, unique=True)
     value = models.TextField()
-    setting_type = models.CharField(max_length=20, choices=SETTING_TYPES, default="SYSTEM")
+    setting_type = models.CharField(
+        max_length=20, choices=SETTING_TYPES, default="SYSTEM"
+    )
     description = models.TextField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
     is_encrypted = models.BooleanField(default=False)
@@ -672,8 +679,6 @@ class SystemConfiguration(models.Model):
         return f"{self.key}: {self.value[:50]}"
 
     def get_display_name(self):
-        """Convert key to user-friendly display name"""
-        
         return self.key.replace("_", " ").title()
 
     def save(self, *args, **kwargs):
@@ -681,15 +686,17 @@ class SystemConfiguration(models.Model):
         super().save(*args, **kwargs)
 
     @classmethod
-    def get_setting(cls, key, default=None):
+    def get_setting(cls, key):
         try:
             setting = cls.objects.get(key=key.upper(), is_active=True)
             return setting.value
         except cls.DoesNotExist:
-            return default
+            raise ValueError(f"Setting {key} not found in system configuration")
 
     @classmethod
-    def set_setting(cls, key, value, setting_type="SYSTEM", description=None, user=None):
+    def set_setting(
+        cls, key, value, setting_type="SYSTEM", description=None, user=None
+    ):
         key = key.upper()
         setting, created = cls.objects.update_or_create(
             key=key,
@@ -704,40 +711,41 @@ class SystemConfiguration(models.Model):
         return setting
 
     @classmethod
-    def get_int_setting(cls, key, default=0):
+    def get_int_setting(cls, key):
         try:
-            value = cls.get_setting(key, str(default))
+            value = cls.get_setting(key)
             return int(value)
         except (ValueError, TypeError):
-            return default
+            raise ValueError(f"Setting {key} is not a valid integer")
 
     @classmethod
-    def get_float_setting(cls, key, default=0.0):
+    def get_float_setting(cls, key):
         try:
-            value = cls.get_setting(key, str(default))
+            value = cls.get_setting(key)
             return float(value)
         except (ValueError, TypeError):
-            return default
+            raise ValueError(f"Setting {key} is not a valid float")
 
     @classmethod
-    def get_bool_setting(cls, key, default=False):
-        value = cls.get_setting(key, str(default).lower())
+    def get_bool_setting(cls, key):
+        value = cls.get_setting(key)
         return value.lower() in ["true", "1", "yes", "on", "enabled"]
 
     @classmethod
     def get_role_reporting_time(cls, role_name):
         role_key = f"{role_name.upper()}_REPORTING_TIME"
-        return cls.get_setting(role_key, "08:00:00")
+        return cls.get_setting(role_key)
 
     @classmethod
     def get_role_grace_period(cls, role_name):
         if role_name.upper() == "OTHER_STAFF":
-            return cls.get_int_setting("OTHER_STAFF_GRACE_PERIOD_MINUTES", 15)
+            return cls.get_int_setting("OTHER_STAFF_GRACE_PERIOD_MINUTES")
         return 0
 
     @classmethod
     def initialize_default_settings(cls):
         default_settings = {
+            # Original settings
             "WORK_START_TIME": ("08:00:00", "ATTENDANCE", "Standard work start time"),
             "WORK_END_TIME": ("19:00:00", "ATTENDANCE", "Standard work end time"),
             "NET_WORKING_HOURS": ("9.75", "ATTENDANCE", "Net working hours per day"),
@@ -821,10 +829,59 @@ class SystemConfiguration(models.Model):
             "SECURITY_ALERT_THRESHOLD": ("10", "SECURITY", "Security events threshold for alerts"),
             "MIN_PASSWORD_LENGTH": ("8", "SECURITY", "Minimum password length"),
             "REQUIRE_STRONG_PASSWORD": ("true", "SECURITY", "Require strong password"),
-            "OVERTIME_RATE": ("1.50", "PAYROLL", "Overtime pay rate multiplier"),
-            "LATE_PENALTY_RATE": ("0.00", "PAYROLL", "Late arrival penalty rate per hour"),
-            "WORKING_DAYS_PER_WEEK": ("5", "PAYROLL", "Standard working days per week"),
-            "WORKING_HOURS_PER_DAY": ("8.00", "PAYROLL", "Standard working hours per day"),
+            
+            "OVERTIME_RATE_MULTIPLIER": ("1.50", "PAYROLL", "Overtime pay rate multiplier"),
+            "WEEKEND_OVERTIME_MULTIPLIER": ("2.00", "PAYROLL", "Weekend overtime pay rate multiplier"),
+            "HALF_DAY_SALARY_PERCENTAGE": ("50.00", "PAYROLL", "Percentage of salary for half day"),
+            "ATTENDANCE_BONUS_THRESHOLD": ("95.00", "BONUS", "Attendance percentage threshold for bonus"),
+            "ATTENDANCE_BONUS_AMOUNT": ("1000.00", "BONUS", "Bonus amount for meeting attendance threshold"),
+            "PUNCTUALITY_BONUS_THRESHOLD": ("98.00", "BONUS", "Punctuality score threshold for bonus"),
+            "PUNCTUALITY_BONUS_AMOUNT": ("500.00", "BONUS", "Bonus amount for meeting punctuality threshold"),
+            "LATE_PENALTY_PER_MINUTE": ("5.00", "PENALTY", "Late arrival penalty rate per minute"),
+            "OTHER_STAFF_LATE_PENALTY_RATE": ("100.00", "PENALTY", "Late penalty rate for other staff"),
+            "OFFICE_WORKER_LATE_PENALTY_RATE": ("150.00", "PENALTY", "Late penalty rate for office workers"),
+            "EPF_EMPLOYEE_RATE": ("8.0", "TAX", "Employee EPF contribution percentage"),
+            "EPF_EMPLOYER_RATE": ("12.0", "TAX", "Employer EPF contribution percentage"),
+            "ETF_RATE": ("3.0", "TAX", "ETF contribution percentage"),
+            "TAX_FREE_THRESHOLD": ("50000.00", "TAX", "Annual income below this amount is not taxed"),
+            "BASIC_TAX_RATE": ("6.0", "TAX", "Basic income tax rate percentage"),
+            "SPOUSE_RELIEF": ("100000.00", "TAX", "Tax relief for married employees"),
+            "CHILD_RELIEF_PER_CHILD": ("75000.00", "TAX", "Tax relief per child"),
+            "MAX_CHILDREN_FOR_RELIEF": ("3", "TAX", "Maximum number of children for tax relief"),
+            "DEFAULT_BONUS_1": ("1500.00", "BONUS", "Default bonus 1 amount"),
+            "DEFAULT_BONUS_2": ("1000.00", "BONUS", "Default bonus 2 amount"),
+            "SALARY_ADVANCE_MAX_PERCENTAGE": ("50.0", "PAYROLL", "Maximum percentage of salary for advance"),
+            "PAYROLL_PROCESSING_DAY": ("25", "PAYROLL", "Day of month for payroll processing"),
+            "MAX_PAYROLL_AMOUNT": ("1000000.00", "PAYROLL", "Maximum allowed payroll amount"),
+            "PAYROLL_ROUNDING_PRECISION": ("2", "PAYROLL", "Decimal places for payroll rounding"),
+            "FUEL_PER_DAY": ("50.00", "ALLOWANCE", "Fuel allowance per day"),
+            "MEAL_PER_DAY": ("350.00", "ALLOWANCE", "Meal allowance per day"),
+            
+            # Role-specific allowances
+            "DEFAULT_TRANSPORT_ALLOWANCE": ("0.00", "ALLOWANCE", "Default transport allowance"),
+            "DEFAULT_MEAL_ALLOWANCE": ("0.00", "ALLOWANCE", "Default meal allowance"),
+            "DEFAULT_TELEPHONE_ALLOWANCE": ("0.00", "ALLOWANCE", "Default telephone allowance"),
+            "DEFAULT_FUEL_ALLOWANCE": ("0.00", "ALLOWANCE", "Default fuel allowance"),
+            
+            "MANAGER_TRANSPORT_ALLOWANCE": ("5000.00", "ALLOWANCE", "Transport allowance for managers"),
+            "MANAGER_MEAL_ALLOWANCE": ("7500.00", "ALLOWANCE", "Meal allowance for managers"),
+            "MANAGER_TELEPHONE_ALLOWANCE": ("2000.00", "ALLOWANCE", "Telephone allowance for managers"),
+            "MANAGER_FUEL_ALLOWANCE": ("10000.00", "ALLOWANCE", "Fuel allowance for managers"),
+            
+            "CASHIER_TRANSPORT_ALLOWANCE": ("3000.00", "ALLOWANCE", "Transport allowance for cashiers"),
+            "CASHIER_MEAL_ALLOWANCE": ("5000.00", "ALLOWANCE", "Meal allowance for cashiers"),
+            "CASHIER_TELEPHONE_ALLOWANCE": ("1000.00", "ALLOWANCE", "Telephone allowance for cashiers"),
+            "CASHIER_FUEL_ALLOWANCE": ("0.00", "ALLOWANCE", "Fuel allowance for cashiers"),
+            
+            "OFFICE_WORKER_TRANSPORT_ALLOWANCE": ("3000.00", "ALLOWANCE", "Transport allowance for office workers"),
+            "OFFICE_WORKER_MEAL_ALLOWANCE": ("5000.00", "ALLOWANCE", "Meal allowance for office workers"),
+            "OFFICE_WORKER_TELEPHONE_ALLOWANCE": ("1000.00", "ALLOWANCE", "Telephone allowance for office workers"),
+            "OFFICE_WORKER_FUEL_ALLOWANCE": ("0.00", "ALLOWANCE", "Fuel allowance for office workers"),
+            
+            "OTHER_STAFF_TRANSPORT_ALLOWANCE": ("2000.00", "ALLOWANCE", "Transport allowance for other staff"),
+            "OTHER_STAFF_MEAL_ALLOWANCE": ("3500.00", "ALLOWANCE", "Meal allowance for other staff"),
+            "OTHER_STAFF_TELEPHONE_ALLOWANCE": ("0.00", "ALLOWANCE", "Telephone allowance for other staff"),
+            "OTHER_STAFF_FUEL_ALLOWANCE": ("0.00", "ALLOWANCE", "Fuel allowance for other staff"),
         }
 
         created_count = 0

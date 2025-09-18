@@ -65,13 +65,12 @@
                             </div>
                         </div>
                     </div>
-                    
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="id_start_date" class="form-label">Start Date <span class="text-danger">*</span></label>
-                                <input type="text" name="start_date" id="id_start_date" class="form-control datepicker-input" 
-                                       value="{{ form.start_date.value|date:'Y-m-d' }}" data-date-format="yyyy-mm-dd" required>
+                                <input type="date" name="start_date" id="id_start_date" class="form-control" 
+                                       value="{{ form.start_date.value|date:'Y-m-d' }}" required>
                                 {% if form.start_date.errors %}
                                 <div class="invalid-feedback d-block">
                                     {% for error in form.start_date.errors %}
@@ -84,8 +83,8 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="id_end_date" class="form-label">End Date <span class="text-danger">*</span></label>
-                                <input type="text" name="end_date" id="id_end_date" class="form-control datepicker-input" 
-                                       value="{{ form.end_date.value|date:'Y-m-d' }}" data-date-format="yyyy-mm-dd" required>
+                                <input type="date" name="end_date" id="id_end_date" class="form-control" 
+                                       value="{{ form.end_date.value|date:'Y-m-d' }}" required>
                                 {% if form.end_date.errors %}
                                 <div class="invalid-feedback d-block">
                                     {% for error in form.end_date.errors %}
@@ -101,8 +100,8 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="id_processing_date" class="form-label">Processing Date <span class="text-danger">*</span></label>
-                                <input type="text" name="processing_date" id="id_processing_date" class="form-control datepicker-input" 
-                                       value="{{ form.processing_date.value|date:'Y-m-d' }}" data-date-format="yyyy-mm-dd" required>
+                                <input type="date" name="processing_date" id="id_processing_date" class="form-control" 
+                                       value="{{ form.processing_date.value|date:'Y-m-d' }}" required>
                                 {% if form.processing_date.errors %}
                                 <div class="invalid-feedback d-block">
                                     {% for error in form.processing_date.errors %}
@@ -115,8 +114,8 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="id_cutoff_date" class="form-label">Cutoff Date <span class="text-danger">*</span></label>
-                                <input type="text" name="cutoff_date" id="id_cutoff_date" class="form-control datepicker-input" 
-                                       value="{{ form.cutoff_date.value|date:'Y-m-d' }}" data-date-format="yyyy-mm-dd" required>
+                                <input type="date" name="cutoff_date" id="id_cutoff_date" class="form-control" 
+                                       value="{{ form.cutoff_date.value|date:'Y-m-d' }}" required>
                                 {% if form.cutoff_date.errors %}
                                 <div class="invalid-feedback d-block">
                                     {% for error in form.cutoff_date.errors %}
@@ -126,7 +125,7 @@
                                 {% endif %}
                             </div>
                         </div>
-                    </div>
+                    </div>                
                     
                     <div class="row">
                         <div class="col-12">
@@ -158,14 +157,16 @@
 </div>
 
 {% endblock %}
-{% block javascript %}
+{% block js %}
 <script src="/static/assets/libs/air-datepicker/air-datepicker.js"></script>
+<script src="/static/assets/libs/air-datepicker/locale/en.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const datepickerElements = document.querySelectorAll('.datepicker-input');
         datepickerElements.forEach(function(element) {
             new AirDatepicker(element, {
-                dateFormat: 'yyyy-MM-dd'
+                dateFormat: 'yyyy-MM-dd',
+                language: 'en'
             });
         });
         

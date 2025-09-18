@@ -367,8 +367,8 @@ class EmployeeRegistrationForm(forms.ModelForm):
                 - ((today.month, today.day) < (dob.month, dob.day))
             )
             try:
-                min_age = int(SystemConfiguration.get_setting("MIN_EMPLOYEE_AGE", "18"))
-                max_age = int(SystemConfiguration.get_setting("MAX_EMPLOYEE_AGE", "65"))
+                min_age = int(SystemConfiguration.get_setting("MIN_EMPLOYEE_AGE"))
+                max_age = int(SystemConfiguration.get_setting("MAX_EMPLOYEE_AGE"))
             except:
                 min_age = 18
                 max_age = 65

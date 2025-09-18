@@ -777,7 +777,7 @@
 </div>
 {% endblock %}
 
-{% block javascript %}
+{% block js %}
 <script src="/static/assets/libs/apexcharts/apexcharts.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -1370,14 +1370,13 @@
         var employeeAttendanceBarChart = new ApexCharts(document.querySelector("#employeeAttendanceBarChart"), employeeAttendanceBarOptions);
         employeeAttendanceBarChart.render();
         
-        // Employee Work Hours Chart
         var employeeWorkHoursOptions = {
             series: [{
                 name: 'Work Hours',
-                data: [{% for emp in report.report_data.employee_data %}{{ emp.total_work_hours }}{% if not forloop.last %},{% endif %}{% endfor %}]
+                data: [{% for emp in report.report_data.employee_data %}{{ emp.total_work_hours|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}]
             }, {
                 name: 'Overtime Hours',
-                data: [{% for emp in report.report_data.employee_data %}{{ emp.total_overtime_hours }}{% if not forloop.last %},{% endif %}{% endfor %}]
+                data: [{% for emp in report.report_data.employee_data %}{{ emp.total_overtime_hours|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}]
             }],
             chart: {
                 type: 'bar',
@@ -1544,14 +1543,14 @@
 
         var departmentAttendanceBarChart = new ApexCharts(document.querySelector("#departmentAttendanceBarChart"), departmentAttendanceBarOptions);
         departmentAttendanceBarChart.render();
-        
+
         var departmentWorkHoursOptions = {
             series: [{
                 name: 'Work Hours',
-                data: [{% for dept in report.report_data.department_data %}{{ dept.total_work_hours }}{% if not forloop.last %},{% endif %}{% endfor %}]
+                data: [{% for dept in report.report_data.department_data %}{{ dept.total_work_hours|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}]
             }, {
                 name: 'Overtime Hours',
-                data: [{% for dept in report.report_data.department_data %}{{ dept.total_overtime_hours }}{% if not forloop.last %},{% endif %}{% endfor %}]
+                data: [{% for dept in report.report_data.department_data %}{{ dept.total_overtime_hours|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}]
             }],
             chart: {
                 type: 'bar',

@@ -9,7 +9,7 @@
 {% endblock %}
 
 {% block css %}
-<link rel="stylesheet" href="/static/assets/libs/apexcharts/apexcharts.css">
+<link rel="stylesheet" href="{% static 'assets/libs/apexcharts/apexcharts.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -272,8 +272,8 @@
 </div>
 {% endblock %}
 
-{% block javascript %}
-<script src="/static/assets/libs/apexcharts/apexcharts.min.js"></script>
+{% block js %}
+<script src="{% static 'assets/libs/apexcharts/apexcharts.min.js' %}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Attendance Overview Chart
@@ -368,68 +368,79 @@
         attendanceDistributionChart.render();
         
         // Work Hours Trend Chart
-        var workHoursTrendOptions = {
-            series: [{
-                name: 'Work Hours',
-                data: [
-                    {% for record in attendance_records %}
-                        {% if record.work_time %}
-                            {% if record.formatted_work_time %}{{ record.formatted_work_time|floatformat:2 }}{% else %}0{% endif %}{% if not forloop.last %},{% endif %}
-                        {% else %}
-                            0{% if not forloop.last %},{% endif %}
-                        {% endif %}
-                    {% endfor %}
-                ]
-            }],
-            chart: {
-                type: 'area',
-                height: 300,
-                toolbar: {
-                    show: false
-                }
-            },
-            dataLabels: {
-                enabled: false
-            },
-            stroke: {
-                curve: 'smooth',
-                width: 2
-            },
-            colors: ['#0ab39c'],
-            fill: {
-                type: 'gradient',
-                gradient: {
-                    shadeIntensity: 1,
-                    opacityFrom: 0.6,
-                    opacityTo: 0.1,
-                    stops: [0, 90, 100]
-                }
-            },
-            xaxis: {
-                categories: [
-                    {% for record in attendance_records %}
-                        '{{ record.date|date:"M d" }}'{% if not forloop.last %},{% endif %}
-                    {% endfor %}
-                ],
-                labels: {
-                    rotate: -45,
-                    rotateAlways: true
-                }
-            },
-            yaxis: {
-                title: {
-                    text: 'Hours'
-                },
-                min: 0
-            },
-            markers: {
-                size: 4
-            }
-        };
+        var workHoursData = [];
+        var workHoursCategories = [];
 
-        var workHoursTrendChart = new ApexCharts(document.querySelector("#workHoursTrendChart"), workHoursTrendOptions);
-        workHoursTrendChart.render();
+        {% for record in attendance_records %}
+            workHoursCategories.push('{{ record.date|date:"M d" }}');
+            workHoursData.push({{ record.work_hours|floatformat:2 }});
+        {% endfor %}
+        
+        var workHoursTrendChartEl = document.querySelector("#workHoursTrendChart");
+        
+        if (workHoursTrendChartEl) {
+            if (workHoursData.length > 0 && workHoursCategories.length > 0) {
+                var workHoursTrendOptions = {
+                    series: [{
+                        name: 'Work Hours',
+                        data: workHoursData
+                    }],
+                    chart: {
+                        type: 'line',
+                        height: 300,
+                        toolbar: {
+                            show: false
+                        }
+                    },
+                    dataLabels: {
+                        enabled: false
+                    },
+                    stroke: {
+                        curve: 'straight',
+                        width: 4,
+                        colors: ['#0ab39c']
+                    },
+                    xaxis: {
+                        categories: workHoursCategories,
+                        labels: {
+                            rotate: -45,
+                            rotateAlways: true
+                        }
+                    },
+                    yaxis: {
+                        title: {
+                            text: 'Hours'
+                        },
+                        min: 0
+                    },
+                    markers: {
+                        size: 6,
+                        colors: ['#0ab39c'],
+                        strokeWidth: 3,
+                        strokeColors: '#fff'
+                    },
+                    grid: {
+                        show: true,
+                        borderColor: '#f1f1f1',
+                        row: {
+                            colors: ['transparent', 'transparent']
+                        }
+                    },
+                    tooltip: {
+                        y: {
+                            formatter: function(value) {
+                                return value + ' hours';
+                            }
+                        }
+                    }
+                };
+                
+                var workHoursTrendChart = new ApexCharts(workHoursTrendChartEl, workHoursTrendOptions);
+                workHoursTrendChart.render();
+            } else {
+                workHoursTrendChartEl.innerHTML = "<div class='text-center py-5'>No work hours data available</div>";
+            }
+        }
     });
 </script>
 {% endblock %}
-

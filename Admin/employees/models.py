@@ -167,7 +167,7 @@ class EmployeeProfile(models.Model):
     @property
     def shift_hours(self):
         try:
-            return Decimal(SystemConfiguration.get_setting("NET_WORKING_HOURS", "9.75"))
+            return Decimal(SystemConfiguration.get_setting("NET_WORKING_HOURS"))
         except:
             return Decimal("9.75")
 

@@ -1784,16 +1784,16 @@ def user_activity_log_view(request, user_id=None):
 
 class SystemConfigurationView(LoginRequiredMixin, View):
     template_name = "accounts/system_config.html"
-    
+
     def dispatch(self, request, *args, **kwargs):
         if not UserUtilities.check_user_permission(request.user, "manage_system_settings"):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
-    
+
     def get(self, request, *args, **kwargs):
         action = kwargs.get('action', 'list')
         config_id = kwargs.get('config_id')
-        
+
         if action == 'list':
             return self.list_view(request)
         elif action == 'detail' and config_id:
@@ -1814,11 +1814,11 @@ class SystemConfigurationView(LoginRequiredMixin, View):
             return self.import_view(request)
         else:
             return self.list_view(request)
-    
+
     def post(self, request, *args, **kwargs):
         action = kwargs.get('action', 'list')
         config_id = kwargs.get('config_id')
-        
+
         if action == 'create':
             return self.create_post(request)
         elif action == 'edit' and config_id:
@@ -1835,19 +1835,19 @@ class SystemConfigurationView(LoginRequiredMixin, View):
             return self.reset_defaults_post(request)
         else:
             return self.list_view(request)
-    
+
     def list_view(self, request):
 
         if not SystemConfiguration.objects.exists():
             created_count = SystemConfiguration.initialize_default_settings()
             messages.success(request, f'Initialized {created_count} default system configurations.')
-        
+
         queryset = SystemConfiguration.objects.filter(is_active=True)
-        
+
         setting_type = request.GET.get('type')
         if setting_type:
             queryset = queryset.filter(setting_type=setting_type)
-        
+
         search_query = request.GET.get('search')
         if search_query:
             queryset = queryset.filter(
@@ -1855,15 +1855,15 @@ class SystemConfigurationView(LoginRequiredMixin, View):
                 Q(description__icontains=search_query) |
                 Q(value__icontains=search_query)
             )
-        
+
         configurations = queryset.order_by('setting_type', 'key')
-        
+
         grouped_configs = {}
         for config in configurations:
             if config.setting_type not in grouped_configs:
                 grouped_configs[config.setting_type] = []
             grouped_configs[config.setting_type].append(config)
-        
+
         context = {
             'page_title': 'System Configuration',
             'configurations': configurations,
@@ -1877,22 +1877,22 @@ class SystemConfigurationView(LoginRequiredMixin, View):
             'can_bulk_edit': True,
             'action': 'list'
         }
-        
+
         return render(request, self.template_name, context)
-    
+
     def detail_view(self, request, config_id):
         configuration = get_object_or_404(SystemConfiguration, id=config_id, is_active=True)
-        
+
         related_configs = SystemConfiguration.objects.filter(
             setting_type=configuration.setting_type,
             is_active=True
         ).exclude(id=config_id)[:5]
-        
+
         audit_logs = AuditLog.objects.filter(
             model_name='SystemConfiguration',
             object_id=str(config_id)
         ).order_by('-timestamp')[:10]
-        
+
         context = {
             'page_title': f'Configuration - {configuration.key}',
             'configuration': configuration,
@@ -1902,12 +1902,12 @@ class SystemConfigurationView(LoginRequiredMixin, View):
             'can_delete': True,
             'action': 'detail'
         }
-        
+
         return render(request, self.template_name, context)
-    
+
     def create_view(self, request):
         form = SystemConfigurationForm()
-        
+
         context = {
             'page_title': 'Add System Configuration',
             'form_title': 'Configuration Details',
@@ -1915,18 +1915,18 @@ class SystemConfigurationView(LoginRequiredMixin, View):
             'setting_types': SystemConfiguration.SETTING_TYPES,
             'action': 'create'
         }
-        
+
         return render(request, self.template_name, context)
-    
+
     def create_post(self, request):
         form = SystemConfigurationForm(request.POST)
-        
+
         if form.is_valid():
             with transaction.atomic():
                 config = form.save(commit=False)
                 config.updated_by = request.user
                 config.save()
-                
+
                 log_user_activity(
                     user=request.user,
                     action="CREATE",
@@ -1938,10 +1938,10 @@ class SystemConfigurationView(LoginRequiredMixin, View):
                         'config_type': config.setting_type,
                     }
                 )
-                
+
                 messages.success(request, f'Configuration "{config.key}" created successfully.')
                 return redirect('accounts:system_config', action='detail', config_id=config.id)
-        
+
         context = {
             'page_title': 'Add System Configuration',
             'form_title': 'Configuration Details',
@@ -1949,13 +1949,13 @@ class SystemConfigurationView(LoginRequiredMixin, View):
             'setting_types': SystemConfiguration.SETTING_TYPES,
             'action': 'create'
         }
-        
+
         return render(request, self.template_name, context)
-    
+
     def edit_view(self, request, config_id):
         configuration = get_object_or_404(SystemConfiguration, id=config_id, is_active=True)
         form = SystemConfigurationForm(instance=configuration)
-        
+
         context = {
             'page_title': f'Edit Configuration - {configuration.key}',
             'form_title': 'Update Configuration',
@@ -1965,20 +1965,20 @@ class SystemConfigurationView(LoginRequiredMixin, View):
             'is_update': True,
             'action': 'edit'
         }
-        
+
         return render(request, self.template_name, context)
-    
+
     def edit_post(self, request, config_id):
         configuration = get_object_or_404(SystemConfiguration, id=config_id, is_active=True)
         form = SystemConfigurationForm(request.POST, instance=configuration)
-        
+
         if form.is_valid():
             with transaction.atomic():
                 old_value = configuration.value
                 config = form.save(commit=False)
                 config.updated_by = request.user
                 config.save()
-                
+
                 log_user_activity(
                     user=request.user,
                     action="UPDATE",
@@ -1991,10 +1991,10 @@ class SystemConfigurationView(LoginRequiredMixin, View):
                         'config_type': config.setting_type,
                     }
                 )
-                
+
                 messages.success(request, f'Configuration "{config.key}" updated successfully.')
                 return redirect('accounts:system_config', action='detail', config_id=config.id)
-        
+
         context = {
             'page_title': f'Edit Configuration - {configuration.key}',
             'form_title': 'Update Configuration',
@@ -2004,17 +2004,17 @@ class SystemConfigurationView(LoginRequiredMixin, View):
             'is_update': True,
             'action': 'edit'
         }
-        
+
         return render(request, self.template_name, context)
-    
+
     def delete_post(self, request, config_id):
         configuration = get_object_or_404(SystemConfiguration, id=config_id, is_active=True)
-        
+
         with transaction.atomic():
             old_key = configuration.key
             configuration.is_active = False
             configuration.save()
-            
+
             log_user_activity(
                 user=request.user,
                 action="DELETE",
@@ -2025,17 +2025,17 @@ class SystemConfigurationView(LoginRequiredMixin, View):
                     'config_id': config_id,
                 }
             )
-            
+
             messages.success(request, f'Configuration "{old_key}" deleted successfully.')
-        
+
         return redirect('accounts:system_config')
-    
+
     def statistics_view(self, request):
         if not UserUtilities.check_user_permission(request.user, "view_all_reports"):
             raise PermissionDenied
-        
+
         stats = SystemUtilities.get_system_statistics()
-        
+
         config_stats = {
             'total_configs': SystemConfiguration.objects.filter(is_active=True).count(),
             'by_type': {},
@@ -2044,13 +2044,13 @@ class SystemConfigurationView(LoginRequiredMixin, View):
                 updated_at__gte=timezone.now() - timedelta(days=7)
             ).count()
         }
-        
+
         for setting_type, display_name in SystemConfiguration.SETTING_TYPES:
             config_stats['by_type'][display_name] = SystemConfiguration.objects.filter(
                 setting_type=setting_type,
                 is_active=True
             ).count()
-        
+
         context = {
             'page_title': 'System Statistics',
             'stats': stats,
@@ -2062,9 +2062,9 @@ class SystemConfigurationView(LoginRequiredMixin, View):
             'password_expiry_users': SystemUtilities.get_password_expiry_users().count(),
             'action': 'statistics'
         }
-        
+
         return render(request, self.template_name, context)
-    
+
     def maintenance_view(self, request):
         context = {
             'page_title': 'System Maintenance',
@@ -2083,35 +2083,35 @@ class SystemConfigurationView(LoginRequiredMixin, View):
             'total_configs': SystemConfiguration.objects.filter(is_active=True).count(),
             'action': 'maintenance'
         }
-        
+
         return render(request, self.template_name, context)
-    
+
     def maintenance_post(self, request):
         action = request.POST.get('action')
-        
+
         if action == 'cleanup_sessions':
             count = UserSession.cleanup_expired_sessions()
             messages.success(request, f"Cleaned up {count} expired sessions.")
-        
+
         elif action == 'cleanup_tokens':
             count = SystemUtilities.cleanup_expired_tokens()
             messages.success(request, f"Cleaned up {count} expired tokens.")
-        
+
         elif action == 'cleanup_logs':
             days = int(request.POST.get('days', 365))
             count = AuditLog.cleanup_old_logs(days)
             messages.success(request, f"Cleaned up {count} old audit logs.")
-        
+
         elif action == 'send_password_notifications':
             count = SystemUtilities.send_password_expiry_notifications()
             messages.success(request, f"Sent password expiry notifications to {count} users.")
-        
+
         elif action == 'test_email':
             if SystemUtilities.test_email_connection():
                 messages.success(request, "Email connection test successful.")
             else:
                 messages.error(request, "Email connection test failed.")
-        
+
         log_user_activity(
             user=request.user,
             action="SYSTEM_MAINTENANCE",
@@ -2119,16 +2119,16 @@ class SystemConfigurationView(LoginRequiredMixin, View):
             request=request,
             additional_data={'action': action}
         )
-        
+
         return redirect('accounts:system_config', action='maintenance')
-    
+
     def bulk_view(self, request):
         setting_type = request.GET.get('type')
         configurations = SystemConfiguration.objects.filter(is_active=True)
-        
+
         if setting_type:
             configurations = configurations.filter(setting_type=setting_type)
-        
+
         context = {
             'page_title': 'Bulk Configuration Management',
             'configurations': configurations.order_by('setting_type', 'key'),
@@ -2136,24 +2136,24 @@ class SystemConfigurationView(LoginRequiredMixin, View):
             'selected_type': setting_type or '',
             'action': 'bulk'
         }
-        
+
         return render(request, self.template_name, context)
-    
+
     def bulk_post(self, request):
         action = request.POST.get('bulk_action')
         config_ids = request.POST.getlist('config_ids')
-        
+
         if not config_ids:
             messages.error(request, "No configurations selected.")
             return redirect('accounts:system_config', action='bulk')
-        
+
         with transaction.atomic():
             if action == 'delete':
                 count = SystemConfiguration.objects.filter(
                     id__in=config_ids,
                     is_active=True
                 ).update(is_active=False)
-                
+
                 log_user_activity(
                     user=request.user,
                     action="BULK_DELETE",
@@ -2161,9 +2161,9 @@ class SystemConfigurationView(LoginRequiredMixin, View):
                     request=request,
                     additional_data={'config_ids': config_ids}
                 )
-                
+
                 messages.success(request, f"Deleted {count} configurations.")
-            
+
             elif action == 'update_type':
                 new_type = request.POST.get('new_setting_type')
                 if new_type:
@@ -2171,7 +2171,7 @@ class SystemConfigurationView(LoginRequiredMixin, View):
                         id__in=config_ids,
                         is_active=True
                     ).update(setting_type=new_type, updated_by=request.user)
-                    
+
                     log_user_activity(
                         user=request.user,
                         action="BULK_UPDATE",
@@ -2182,18 +2182,18 @@ class SystemConfigurationView(LoginRequiredMixin, View):
                             'new_type': new_type
                         }
                     )
-                    
+
                     messages.success(request, f"Updated {count} configurations.")
-        
+
         return redirect('accounts:system_config', action='bulk')
-    
+
     def export_view(self, request):
         setting_type = request.GET.get('type')
         configurations = SystemConfiguration.objects.filter(is_active=True)
-        
+
         if setting_type:
             configurations = configurations.filter(setting_type=setting_type)
-        
+
         export_data = []
         for config in configurations:
             export_data.append({
@@ -2203,15 +2203,15 @@ class SystemConfigurationView(LoginRequiredMixin, View):
                 'description': config.description,
                 'is_encrypted': config.is_encrypted
             })
-        
+
         response = JsonResponse({
             'configurations': export_data,
             'export_date': timezone.now().isoformat(),
             'total_count': len(export_data)
         })
-        
+
         response['Content-Disposition'] = f'attachment; filename="system_config_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.json"'
-        
+
         log_user_activity(
             user=request.user,
             action="EXPORT",
@@ -2219,33 +2219,33 @@ class SystemConfigurationView(LoginRequiredMixin, View):
             request=request,
             additional_data={'setting_type': setting_type}
         )
-        
+
         return response
-    
+
     def import_view(self, request):
         context = {
             'page_title': 'Import System Configuration',
             'action': 'import'
         }
-        
+
         return render(request, self.template_name, context)
-    
+
     def import_post(self, request):
         if 'config_file' not in request.FILES:
             messages.error(request, "No file selected.")
             return redirect('accounts:system_config', action='import')
-        
+
         try:
             config_file = request.FILES['config_file']
             data = json.loads(config_file.read().decode('utf-8'))
-            
+
             if 'configurations' not in data:
                 messages.error(request, "Invalid file format.")
                 return redirect('accounts:system_config', action='import')
-            
+
             created_count = 0
             updated_count = 0
-            
+
             with transaction.atomic():
                 for config_data in data['configurations']:
                     config, created = SystemConfiguration.objects.update_or_create(
@@ -2259,12 +2259,12 @@ class SystemConfigurationView(LoginRequiredMixin, View):
                             'is_active': True
                         }
                     )
-                    
+
                     if created:
                         created_count += 1
                     else:
                         updated_count += 1
-                
+
                 log_user_activity(
                     user=request.user,
                     action="IMPORT",
@@ -2275,33 +2275,38 @@ class SystemConfigurationView(LoginRequiredMixin, View):
                         'updated_count': updated_count
                     }
                 )
-            
+
             messages.success(
                 request,
                 f"Import completed: {created_count} created, {updated_count} updated."
             )
-            
+
         except json.JSONDecodeError:
             messages.error(request, "Invalid JSON file.")
         except Exception as e:
             messages.error(request, f"Import failed: {str(e)}")
-        
+
         return redirect('accounts:system_config')
-    
+
     def reset_defaults_post(self, request):
         with transaction.atomic():
-            count = SystemConfiguration.initialize_default_settings()
-            
+            deleted_count = SystemConfiguration.objects.all().delete()[0]
+
+            created_count = SystemConfiguration.initialize_default_settings()
+
             log_user_activity(
                 user=request.user,
                 action="RESET_DEFAULTS",
-                description=f"Reset system configurations to defaults: {count} settings initialized",
+                description=f"Reset system configurations to defaults: {deleted_count} deleted, {created_count} created",
                 request=request,
-                additional_data={'initialized_count': count}
+                additional_data={
+                    'deleted_count': deleted_count,
+                    'created_count': created_count
+                }
             )
-            
-            messages.success(request, f"Reset to defaults completed: {count} settings initialized.")
-        
+
+            messages.success(request, f"Reset to defaults completed: {deleted_count} settings deleted, {created_count} settings created.")
+
         return redirect('accounts:system_config')
 
 @login_required

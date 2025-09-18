@@ -2,6 +2,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db.models import Sum, Count, Avg
 from accounts.models import (
     CustomUser,
     Department,
@@ -446,7 +447,8 @@ class PayrollPeriod(models.Model):
     
     def mark_as_completed(self, user):
         """Mark payroll period as completed"""
-        from .utils import log_payroll_activity
+
+        self.calculate_period_totals()
         
         self.status = "COMPLETED"
         self.save(update_fields=["status"])
@@ -670,13 +672,13 @@ class Payslip(models.Model):
             )
 
         if not self.bonus_1:
-            self.bonus_1 = Decimal(SystemConfiguration.get_setting("DEFAULT_BONUS_1", "1500.00"))
+            self.bonus_1 = Decimal(SystemConfiguration.get_setting("DEFAULT_BONUS_1"))
         if not self.bonus_2:
-            self.bonus_2 = Decimal(SystemConfiguration.get_setting("DEFAULT_BONUS_2", "1000.00"))
+            self.bonus_2 = Decimal(SystemConfiguration.get_setting("DEFAULT_BONUS_2"))
         if not self.fuel_per_day:
-            self.fuel_per_day = Decimal(SystemConfiguration.get_setting("FUEL_PER_DAY", "50.00"))
+            self.fuel_per_day = Decimal(SystemConfiguration.get_setting("FUEL_PER_DAY"))
         if not self.meal_per_day:
-            self.meal_per_day = Decimal(SystemConfiguration.get_setting("MEAL_PER_DAY", "350.00"))
+            self.meal_per_day = Decimal(SystemConfiguration.get_setting("MEAL_PER_DAY"))
 
         super().save(*args, **kwargs)
 
@@ -706,18 +708,41 @@ class Payslip(models.Model):
         self.calculate_basic_components()
         self.calculate_role_specific_allowances()
         self.calculate_overtime_pay()
-        self.calculate_deductions()
-
+        
         expense_data = ExpensePayrollService.get_payroll_amounts(self.employee.id)
-
         self.expense_additions = expense_data["addition_amount"]
         self.expense_deductions = expense_data["deduction_amount"]
         expense_ids = expense_data["expense_ids"]
-
-        self.calculate_totals()
+        
+        self.gross_salary = (
+            self.basic_salary
+            + self.bonus_1
+            + self.bonus_2
+            + self.total_allowances
+            + self.total_overtime_pay
+            + self.religious_pay
+            + self.friday_salary
+            + self.expense_additions
+        )
+        
+        self.calculate_deductions()
+        
+        self.total_deductions = (
+            self.leave_deduction
+            + self.late_penalty
+            + self.lunch_violation_penalty
+            + self.advance_deduction
+            + self.employee_epf_contribution
+            + self.income_tax
+            + self.expense_deductions
+        )
+        
+        self.net_salary = self.gross_salary - self.total_deductions
+        self.working_day_meals = self.attended_days
+        
         self.status = "CALCULATED"
         self.save()
-
+        
         if expense_ids:
             try:
                 payroll_period = f"{calendar.month_name[self.payroll_period.month]} {self.payroll_period.year}"
@@ -726,14 +751,9 @@ class Payslip(models.Model):
                     payroll_reference=self.reference_number,
                     payroll_period=payroll_period,
                 )
-                print(f"Expense processing result: {result}")  # Add logging to see the result
             except Exception as e:
-                # Log the error but don't let it prevent payslip calculation
-                print(f"Error processing expenses: {str(e)}")
-                # You might want to add proper logging here
                 import traceback
-                print(traceback.format_exc())  # Print the full traceback for debugging
-
+        
         log_payroll_activity(
             self.calculated_by,
             "PAYSLIP_CALCULATED",
@@ -744,6 +764,7 @@ class Payslip(models.Model):
                 "net_salary": float(self.net_salary),
             },
         )
+ 
 
     def calculate_basic_components(self):
         basic_components = PayrollCalculator.calculate_basic_salary_components(
@@ -755,7 +776,7 @@ class Payslip(models.Model):
         self.attended_days = self.monthly_summary.attended_days
 
         if self.monthly_summary.punctuality_score >= Decimal("98.0"):
-            punctuality_bonus = Decimal(SystemConfiguration.get_setting("PUNCTUALITY_BONUS_AMOUNT", "500.00"))
+            punctuality_bonus = Decimal(SystemConfiguration.get_setting("PUNCTUALITY_BONUS_AMOUNT"))
             self.performance_bonus += punctuality_bonus
 
     def calculate_role_specific_allowances(self):
@@ -825,6 +846,10 @@ class Payslip(models.Model):
 
         etf_data = PayrollTaxCalculator.calculate_etf_contribution(self.gross_salary)
         self.etf_contribution = etf_data["etf_contribution"]
+
+        annual_income = self.gross_salary * 12  
+        tax_data = PayrollTaxCalculator.calculate_income_tax(annual_income, self.employee)
+        self.income_tax = tax_data["monthly_tax"]
 
     def calculate_totals(self):
         self.gross_salary = (
@@ -1319,10 +1344,10 @@ class PayrollDepartmentSummary(models.Model):
             return 0
 
         attendance_weight = Decimal(
-            SystemConfiguration.get_setting("ATTENDANCE_WEIGHT", "0.4")
+            SystemConfiguration.get_setting("ATTENDANCE_WEIGHT")
         )
         punctuality_weight = Decimal(
-            SystemConfiguration.get_setting("PUNCTUALITY_WEIGHT", "0.3")
+            SystemConfiguration.get_setting("PUNCTUALITY_WEIGHT")
         )
         productivity_weight = Decimal("1.0") - attendance_weight - punctuality_weight
 
@@ -2074,7 +2099,7 @@ def calculate_employee_year_to_date(employee_id, year):
             employee=employee,
             payroll_period__year=year,
             status__in=["CALCULATED", "APPROVED", "PAID"],
-        )
+        ).order_by('payroll_period__month')  
 
         ytd_data = {
             "employee_code": employee.employee_code,
@@ -2090,11 +2115,19 @@ def calculate_employee_year_to_date(employee_id, year):
             "total_epf_employee": sum(p.employee_epf_contribution for p in payslips),
             "total_epf_employer": sum(p.employer_epf_contribution for p in payslips),
             "total_etf": sum(p.etf_contribution for p in payslips),
+            "total_income_tax": sum(p.income_tax for p in payslips),
             "total_late_penalties": sum(p.late_penalty for p in payslips),
             "total_lunch_violations": sum(p.lunch_violation_penalty for p in payslips),
             "total_advance_deductions": sum(p.advance_deduction for p in payslips),
+            "total_other_deductions": sum(p.total_deductions for p in payslips) - 
+                                     (sum(p.employee_epf_contribution for p in payslips) +
+                                      sum(p.income_tax for p in payslips) +
+                                      sum(p.late_penalty for p in payslips) +
+                                      sum(p.lunch_violation_penalty for p in payslips) +
+                                      sum(p.advance_deduction for p in payslips)),
             "average_monthly_gross": 0,
             "average_monthly_net": 0,
+            "monthly_breakdown": []
         }
 
         if ytd_data["total_months"] > 0:
@@ -2105,6 +2138,23 @@ def calculate_employee_year_to_date(employee_id, year):
                 ytd_data["total_net_salary"] / ytd_data["total_months"]
             )
 
+        month_names = ['January', 'February', 'March', 'April', 'May', 'June', 
+                      'July', 'August', 'September', 'October', 'November', 'December']
+        
+        for payslip in payslips:
+            month_index = payslip.payroll_period.month - 1  
+            month_name = month_names[month_index]
+            
+            ytd_data["monthly_breakdown"].append({
+                "month": month_name,
+                "basic_salary": float(payslip.basic_salary),
+                "allowances": float(payslip.total_allowances),
+                "overtime": float(payslip.total_overtime_pay),
+                "gross_salary": float(payslip.gross_salary),
+                "deductions": float(payslip.total_deductions),
+                "net_salary": float(payslip.net_salary)
+            })
+
         for key in ytd_data:
             if isinstance(ytd_data[key], Decimal):
                 ytd_data[key] = float(ytd_data[key])
@@ -2114,7 +2164,6 @@ def calculate_employee_year_to_date(employee_id, year):
     except Exception as e:
         logger.error(f"Error calculating YTD data: {str(e)}")
         return {"status": "error", "error": str(e)}
-
 
 def generate_tax_report(year, report_type="annual"):
     try:
