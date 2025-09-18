@@ -16,8 +16,8 @@ def dynamic_view(request, page):
 
     context = {}
 
-    if page == "apps-kanban.html":
-        return redirect("accounts:system_config")
+    if page == "admin":
+        return redirect("admin:index")
 
     if page == "system-config":
         if not SystemConfiguration.objects.exists():
