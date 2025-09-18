@@ -16,6 +16,9 @@ class LicenseMiddleware:
         if self._is_exempt(request.path):
             return self.get_response(request)
 
+        if request.path.startswith('/accounts/login/') and 'next' in request.GET and '/license/required/' in request.GET['next']:
+            return redirect(reverse("license:license_required"))
+
         try:
             license_obj = License.objects.filter(is_active=True).first()
 
