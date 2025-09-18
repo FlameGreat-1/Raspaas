@@ -148,6 +148,7 @@ LICENSE_EXEMPT_URLS = [
     "/license/status/",
     "/license/api/verify/",
     "/license/api/activate/",
+    "/accounts/login/",
 ]
 
 CELERY_BROKER_URL = config("REDIS_URL", default="redis://localhost:6379/0")

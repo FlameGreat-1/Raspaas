@@ -65,9 +65,8 @@ class LicenseRequiredView(View):
     template_name = "license/required.html"
 
     def get(self, request):
-        response = render(request, self.template_name)
-        response.status_code = 200
-        return response
+        return render(request, self.template_name)
+
 
 class LicenseExpiredView(View):
     template_name = "license/expired.html"
