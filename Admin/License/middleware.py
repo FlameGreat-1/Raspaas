@@ -15,9 +15,6 @@ class LicenseMiddleware:
     def __call__(self, request):
         if self._is_exempt(request.path):
             return self.get_response(request)
-        
-        if hasattr(request, 'user') and request.user.is_authenticated and request.user.is_superuser:
-            return self.get_response(request)
 
         try:
             license_obj = License.objects.filter(is_active=True).first()
