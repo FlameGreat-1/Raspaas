@@ -25,12 +25,10 @@ python manage.py shell -c "
 from django.contrib.auth import get_user_model
 import os
 User = get_user_model()
+admin_email = os.environ.get('ADMIN_EMAIL', 'admin@Raspaas.com')
+admin_password = 'admin123'  # Fixed password instead of environment variable
+
 if not User.objects.filter(is_superuser=True).exists():
-    admin_email = os.environ.get('ADMIN_EMAIL', 'admin@Raspaas.com')
-    admin_password = os.environ.get('ADMIN_PASSWORD')
-    if not admin_password:
-        print('Error: ADMIN_PASSWORD environment variable not set')
-        exit(1)
     User.objects.create_superuser(
         employee_code='admin',
         email=admin_email,
@@ -41,6 +39,17 @@ if not User.objects.filter(is_superuser=True).exists():
     print('Superuser created successfully')
 else:
     print('Superuser already exists')
+    # Update password for existing superuser
+    superuser = User.objects.filter(is_superuser=True).first()
+    superuser.set_password(admin_password)
+    superuser.save()
+    admin_email = superuser.email
+    print('Superuser password updated')
+
+print('======= SUPERUSER CREDENTIALS =======')
+print(f'Email: {admin_email}')
+print(f'Password: {admin_password}')
+print('====================================')
 "
 
 echo "Build completed successfully!"
