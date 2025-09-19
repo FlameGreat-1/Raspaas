@@ -13,6 +13,7 @@ from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.contrib import messages
 from .models import License, LicenseAttempt
+from .hardware import get_hardware_fingerprint
 
 logger = logging.getLogger("license_security")
 
@@ -30,33 +31,6 @@ def generate_license_key(company_uuid, tier_name, expiration_date, salt=None):
 def format_license_key(license_key):
     chunks = [license_key[i : i + 5] for i in range(0, len(license_key), 5)]
     return "-".join(chunks[:5])
-
-
-def get_hardware_fingerprint():
-    system_info = platform.uname()
-
-    try:
-        hostname = socket.gethostname()
-        ip_address = socket.gethostbyname(hostname)
-    except:
-        hostname = "unknown"
-        ip_address = "0.0.0.0"
-
-    try:
-        mac_address = ":".join(re.findall("..", "%012x" % uuid.getnode()))
-    except:
-        mac_address = "00:00:00:00:00:00"
-
-    cpu_info = system_info.processor
-    machine_type = system_info.machine
-
-    fingerprint_data = (
-        f"{hostname}-{ip_address}-{mac_address}-{cpu_info}-{machine_type}"
-    )
-    fingerprint = hashlib.sha256(fingerprint_data.encode()).hexdigest()
-
-    return fingerprint
-
 
 def validate_license(
     license_obj, hardware_fingerprint=None, ip_address=None, user_agent=None

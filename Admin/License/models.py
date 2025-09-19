@@ -10,9 +10,9 @@ import hmac
 import base64
 import psutil
 import platform
-from .utils import get_hardware_fingerprint
-
+from .hardware import get_hardware_fingerprint
 logger = logging.getLogger("license_security")
+
 
 class Company(models.Model):
     name = models.CharField(max_length=255)
