@@ -1,3 +1,4 @@
+import os
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
@@ -459,12 +460,10 @@ class License(models.Model):
         )
         self.save()
 
-
     @classmethod
     def activate_license(
         cls, license_key, hardware_fingerprint, ip_address=None, user_agent=None
     ):
-        import os
 
         is_central_server = os.environ.get("IS_CENTRAL_SERVER", "False") == "True"
 
@@ -489,20 +488,18 @@ class License(models.Model):
                         attempt_type="activation",
                     )
 
-                if (
-                    license_obj.is_active
-                    and not license_obj.is_expired()
-                    and not license_obj.remotely_revoked
-                ):
+                if not license_obj.is_expired() and not license_obj.remotely_revoked:
                     if license_obj.was_revoked:
                         license_obj.was_revoked = False
                         license_obj.hardware_fingerprint = hardware_fingerprint
                         license_obj.activation_count = 1
+                        license_obj.is_active = True
                         license_obj.save(
                             update_fields=[
                                 "was_revoked",
                                 "hardware_fingerprint",
                                 "activation_count",
+                                "is_active",
                             ]
                         )
                         return (
@@ -513,11 +510,18 @@ class License(models.Model):
                     elif not license_obj.hardware_fingerprint:
                         license_obj.hardware_fingerprint = hardware_fingerprint
                         license_obj.activation_count = 1
+                        license_obj.is_active = True
                         license_obj.save(
-                            update_fields=["hardware_fingerprint", "activation_count"]
+                            update_fields=[
+                                "hardware_fingerprint",
+                                "activation_count",
+                                "is_active",
+                            ]
                         )
                         return True, license_obj, "License activated successfully"
                     elif license_obj.hardware_fingerprint == hardware_fingerprint:
+                        license_obj.is_active = True
+                        license_obj.save(update_fields=["is_active"])
                         return (
                             True,
                             license_obj,
@@ -526,14 +530,19 @@ class License(models.Model):
                     elif license_obj.activation_count < license_obj.max_activations:
                         license_obj.activation_count += 1
                         license_obj.hardware_fingerprint = hardware_fingerprint
+                        license_obj.is_active = True
                         license_obj.save(
-                            update_fields=["activation_count", "hardware_fingerprint"]
+                            update_fields=[
+                                "activation_count",
+                                "hardware_fingerprint",
+                                "is_active",
+                            ]
                         )
                         return True, license_obj, "License activated on new device"
                     else:
                         return False, None, "Maximum activations reached"
                 else:
-                    return False, None, "License is inactive, expired, or revoked"
+                    return False, None, "License is expired or revoked"
             except cls.DoesNotExist:
                 if ip_address:
                     LicenseAttempt.log_attempt(
@@ -624,6 +633,7 @@ class License(models.Model):
                         license_obj.remotely_revoked = False
                         license_obj.revocation_reason = None
                         license_obj.activation_count = 1
+                        license_obj.is_active = True
                         license_obj.save(
                             update_fields=[
                                 "hardware_fingerprint",
@@ -632,11 +642,17 @@ class License(models.Model):
                                 "remotely_revoked",
                                 "revocation_reason",
                                 "activation_count",
+                                "is_active",
                             ]
                         )
                     else:
+                        license_obj.is_active = True
                         license_obj.save(
-                            update_fields=["hardware_fingerprint", "last_online_check"]
+                            update_fields=[
+                                "hardware_fingerprint",
+                                "last_online_check",
+                                "is_active",
+                            ]
                         )
 
                 return True, license_obj, "License activated successfully"
@@ -656,20 +672,18 @@ class License(models.Model):
             try:
                 license_obj = cls.objects.get(license_key=license_key)
 
-                if (
-                    license_obj.is_active
-                    and not license_obj.is_expired()
-                    and not license_obj.remotely_revoked
-                ):
+                if not license_obj.is_expired() and not license_obj.remotely_revoked:
                     if license_obj.was_revoked:
                         license_obj.was_revoked = False
                         license_obj.hardware_fingerprint = hardware_fingerprint
                         license_obj.activation_count = 1
+                        license_obj.is_active = True
                         license_obj.save(
                             update_fields=[
                                 "was_revoked",
                                 "hardware_fingerprint",
                                 "activation_count",
+                                "is_active",
                             ]
                         )
                         return (
@@ -679,9 +693,14 @@ class License(models.Model):
                         )
                     elif not license_obj.hardware_fingerprint:
                         license_obj.hardware_fingerprint = hardware_fingerprint
-                        license_obj.save(update_fields=["hardware_fingerprint"])
+                        license_obj.is_active = True
+                        license_obj.save(
+                            update_fields=["hardware_fingerprint", "is_active"]
+                        )
                         return True, license_obj, "License activated offline"
                     elif license_obj.hardware_fingerprint == hardware_fingerprint:
+                        license_obj.is_active = True
+                        license_obj.save(update_fields=["is_active"])
                         return (
                             True,
                             license_obj,
@@ -690,13 +709,18 @@ class License(models.Model):
                     elif license_obj.activation_count < license_obj.max_activations:
                         license_obj.activation_count += 1
                         license_obj.hardware_fingerprint = hardware_fingerprint
+                        license_obj.is_active = True
                         license_obj.save(
-                            update_fields=["activation_count", "hardware_fingerprint"]
+                            update_fields=[
+                                "activation_count",
+                                "hardware_fingerprint",
+                                "is_active",
+                            ]
                         )
                         return True, license_obj, "License activated on new device"
                     else:
                         return False, None, "Maximum activations reached"
                 else:
-                    return False, None, "License is inactive, expired, or revoked"
+                    return False, None, "License is expired or revoked"
             except cls.DoesNotExist:
                 return False, None, f"Activation error: {str(e)}"
