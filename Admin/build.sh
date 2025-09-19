@@ -19,7 +19,7 @@ python manage.py collectstatic --no-input
 
 echo "Running database migrations..."
 python manage.py migrate License 0004_remove_features_only
-python manage.py migrate License 0005_license_failed_verification_count_and_more --fake
+python manage.py migrate License 0005_license_failed_verification_count_and_more 
 python manage.py migrate
 
 echo "Creating superuser if needed..."
