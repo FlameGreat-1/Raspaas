@@ -85,6 +85,7 @@ class LicenseAdmin(admin.ModelAdmin):
         "integrity_signature",
         "integrity_status",
         "issue_date",
+        "updated_at",
     )
     fieldsets = (
         (
