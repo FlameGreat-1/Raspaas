@@ -464,7 +464,6 @@ class License(models.Model):
     def activate_license(
         cls, license_key, hardware_fingerprint, ip_address=None, user_agent=None
     ):
-
         is_central_server = True
 
         if ip_address and not LicenseAttempt.check_rate_limit(ip_address, "activation"):
@@ -494,12 +493,14 @@ class License(models.Model):
                         license_obj.hardware_fingerprint = hardware_fingerprint
                         license_obj.activation_count = 1
                         license_obj.is_active = True
+                        license_obj.generate_integrity_signature()
                         license_obj.save(
                             update_fields=[
                                 "was_revoked",
                                 "hardware_fingerprint",
                                 "activation_count",
                                 "is_active",
+                                "integrity_signature"
                             ]
                         )
                         return (
@@ -511,17 +512,25 @@ class License(models.Model):
                         license_obj.hardware_fingerprint = hardware_fingerprint
                         license_obj.activation_count = 1
                         license_obj.is_active = True
+                        license_obj.generate_integrity_signature()
                         license_obj.save(
                             update_fields=[
                                 "hardware_fingerprint",
                                 "activation_count",
                                 "is_active",
+                                "integrity_signature"
                             ]
                         )
                         return True, license_obj, "License activated successfully"
                     elif license_obj.hardware_fingerprint == hardware_fingerprint:
                         license_obj.is_active = True
-                        license_obj.save(update_fields=["is_active"])
+                        license_obj.generate_integrity_signature()
+                        license_obj.save(
+                            update_fields=[
+                                "is_active",
+                                "integrity_signature"
+                            ]
+                        )
                         return (
                             True,
                             license_obj,
@@ -531,11 +540,13 @@ class License(models.Model):
                         license_obj.activation_count += 1
                         license_obj.hardware_fingerprint = hardware_fingerprint
                         license_obj.is_active = True
+                        license_obj.generate_integrity_signature()
                         license_obj.save(
                             update_fields=[
                                 "activation_count",
                                 "hardware_fingerprint",
                                 "is_active",
+                                "integrity_signature"
                             ]
                         )
                         return True, license_obj, "License activated on new device"
@@ -634,6 +645,7 @@ class License(models.Model):
                         license_obj.revocation_reason = None
                         license_obj.activation_count = 1
                         license_obj.is_active = True
+                        license_obj.generate_integrity_signature()
                         license_obj.save(
                             update_fields=[
                                 "hardware_fingerprint",
@@ -643,15 +655,18 @@ class License(models.Model):
                                 "revocation_reason",
                                 "activation_count",
                                 "is_active",
+                                "integrity_signature"
                             ]
                         )
                     else:
                         license_obj.is_active = True
+                        license_obj.generate_integrity_signature()
                         license_obj.save(
                             update_fields=[
                                 "hardware_fingerprint",
                                 "last_online_check",
                                 "is_active",
+                                "integrity_signature"
                             ]
                         )
 
@@ -678,12 +693,14 @@ class License(models.Model):
                         license_obj.hardware_fingerprint = hardware_fingerprint
                         license_obj.activation_count = 1
                         license_obj.is_active = True
+                        license_obj.generate_integrity_signature()
                         license_obj.save(
                             update_fields=[
                                 "was_revoked",
                                 "hardware_fingerprint",
                                 "activation_count",
                                 "is_active",
+                                "integrity_signature"
                             ]
                         )
                         return (
@@ -694,13 +711,24 @@ class License(models.Model):
                     elif not license_obj.hardware_fingerprint:
                         license_obj.hardware_fingerprint = hardware_fingerprint
                         license_obj.is_active = True
+                        license_obj.generate_integrity_signature()
                         license_obj.save(
-                            update_fields=["hardware_fingerprint", "is_active"]
+                            update_fields=[
+                                "hardware_fingerprint", 
+                                "is_active",
+                                "integrity_signature"
+                            ]
                         )
                         return True, license_obj, "License activated offline"
                     elif license_obj.hardware_fingerprint == hardware_fingerprint:
                         license_obj.is_active = True
-                        license_obj.save(update_fields=["is_active"])
+                        license_obj.generate_integrity_signature()
+                        license_obj.save(
+                            update_fields=[
+                                "is_active",
+                                "integrity_signature"
+                            ]
+                        )
                         return (
                             True,
                             license_obj,
@@ -710,11 +738,13 @@ class License(models.Model):
                         license_obj.activation_count += 1
                         license_obj.hardware_fingerprint = hardware_fingerprint
                         license_obj.is_active = True
+                        license_obj.generate_integrity_signature()
                         license_obj.save(
                             update_fields=[
                                 "activation_count",
                                 "hardware_fingerprint",
                                 "is_active",
+                                "integrity_signature"
                             ]
                         )
                         return True, license_obj, "License activated on new device"
