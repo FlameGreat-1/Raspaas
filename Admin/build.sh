@@ -18,6 +18,8 @@ echo "Collecting static files..."
 python manage.py collectstatic --no-input
 
 echo "Running database migrations..."
+python manage.py migrate License 0004_remove_features_only
+python manage.py migrate License 0005_license_failed_verification_count_and_more --fake
 python manage.py migrate
 
 echo "Creating superuser if needed..."
@@ -43,13 +45,7 @@ else:
     superuser = User.objects.filter(is_superuser=True).first()
     superuser.set_password(admin_password)
     superuser.save()
-    admin_email = superuser.email
     print('Superuser password updated')
-
-print('======= SUPERUSER CREDENTIALS =======')
-print(f'Email: {admin_email}')
-print(f'Password: {admin_password}')
-print('====================================')
 "
 
 echo "Build completed successfully!"
