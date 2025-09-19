@@ -130,11 +130,11 @@ WEBPACK_LOADER = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LICENSE_VERIFICATION_URL = config(
-    "LICENSE_SERVER_URL", default="https://Razpaas.onrender.com/license/api/verify/"
+    "LICENSE_SERVER_URL", default="https://razpaas.onrender.com/license/api/verify/"
 )
 LICENSE_ACTIVATION_URL = config(
     "LICENSE_ACTIVATION_URL",
-    default="https://Razpaas.onrender.com/license/api/activate/",
+    default="https://razpaas.onrender.com/license/api/activate/",
 )
 
 LOGIN_URL = "/accounts/login/"

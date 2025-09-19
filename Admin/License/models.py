@@ -464,7 +464,7 @@ class License(models.Model):
     def activate_license(
         cls, license_key, hardware_fingerprint, ip_address=None, user_agent=None
     ):
-        is_central_server = True
+        is_central_server = os.environ.get("IS_CENTRAL_SERVER", "False") == "True"
 
         if ip_address and not LicenseAttempt.check_rate_limit(ip_address, "activation"):
             backoff_time = LicenseAttempt.get_backoff_time(ip_address, "activation")
