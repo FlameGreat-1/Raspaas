@@ -26,13 +26,18 @@ from django.contrib.auth.decorators import login_required
 
 logger = logging.getLogger("license_security")
 
-
 class LicenseActivationView(View):
     template_name = "license/activate.html"
 
     def get(self, request):
         try:
             license_obj = License.objects.filter(is_active=True).first()
+            if (
+                license_obj
+                and license_obj.activation_count == 0
+                and not license_obj.hardware_fingerprint
+            ):
+                return render(request, self.template_name, {"license": None})
             if license_obj and license_obj.was_revoked:
                 return render(
                     request,
@@ -80,7 +85,6 @@ class LicenseActivationView(View):
             logger.warning(f"License activation failed: {message} from IP {ip_address}")
             messages.error(request, f"License activation failed: {message}")
             return redirect("license:license_activation")
-
 
 class LicenseRequiredView(View):
     template_name = "license/required.html"

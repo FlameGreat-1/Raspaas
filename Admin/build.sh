@@ -17,9 +17,6 @@ python manage.py makemigrations License
 echo "Collecting static files..."
 python manage.py collectstatic --no-input
 
-echo "Resetting database..."
-python manage.py reset_db --noinput
-
 echo "Running migrations..."
 python manage.py migrate
 
@@ -39,14 +36,10 @@ if not User.objects.filter(is_superuser=True).exists():
         first_name='Admin',
         last_name='User'
     )
-    print('Superuser created successfully')
 else:
-    print('Superuser already exists')
-    # Update password for existing superuser
     superuser = User.objects.filter(is_superuser=True).first()
     superuser.set_password(admin_password)
     superuser.save()
-    print('Superuser password updated')
 "
 
 echo "Build completed successfully!"
