@@ -8,14 +8,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-change-this-in-production")
 
-DEBUG = config("DEBUG", default=False, cast=bool)
+DEBUG = True
 
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "raspaas.onrender.com",
-    "Razpaas.onrender.com",
-    "*.onrender.com",
 ]
 
 
@@ -130,11 +128,11 @@ WEBPACK_LOADER = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LICENSE_VERIFICATION_URL = config(
-    "LICENSE_SERVER_URL", default="https://razpaas.onrender.com/license/api/verify/"
+    "LICENSE_SERVER_URL", default="https://raspaas.onrender.com/license/api/verify/"
 )
 LICENSE_ACTIVATION_URL = config(
     "LICENSE_ACTIVATION_URL",
-    default="https://razpaas.onrender.com/license/api/activate/",
+    default="https://raspaas.onrender.com/license/api/activate/",
 )
 
 LOGIN_URL = "/accounts/login/"
@@ -202,7 +200,7 @@ CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_TRUSTED_ORIGINS = [
     "https://*.onrender.com",
-    "https://Razpaas.onrender.com",
+    "https://raspaas.onrender.com",
     config("CSRF_TRUSTED_ORIGIN", default="http://localhost:8000"),
 ]
 
