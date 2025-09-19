@@ -146,6 +146,10 @@ class LicenseAdmin(admin.ModelAdmin):
     integrity_status.short_description = "Integrity"
 
     def save_model(self, request, obj, form, change):
+        if not change:
+            obj.activation_count = 0
+            obj.hardware_fingerprint = ""
+
         super().save_model(request, obj, form, change)
         obj.generate_integrity_signature()
         obj.save(update_fields=["integrity_signature"])
