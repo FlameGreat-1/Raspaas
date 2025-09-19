@@ -18,6 +18,9 @@ class LicenseMiddleware:
         
         if hasattr(request, 'user') and request.user.is_authenticated and request.user.is_superuser:
             return self.get_response(request)
+        
+        if request.path.startswith('/license/required/') or request.path.startswith('/license/activate/'):
+            return self.get_response(request)
 
         try:
             license_obj = License.objects.filter(is_active=True).first()
