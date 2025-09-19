@@ -17,8 +17,8 @@ python manage.py makemigrations License
 echo "Collecting static files..."
 python manage.py collectstatic --no-input
 
-echo "Running database migrations..."
-python manage.py migrate --fake-initial
+echo "Resetting database..."
+python manage.py reset_db --confirm
 
 echo "Creating superuser if needed..."
 python manage.py shell -c "
