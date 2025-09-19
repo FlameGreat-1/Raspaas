@@ -132,7 +132,7 @@ LICENSE_VERIFICATION_URL = config(
 )
 LICENSE_ACTIVATION_URL = config(
     "LICENSE_ACTIVATION_URL",
-    default="https://raspaas.onrender.com/license/api/activate/",
+    default="https://raspaas.onrender.com/license/activate/",
 )
 
 LOGIN_URL = "/accounts/login/"
@@ -148,7 +148,6 @@ LICENSE_EXEMPT_URLS = [
     "/license/expired/",
     "/license/status/",
     "/license/api/verify/",
-    "/license/api/activate/",
 ]
 
 CELERY_BROKER_URL = config("REDIS_URL", default="redis://localhost:6379/0")
