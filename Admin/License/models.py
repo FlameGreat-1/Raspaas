@@ -459,10 +459,15 @@ class License(models.Model):
         )
         self.save()
 
+
     @classmethod
     def activate_license(
         cls, license_key, hardware_fingerprint, ip_address=None, user_agent=None
     ):
+        import os
+
+        is_central_server = os.environ.get("IS_CENTRAL_SERVER", "False") == "True"
+
         if ip_address and not LicenseAttempt.check_rate_limit(ip_address, "activation"):
             backoff_time = LicenseAttempt.get_backoff_time(ip_address, "activation")
             return (
@@ -470,6 +475,75 @@ class License(models.Model):
                 None,
                 f"Too many activation attempts. Please try again in {backoff_time} seconds.",
             )
+
+        if is_central_server:
+            try:
+                license_obj = cls.objects.get(license_key=license_key)
+
+                if ip_address:
+                    LicenseAttempt.log_attempt(
+                        ip_address=ip_address,
+                        success=True,
+                        license_key=license_key,
+                        user_agent=user_agent,
+                        attempt_type="activation",
+                    )
+
+                if (
+                    license_obj.is_active
+                    and not license_obj.is_expired()
+                    and not license_obj.remotely_revoked
+                ):
+                    if license_obj.was_revoked:
+                        license_obj.was_revoked = False
+                        license_obj.hardware_fingerprint = hardware_fingerprint
+                        license_obj.activation_count = 1
+                        license_obj.save(
+                            update_fields=[
+                                "was_revoked",
+                                "hardware_fingerprint",
+                                "activation_count",
+                            ]
+                        )
+                        return (
+                            True,
+                            license_obj,
+                            "Previously revoked license reactivated",
+                        )
+                    elif not license_obj.hardware_fingerprint:
+                        license_obj.hardware_fingerprint = hardware_fingerprint
+                        license_obj.activation_count = 1
+                        license_obj.save(
+                            update_fields=["hardware_fingerprint", "activation_count"]
+                        )
+                        return True, license_obj, "License activated successfully"
+                    elif license_obj.hardware_fingerprint == hardware_fingerprint:
+                        return (
+                            True,
+                            license_obj,
+                            "License already activated for this device",
+                        )
+                    elif license_obj.activation_count < license_obj.max_activations:
+                        license_obj.activation_count += 1
+                        license_obj.hardware_fingerprint = hardware_fingerprint
+                        license_obj.save(
+                            update_fields=["activation_count", "hardware_fingerprint"]
+                        )
+                        return True, license_obj, "License activated on new device"
+                    else:
+                        return False, None, "Maximum activations reached"
+                else:
+                    return False, None, "License is inactive, expired, or revoked"
+            except cls.DoesNotExist:
+                if ip_address:
+                    LicenseAttempt.log_attempt(
+                        ip_address=ip_address,
+                        success=False,
+                        license_key=license_key,
+                        user_agent=user_agent,
+                        attempt_type="activation",
+                    )
+                return False, None, "License not found"
 
         activation_url = settings.LICENSE_ACTIVATION_URL
         try:
@@ -515,7 +589,6 @@ class License(models.Model):
                         "price_quarterly": data.get("price_quarterly", 0),
                         "price_biannual": data.get("price_biannual", 0),
                         "price_annual": data.get("price_annual", 0),
-                        "features": data.get("features", {}),
                     },
                 )
 
