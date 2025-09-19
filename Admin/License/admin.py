@@ -33,7 +33,6 @@ class SubscriptionTierAdmin(admin.ModelAdmin):
                 )
             },
         ),
-        ("Features", {"fields": ("features",)}),
     )
 
     def save_model(self, request, obj, form, change):
