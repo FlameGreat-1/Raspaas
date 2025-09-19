@@ -8,14 +8,15 @@ class SessionExpiryMiddleware:
 
     def __call__(self, request):
         excluded_paths = [
+            "/admin/",
             "/accounts/login/",
             "/static/",
             "/media/",
             "/api/",
             "/favicon.ico",
             "/license/api/",
-            "/license/required/",  
-            "/license/activate/",  
+            "/license/required/",
+            "/license/activate/",
             "/license/expired/",
         ]
 

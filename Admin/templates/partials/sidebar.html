@@ -207,6 +207,7 @@
                     
                             </ul>
                         </li>  
+                        {% if request.user.is_superuser %}
                         <li class="pe-slide-item pe-has-sub">
                             <a href="#collapseLicense" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseLicense">
                                 <span class="pe-nav-sub-content">License</span>
@@ -223,7 +224,6 @@
                                         Renew License
                                     </a>
                                 </li>
-                                {% if request.user.is_staff %}
                                 <li class="pe-slide-item">
                                     <a href="{% url 'license:admin_license_list' %}" class="pe-nav-link">
                                         Manage Licenses
@@ -239,9 +239,16 @@
                                         Subscription
                                     </a>
                                 </li>                                
-                                {% endif %}
                             </ul>
-                        </li>                         
+                        </li>
+                        {% else %}
+                        <li class="pe-slide-item">
+                            <a href="{% url 'license:license_status' %}" class="pe-nav-link">
+                                <i class="ri-key-line pe-nav-icon"></i>
+                                <span class="pe-nav-content">License Status</span>
+                            </a>
+                        </li>
+                        {% endif %}                        
                         <li class="pe-slide-item pe-has-sub">
                             <a href="#collapseAccounting" class="pe-nav-link" data-bs-toggle="collapse" aria-expanded="false" aria-controls="collapseAccounting">
                                 <span class="pe-nav-sub-content">Accounting</span>

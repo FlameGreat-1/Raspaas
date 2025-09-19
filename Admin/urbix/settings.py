@@ -117,6 +117,9 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+logs_dir = BASE_DIR / "logs"
+logs_dir.mkdir(exist_ok=True)
+
 WEBPACK_LOADER = {
     "DEFAULT": {
         "CACHE": not DEBUG,
@@ -148,7 +151,6 @@ LICENSE_EXEMPT_URLS = [
     "/license/status/",
     "/license/api/verify/",
     "/license/api/activate/",
-    ##"/accounts/login/",
 ]
 
 CELERY_BROKER_URL = config("REDIS_URL", default="redis://localhost:6379/0")
@@ -241,6 +243,14 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "formatter": "simple",
         },
+        "security_file": {
+            "level": "INFO",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": BASE_DIR / "logs" / "security.log",
+            "maxBytes": 10485760,  # 10MB
+            "backupCount": 10,
+            "formatter": "verbose",
+        },
     },
     "root": {
         "handlers": ["console"],
@@ -250,6 +260,11 @@ LOGGING = {
         "django": {
             "handlers": ["console"],
             "level": config("DJANGO_LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
+        "license_security": {
+            "handlers": ["security_file"],
+            "level": "INFO",
             "propagate": False,
         },
         "accounts": {
@@ -288,6 +303,13 @@ LICENSE_SETTINGS = {
     "LICENSE_CHECK_INTERVAL": 24,
     "TRIAL_PERIOD_DAYS": 14,
     "MAX_EMPLOYEES": 1000,
+}
+
+LICENSE_SECURITY = {
+    "INTEGRITY_SECRET": config("LICENSE_INTEGRITY_SECRET", default=SECRET_KEY),
+    "MAX_ATTEMPTS_PER_HOUR": 5,
+    "BACKOFF_BASE_SECONDS": 30,
+    "STORE_HARDWARE_INFO": True,
 }
 
 LOCALE_PATHS = [

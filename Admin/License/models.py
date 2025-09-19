@@ -5,7 +5,14 @@ import uuid
 import hashlib
 from datetime import datetime, timedelta
 import requests
-from django.conf import settings
+import logging
+import hmac
+import base64
+import psutil
+import platform
+from .utils import get_hardware_fingerprint
+
+logger = logging.getLogger("license_security")
 
 class Company(models.Model):
     name = models.CharField(max_length=255)
@@ -79,6 +86,140 @@ class SubscriptionTier(models.Model):
         return None
 
 
+class LicenseAttempt(models.Model):
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.CharField(max_length=255, blank=True, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    success = models.BooleanField(default=False)
+    license_key = models.CharField(max_length=100, blank=True, null=True)
+    attempt_type = models.CharField(
+        max_length=20,
+        choices=[
+            ("activation", "Activation"),
+            ("verification", "Verification"),
+            ("login", "Login"),
+            ("renewal", "Renewal"),
+            ("revocation", "Revocation"),
+        ],
+    )
+    cpu_info = models.CharField(max_length=255, blank=True, null=True)
+    ram_info = models.CharField(max_length=100, blank=True, null=True)
+    disk_info = models.CharField(max_length=255, blank=True, null=True)
+    mac_address = models.CharField(max_length=100, blank=True, null=True)
+    os_info = models.CharField(max_length=255, blank=True, null=True)
+    hardware_fingerprint = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["ip_address", "timestamp"]),
+            models.Index(fields=["license_key", "timestamp"]),
+            models.Index(fields=["hardware_fingerprint"]),
+        ]
+
+    @classmethod
+    def check_rate_limit(cls, ip_address, attempt_type="activation"):
+        one_hour_ago = timezone.now() - timedelta(hours=1)
+        attempts = cls.objects.filter(
+            ip_address=ip_address,
+            timestamp__gte=one_hour_ago,
+            attempt_type=attempt_type,
+        ).count()
+
+        is_allowed = attempts < 5
+
+        if not is_allowed:
+            logger.warning(f"Rate limit exceeded for IP {ip_address} ({attempt_type})")
+
+        return is_allowed
+
+    @classmethod
+    def get_backoff_time(cls, ip_address, attempt_type="activation"):
+        one_hour_ago = timezone.now() - timedelta(hours=1)
+        attempts = cls.objects.filter(
+            ip_address=ip_address,
+            timestamp__gte=one_hour_ago,
+            attempt_type=attempt_type,
+        ).count()
+
+        if attempts >= 5:
+            return 30 * (2 ** (attempts - 5))
+        return 0
+
+    @classmethod
+    def log_attempt(
+        cls,
+        ip_address,
+        success,
+        license_key=None,
+        user_agent=None,
+        attempt_type="activation",
+    ):
+        try:
+            try:
+                cpu_info = f"{platform.processor()} ({psutil.cpu_count()} cores)"
+
+                ram = psutil.virtual_memory()
+                ram_info = f"{round(ram.total / (1024**3), 2)} GB"
+
+                disk = psutil.disk_usage("/")
+                disk_info = f"{round(disk.total / (1024**3), 2)} GB total, {round(disk.free / (1024**3), 2)} GB free"
+
+                mac_address = ":".join(
+                    [
+                        "{:02x}".format((uuid.getnode() >> elements) & 0xFF)
+                        for elements in range(0, 48, 8)
+                    ][::-1]
+                )
+
+                os_info = (
+                    f"{platform.system()} {platform.release()} ({platform.version()})"
+                )
+
+                hardware_fingerprint = get_hardware_fingerprint()
+
+            except Exception as e:
+                logger.error(f"Error collecting hardware info: {str(e)}")
+                cpu_info = "Detection failed"
+                ram_info = "Detection failed"
+                disk_info = "Detection failed"
+                mac_address = "Detection failed"
+                os_info = "Detection failed"
+                hardware_fingerprint = "Detection failed"
+
+            cls.objects.create(
+                ip_address=ip_address,
+                user_agent=user_agent,
+                success=success,
+                license_key=license_key,
+                attempt_type=attempt_type,
+                cpu_info=cpu_info,
+                ram_info=ram_info,
+                disk_info=disk_info,
+                mac_address=mac_address,
+                os_info=os_info,
+                hardware_fingerprint=hardware_fingerprint,
+            )
+
+            if not success:
+                logger.warning(
+                    f"Failed {attempt_type} attempt from IP {ip_address} for key ending in {license_key[-8:] if license_key else 'N/A'}"
+                )
+        except Exception as e:
+            logger.error(f"Error logging license attempt: {str(e)}")
+
+    @classmethod
+    def get_backoff_time(cls, ip_address, attempt_type="activation"):
+        one_hour_ago = timezone.now() - timedelta(hours=1)
+        attempts = cls.objects.filter(
+            ip_address=ip_address,
+            timestamp__gte=one_hour_ago,
+            success=False,
+            attempt_type=attempt_type,
+        ).count()
+
+        return min(2**attempts, 3600)
+
+
 class License(models.Model):
     company = models.OneToOneField(
         Company, on_delete=models.CASCADE, related_name="license"
@@ -106,6 +247,9 @@ class License(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     license_server_url = models.URLField(blank=True)
+    integrity_signature = models.CharField(max_length=255, blank=True, null=True)
+    last_failed_verification = models.DateTimeField(null=True, blank=True)
+    failed_verification_count = models.IntegerField(default=0)
 
     def __str__(self):
         return f"{self.company.name} - {self.subscription_tier.name} - {self.license_key[-8:]}"
@@ -119,17 +263,46 @@ class License(models.Model):
             models.Index(fields=["expiration_date"]),
         ]
 
-
     def save(self, *args, **kwargs):
         if not self.license_key:
             base = f"{self.company.uuid}-{self.subscription_tier.name}-{self.expiration_date}-{uuid.uuid4()}"
             self.license_key = hashlib.sha256(base.encode()).hexdigest()
 
         if not self.license_server_url:
-
             self.license_server_url = settings.LICENSE_VERIFICATION_URL
 
+        self.generate_integrity_signature()
+
         super().save(*args, **kwargs)
+
+    def generate_integrity_signature(self):
+        if hasattr(settings, "LICENSE_SECRET_KEY") and settings.LICENSE_SECRET_KEY:
+            secret = settings.LICENSE_SECRET_KEY.encode()
+        else:
+            secret = settings.SECRET_KEY.encode()
+
+        data = f"{self.license_key}|{self.company.uuid}|{self.expiration_date}|{self.is_active}|{self.remotely_revoked}"
+        signature = hmac.new(secret, data.encode(), hashlib.sha256).digest()
+        self.integrity_signature = base64.b64encode(signature).decode()
+
+    def verify_integrity(self):
+        if not self.integrity_signature:
+            logger.warning(
+                f"License {self.license_key[-8:]} has no integrity signature"
+            )
+            return False
+
+        current = self.integrity_signature
+        self.generate_integrity_signature()
+        expected = self.integrity_signature
+        self.integrity_signature = current
+
+        if expected != current:
+            logger.critical(
+                f"License integrity check failed for {self.license_key[-8:]} - possible tampering detected"
+            )
+            return False
+        return True
 
     def is_expired(self):
         return self.expiration_date < timezone.now().date()
@@ -163,6 +336,14 @@ class License(models.Model):
             self.license_server_url = settings.LICENSE_VERIFICATION_URL
             self.save(update_fields=["license_server_url"])
 
+        if not self.verify_integrity():
+            self.failed_verification_count += 1
+            self.last_failed_verification = timezone.now()
+            self.save(
+                update_fields=["failed_verification_count", "last_failed_verification"]
+            )
+            return False, "License integrity check failed"
+
         try:
             response = requests.post(
                 self.license_server_url,
@@ -173,6 +354,7 @@ class License(models.Model):
                     "company_email": self.company.contact_email,
                 },
                 timeout=10,
+                verify=True,
             )
 
             if response.status_code == 200:
@@ -204,9 +386,15 @@ class License(models.Model):
             if self.last_online_check:
                 days_since_check = (timezone.now() - self.last_online_check).days
                 if days_since_check < self.max_offline_days:
-                    return True, f"Using offline grace period ({days_since_check}/{self.max_offline_days} days)"
+                    return (
+                        True,
+                        f"Using offline grace period ({days_since_check}/{self.max_offline_days} days)",
+                    )
                 else:
-                    return False, f"Offline grace period expired ({days_since_check} days, max {self.max_offline_days})"
+                    return (
+                        False,
+                        f"Offline grace period expired ({days_since_check} days, max {self.max_offline_days})",
+                    )
             return False, f"Online verification error: {str(e)}"
 
     def validate(self, hardware_fingerprint=None):
@@ -273,7 +461,17 @@ class License(models.Model):
         self.save()
 
     @classmethod
-    def activate_license(cls, license_key, hardware_fingerprint):
+    def activate_license(
+        cls, license_key, hardware_fingerprint, ip_address=None, user_agent=None
+    ):
+        if ip_address and not LicenseAttempt.check_rate_limit(ip_address, "activation"):
+            backoff_time = LicenseAttempt.get_backoff_time(ip_address, "activation")
+            return (
+                False,
+                None,
+                f"Too many activation attempts. Please try again in {backoff_time} seconds.",
+            )
+
         activation_url = settings.LICENSE_ACTIVATION_URL
         try:
             response = requests.post(
@@ -283,9 +481,20 @@ class License(models.Model):
                     "hardware_fingerprint": hardware_fingerprint,
                 },
                 timeout=10,
+                verify=True,
             )
 
-            if response.status_code == 200:
+            success = response.status_code == 200
+            if ip_address:
+                LicenseAttempt.log_attempt(
+                    ip_address=ip_address,
+                    success=success,
+                    license_key=license_key,
+                    user_agent=user_agent,
+                    attempt_type="activation",
+                )
+
+            if success:
                 data = response.json()
 
                 company, _ = Company.objects.get_or_create(
@@ -363,6 +572,15 @@ class License(models.Model):
                 return False, None, f"Activation failed: {response.status_code}"
 
         except Exception as e:
+            if ip_address:
+                LicenseAttempt.log_attempt(
+                    ip_address=ip_address,
+                    success=False,
+                    license_key=license_key,
+                    user_agent=user_agent,
+                    attempt_type="activation",
+                )
+
             try:
                 license_obj = cls.objects.get(license_key=license_key)
 

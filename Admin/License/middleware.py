@@ -4,8 +4,11 @@ from django.contrib import messages
 from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth import logout
+import logging
 from .utils import validate_license, get_hardware_fingerprint
-from .models import License
+from .models import License, LicenseAttempt
+
+logger = logging.getLogger("license_security")
 
 
 class LicenseMiddleware:
@@ -15,20 +18,40 @@ class LicenseMiddleware:
     def __call__(self, request):
         if self._is_exempt(request.path):
             return self.get_response(request)
-        
+
+        ip_address = request.META.get("REMOTE_ADDR")
+        user_agent = request.META.get("HTTP_USER_AGENT")
+
         try:
             license_obj = License.objects.filter(is_active=True).first()
 
             if not license_obj:
                 if request.user.is_authenticated:
                     logout(request)
+                    logger.warning(
+                        f"No active license found, logging out user from IP {ip_address}"
+                    )
 
                 if not self._is_license_path(request.path):
                     return redirect(reverse("license:license_required"))
             else:
+                if not license_obj.verify_integrity():
+                    logger.critical(
+                        f"License integrity check failed for IP {ip_address}"
+                    )
+                    if request.user.is_authenticated:
+                        logout(request)
+                        messages.error(
+                            request, "License validation error. Please contact support."
+                        )
+                    return redirect(reverse("license:license_required"))
+
                 if license_obj.remotely_revoked:
                     if request.user.is_authenticated:
                         logout(request)
+                        logger.warning(
+                            f"Revoked license access attempt from IP {ip_address}"
+                        )
                         messages.error(
                             request,
                             f"Your license has been revoked: {license_obj.revocation_reason or 'Contact support for details.'}",
@@ -38,6 +61,9 @@ class LicenseMiddleware:
                 if license_obj.was_revoked and not self._is_license_path(request.path):
                     if request.user.is_authenticated:
                         logout(request)
+                        logger.warning(
+                            f"Previously revoked license access attempt from IP {ip_address}"
+                        )
                         messages.error(
                             request,
                             "Your license requires reactivation. Please enter your license key again.",
@@ -47,6 +73,9 @@ class LicenseMiddleware:
                 if not license_obj.is_active:
                     if request.user.is_authenticated:
                         logout(request)
+                        logger.warning(
+                            f"Inactive license access attempt from IP {ip_address}"
+                        )
                         messages.error(
                             request, "Your license is inactive. Please contact support."
                         )
@@ -55,6 +84,9 @@ class LicenseMiddleware:
                 if license_obj.is_expired():
                     if request.user.is_authenticated:
                         logout(request)
+                        logger.warning(
+                            f"Expired license access attempt from IP {ip_address}"
+                        )
                         messages.error(
                             request,
                             "Your license has expired. Please renew your subscription.",
@@ -74,6 +106,7 @@ class LicenseMiddleware:
                         return redirect_response
 
         except Exception as e:
+            logger.error(f"License middleware error: {str(e)} for IP {ip_address}")
             if settings.DEBUG and request.user.is_authenticated:
                 messages.error(request, f"License check error: {str(e)}")
             if request.user.is_authenticated:
@@ -106,18 +139,33 @@ class LicenseMiddleware:
 
     def _update_online_check(self, license_obj, request):
         now = timezone.now()
+        ip_address = request.META.get("REMOTE_ADDR")
+        user_agent = request.META.get("HTTP_USER_AGENT")
 
         if license_obj.needs_online_verification():
             hardware_fingerprint = get_hardware_fingerprint()
+
+            LicenseAttempt.log_attempt(
+                ip_address=ip_address,
+                success=True,
+                license_key=license_obj.license_key,
+                user_agent=user_agent,
+                attempt_type="verification",
+            )
+
             online_valid, message = license_obj.verify_online()
 
             if not online_valid:
                 if "offline grace period" not in message:
+                    logger.warning(
+                        f"License verification failed: {message} for IP {ip_address}"
+                    )
                     messages.warning(request, f"License verification: {message}")
                     if (
                         "revoked" in message.lower()
                         or "expired" in message.lower()
                         or "verification error" in message.lower()
+                        or "integrity check failed" in message.lower()
                     ):
                         logout(request)
                         return redirect(reverse("license:license_required"))
