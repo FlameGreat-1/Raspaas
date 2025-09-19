@@ -18,7 +18,10 @@ echo "Collecting static files..."
 python manage.py collectstatic --no-input
 
 echo "Resetting database..."
-python manage.py reset_db --confirm
+python manage.py reset_db --noinput
+
+echo "Running migrations..."
+python manage.py migrate
 
 echo "Creating superuser if needed..."
 python manage.py shell -c "
