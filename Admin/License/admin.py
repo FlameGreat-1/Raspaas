@@ -92,6 +92,10 @@ class LicenseAdmin(admin.ModelAdmin):
             {"fields": ("license_key", "company", "subscription_tier", "is_active")},
         ),
         (
+            "Subscription",
+            {"fields": ("duration_months", "amount_paid")},
+        ),
+        (
             "Dates",
             {
                 "fields": (
@@ -115,6 +119,9 @@ class LicenseAdmin(admin.ModelAdmin):
                     "last_online_check",
                     "online_check_required",
                     "max_offline_days",
+                    "license_server_url",
+                    "failed_verification_count",
+                    "last_failed_verification",
                 )
             },
         ),
