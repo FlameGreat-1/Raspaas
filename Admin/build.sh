@@ -18,9 +18,7 @@ echo "Collecting static files..."
 python manage.py collectstatic --no-input
 
 echo "Running database migrations..."
-python manage.py migrate License 0004_remove_features_only
-python manage.py migrate License 0005_license_failed_verification_count_and_more 
-python manage.py migrate
+python manage.py migrate --fake-initial
 
 echo "Creating superuser if needed..."
 python manage.py shell -c "
@@ -28,7 +26,7 @@ from django.contrib.auth import get_user_model
 import os
 User = get_user_model()
 admin_email = os.environ.get('ADMIN_EMAIL', 'admin@Raspaas.com')
-admin_password = 'admin123'  # Fixed password instead of environment variable
+admin_password = 'admin123'  
 
 if not User.objects.filter(is_superuser=True).exists():
     User.objects.create_superuser(
