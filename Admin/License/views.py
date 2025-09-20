@@ -86,22 +86,35 @@ class LicenseActivationView(View):
 class LicenseActivationAPIView(View):
     def post(self, request):
         try:
-            logger.info(
+            print(
                 f"Received activation request from: {request.META.get('REMOTE_ADDR')}"
             )
-            logger.info(f"Content-Type: {request.META.get('CONTENT_TYPE')}")
-            logger.info(f"Request body: {request.body.decode()[:500]}")
+            print(f"Content-Type: {request.META.get('CONTENT_TYPE')}")
+            print(f"Request body: {request.body.decode()[:500]}")
 
-            data = json.loads(request.body)
+            try:
+                data = json.loads(request.body)
+                print(f"Parsed JSON data: {data}")
+            except json.JSONDecodeError as e:
+                print(f"JSON decode error: {str(e)}")
+                return JsonResponse(
+                    {"valid": False, "message": f"Invalid JSON: {str(e)}"}, status=400
+                )
+
             license_key = data.get("license_key")
             hardware_fingerprint = data.get("hardware_fingerprint")
+
+            print(f"License key: {license_key[:8] if license_key else None}")
+            print(
+                f"Hardware fingerprint: {hardware_fingerprint[:8] if hardware_fingerprint else None}"
+            )
 
             ip_address = request.META.get("REMOTE_ADDR")
             user_agent = request.META.get("HTTP_USER_AGENT")
 
             if not license_key or not hardware_fingerprint:
-                logger.warning(
-                    f"API activation attempt with missing data from IP {ip_address}"
+                print(
+                    f"Missing required fields: license_key={bool(license_key)}, hardware_fingerprint={bool(hardware_fingerprint)}"
                 )
                 return JsonResponse(
                     {
@@ -111,14 +124,13 @@ class LicenseActivationAPIView(View):
                     status=400,
                 )
 
+            print(f"Processing activation for license {license_key[:8]}...")
             success, license_obj, message = License.activate_license(
                 license_key, hardware_fingerprint, ip_address, user_agent
             )
 
             if success and license_obj:
-                logger.info(
-                    f"API License {license_key[-8:]} activated successfully from IP {ip_address}"
-                )
+                print(f"License {license_key[:8]} activated successfully")
                 response_data = {
                     "valid": True,
                     "message": message,
@@ -142,27 +154,21 @@ class LicenseActivationAPIView(View):
                 if hasattr(license_obj.subscription_tier, "max_users"):
                     response_data["max_users"] = license_obj.subscription_tier.max_users
 
+                print(f"Returning success response: {response_data}")
                 return JsonResponse(response_data)
             else:
-                logger.warning(
-                    f"API License activation failed: {message} from IP {ip_address}"
-                )
+                print(f"License activation failed: {message}")
                 return JsonResponse({"valid": False, "message": message}, status=400)
 
-        except json.JSONDecodeError:
-            logger.warning(
-                f"API activation with invalid JSON from IP {request.META.get('REMOTE_ADDR')}"
-            )
-            return JsonResponse(
-                {"valid": False, "message": "Invalid JSON data"}, status=400
-            )
         except Exception as e:
-            logger.error(
-                f"API activation error: {str(e)} from IP {request.META.get('REMOTE_ADDR')}"
-            )
+            print(f"Unexpected error in activation API: {str(e)}")
+            import traceback
+
+            print(f"Traceback: {traceback.format_exc()}")
             return JsonResponse(
                 {"valid": False, "message": f"Activation error: {str(e)}"}, status=500
             )
+
 
 class LicenseRequiredView(View):
     template_name = "license/required.html"

@@ -466,10 +466,10 @@ class License(models.Model):
     ):
         is_central_server = os.environ.get("IS_CENTRAL_SERVER", "False") == "True"
 
-        logger.info(
+        print(
             f"Activating license with key: {license_key[:8]}... Hardware: {hardware_fingerprint[:8]}..."
         )
-        logger.info(f"Is central server: {is_central_server}")
+        print(f"Is central server: {is_central_server}")
 
         if ip_address and not LicenseAttempt.check_rate_limit(ip_address, "activation"):
             backoff_time = LicenseAttempt.get_backoff_time(ip_address, "activation")
@@ -572,8 +572,8 @@ class License(models.Model):
             "license_key": license_key,
             "hardware_fingerprint": hardware_fingerprint,
         }
-        logger.info(f"Sending activation request to: {activation_url}")
-        logger.info(f"Request data: {request_data}")
+        print(f"Sending activation request to: {activation_url}")
+        print(f"Request data: {request_data}")
 
         try:
             response = requests.post(
@@ -583,8 +583,8 @@ class License(models.Model):
                 verify=True,
             )
 
-            logger.info(f"Response status: {response.status_code}")
-            logger.info(f"Response content: {response.content.decode()[:500]}")
+            print(f"Response status: {response.status_code}")
+            print(f"Response content: {response.content.decode()[:500]}")
 
             success = response.status_code == 200
             if ip_address:
@@ -684,14 +684,15 @@ class License(models.Model):
                 error_message = f"Activation failed: {response.status_code}"
                 try:
                     error_data = response.json()
+                    print(f"Error data: {error_data}")
                     if "message" in error_data:
                         error_message = f"Activation failed: {error_data['message']}"
-                except:
-                    pass
+                except Exception as json_error:
+                    print(f"Failed to parse error response as JSON: {str(json_error)}")
                 return False, None, error_message
 
         except Exception as e:
-            logger.error(f"Activation exception: {str(e)}")
+            print(f"Activation exception: {str(e)}")
 
             if ip_address:
                 LicenseAttempt.log_attempt(
