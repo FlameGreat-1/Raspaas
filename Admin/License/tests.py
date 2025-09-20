@@ -12,13 +12,20 @@ from .models import License
 def test_hardware_binding(request):
     verification_url = getattr(settings, "LICENSE_VERIFICATION_URL", "Not found")
 
+    # Get license key from URL parameter or use the first active license
+    license_key = request.GET.get("license_key", "")
+
     current_fingerprint = get_hardware_fingerprint()
-    license_obj = License.objects.filter(
-        license_key="1bb587625375c84933d985acef0f28d8bd41ed0d3a3043331c96fcbf6f3867f1"
-    ).first()
+
+    if license_key:
+        license_obj = License.objects.filter(license_key=license_key).first()
+    else:
+        license_obj = License.objects.filter(is_active=True).first()
 
     if not license_obj:
-        return HttpResponse("License not found")
+        return HttpResponse(
+            "License not found. Please provide a valid license key as a URL parameter."
+        )
 
     stored_fingerprint = license_obj.hardware_fingerprint
 
@@ -57,6 +64,7 @@ def test_hardware_binding(request):
         )
 
     context = {
+        "license_key": license_obj.license_key,
         "current_fingerprint": current_fingerprint,
         "stored_fingerprint": stored_fingerprint,
         "match": current_fingerprint == stored_fingerprint,
