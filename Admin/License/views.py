@@ -81,6 +81,79 @@ class LicenseActivationView(View):
             messages.error(request, f"License activation failed: {message}")
             return redirect("license:license_activation")
 
+@method_decorator(csrf_exempt, name="dispatch")
+class LicenseActivationAPIView(View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            license_key = data.get("license_key")
+            hardware_fingerprint = data.get("hardware_fingerprint")
+
+            ip_address = request.META.get("REMOTE_ADDR")
+            user_agent = request.META.get("HTTP_USER_AGENT")
+
+            if not license_key or not hardware_fingerprint:
+                logger.warning(
+                    f"API activation attempt with missing data from IP {ip_address}"
+                )
+                return JsonResponse(
+                    {
+                        "valid": False,
+                        "message": "License key and hardware fingerprint are required",
+                    },
+                    status=400,
+                )
+
+            success, license_obj, message = License.activate_license(
+                license_key, hardware_fingerprint, ip_address, user_agent
+            )
+
+            if success and license_obj:
+                logger.info(
+                    f"API License {license_key[-8:]} activated successfully from IP {ip_address}"
+                )
+                response_data = {
+                    "valid": True,
+                    "message": message,
+                    "company_name": license_obj.company.name,
+                    "company_email": license_obj.company.contact_email,
+                    "tier_name": license_obj.subscription_tier.name,
+                    "tier_description": license_obj.subscription_tier.description,
+                    "start_date": license_obj.start_date.strftime("%Y-%m-%d"),
+                    "expiration_date": license_obj.expiration_date.strftime("%Y-%m-%d"),
+                    "duration_months": license_obj.duration_months,
+                    "max_activations": license_obj.max_activations,
+                    "activation_count": license_obj.activation_count,
+                    "online_check_required": license_obj.online_check_required,
+                    "max_offline_days": license_obj.max_offline_days,
+                }
+
+                if hasattr(license_obj.subscription_tier, "max_employees"):
+                    response_data["max_employees"] = (
+                        license_obj.subscription_tier.max_employees
+                    )
+                if hasattr(license_obj.subscription_tier, "max_users"):
+                    response_data["max_users"] = license_obj.subscription_tier.max_users
+
+                return JsonResponse(response_data)
+            else:
+                logger.warning(
+                    f"API License activation failed: {message} from IP {ip_address}"
+                )
+                return JsonResponse({"valid": False, "message": message}, status=400)
+
+        except json.JSONDecodeError:
+            logger.warning(f"API activation with invalid JSON from IP {ip_address}")
+            return JsonResponse(
+                {"valid": False, "message": "Invalid JSON data"}, status=400
+            )
+        except Exception as e:
+            logger.error(f"API activation error: {str(e)} from IP {ip_address}")
+            return JsonResponse(
+                {"valid": False, "message": f"Activation error: {str(e)}"}, status=500
+            )
+
+
 class LicenseRequiredView(View):
     template_name = "license/required.html"
 
@@ -97,7 +170,6 @@ class LicenseExpiredView(View):
             return render(request, self.template_name, {"license": license_obj})
         except:
             return redirect("license:license_required")
-
 
 class LicenseStatusView(LoginRequiredMixin, View):
     template_name = "license/status.html"

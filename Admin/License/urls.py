@@ -6,6 +6,7 @@ app_name = 'license'
 
 urlpatterns = [
     # User-facing license URLs
+    path('api/activate/', views.LicenseActivationAPIView.as_view(), name='license_activate_api'),
     path('activate/', views.LicenseActivationView.as_view(), name='license_activation'),
     path('required/', views.LicenseRequiredView.as_view(), name='license_required'),
     path('expired/', views.LicenseExpiredView.as_view(), name='license_expired'),

@@ -130,10 +130,12 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LICENSE_VERIFICATION_URL = config(
     "LICENSE_SERVER_URL", default="https://raspaas.onrender.com/license/api/verify/"
 )
+
 LICENSE_ACTIVATION_URL = config(
     "LICENSE_ACTIVATION_URL",
-    default="https://raspaas.onrender.com/license/activate/",
+    default="https://raspaas.onrender.com/license/api/activate/",
 )
+
 
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/dashboard/"
@@ -148,6 +150,7 @@ LICENSE_EXEMPT_URLS = [
     "/license/expired/",
     "/license/status/",
     "/license/api/verify/",
+    "/license/api/activate/",
 ]
 
 CELERY_BROKER_URL = config("REDIS_URL", default="redis://localhost:6379/0")
@@ -200,6 +203,7 @@ CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_TRUSTED_ORIGINS = [
     "https://*.onrender.com",
     "https://raspaas.onrender.com",
+    "http://127.0.0.1:8000",
     config("CSRF_TRUSTED_ORIGIN", default="http://localhost:8000"),
 ]
 

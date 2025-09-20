@@ -18,6 +18,7 @@ class SessionExpiryMiddleware:
             "/license/required/",
             "/license/activate/",
             "/license/expired/",
+            "/license/api/activate/",
         ]
 
         is_excluded = any(request.path.startswith(path) for path in excluded_paths)
