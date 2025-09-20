@@ -81,10 +81,17 @@ class LicenseActivationView(View):
             messages.error(request, f"License activation failed: {message}")
             return redirect("license:license_activation")
 
+
 @method_decorator(csrf_exempt, name="dispatch")
 class LicenseActivationAPIView(View):
     def post(self, request):
         try:
+            logger.info(
+                f"Received activation request from: {request.META.get('REMOTE_ADDR')}"
+            )
+            logger.info(f"Content-Type: {request.META.get('CONTENT_TYPE')}")
+            logger.info(f"Request body: {request.body.decode()[:500]}")
+
             data = json.loads(request.body)
             license_key = data.get("license_key")
             hardware_fingerprint = data.get("hardware_fingerprint")
@@ -143,16 +150,19 @@ class LicenseActivationAPIView(View):
                 return JsonResponse({"valid": False, "message": message}, status=400)
 
         except json.JSONDecodeError:
-            logger.warning(f"API activation with invalid JSON from IP {ip_address}")
+            logger.warning(
+                f"API activation with invalid JSON from IP {request.META.get('REMOTE_ADDR')}"
+            )
             return JsonResponse(
                 {"valid": False, "message": "Invalid JSON data"}, status=400
             )
         except Exception as e:
-            logger.error(f"API activation error: {str(e)} from IP {ip_address}")
+            logger.error(
+                f"API activation error: {str(e)} from IP {request.META.get('REMOTE_ADDR')}"
+            )
             return JsonResponse(
                 {"valid": False, "message": f"Activation error: {str(e)}"}, status=500
             )
-
 
 class LicenseRequiredView(View):
     template_name = "license/required.html"
